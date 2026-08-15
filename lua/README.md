@@ -14,6 +14,7 @@ from DeMoD LLC on request.
 | File | What |
 |------|------|
 | `dcf_audio.lua` | the framework: DeModFrame codec, L2 `packetize` / `Reassembler`, PCM-diag, PM params, and the **frequency rendezvous** helpers. Self-certifies on load (`M.CERTIFIED`). |
+| `dcf_transport.lua` | how a burst of frames becomes datagrams: SuperPack batching + Reed-Solomon, per-link presets (`lan`/`wan`/`rf`/`acoustic`) |
 | `dcf_voice.lua` | **L3**: jitter buffer (modular, adaptive), PLC, VAD/DTX, and the L4 voice pipeline. Fully config-driven — see `M.defaults`, `M.presets`, `M.register_codec`. |
 | `dcf_history.lua` | persistent chat/call history on [DeMoD StreamDB](https://github.com/ALH477/DeMoD-StreamDB), pluggable backends, configurable key schema + retention |
 | `selftest_voice.lua` | L3 + history law certification (`lua lua/selftest_voice.lua`, exit 0/1) |
@@ -118,3 +119,39 @@ local h = H.open({ path = "chat.streamdb", retention = { max_per_channel = 10000
 h:append({ kind = "text", ts_us = ts, src = 0x00A1, channel = "duet", text = msg })
 for _, r in ipairs(h:query({ channel = "duet" }, { limit = 50 })) do render(r) end
 ```
+
+## Transport: turning frames into datagrams
+
+`dcf_transport.lua` connects two containers the voice and text paths were not using —
+`dcf_superpack.lua` and `dcf_fec.lua` — behind one interface with two orthogonal axes:
+**batching** (`none` / `concat` / `superpack`) and **FEC** (off, or Reed-Solomon with
+N parity bytes).
+
+Batching is the single biggest link-cost win available. Measured, not modelled
+(`dcf_transport.report(40)` — Opus 16 kbps, 40 B per 20 ms block):
+
+| batch | frames | datagrams | bytes / 20 ms | link cost |
+|---|---|---|---|---|
+| `none` | 11 | 11 | 495 | **198 kbps** |
+| `concat` | 11 | 1 | 215 | **86 kbps** |
+| `superpack` | 11 | 1 | 205 | **82 kbps** |
+| `rf` (superpack + RS-16) | 11 | 1 | 242 | 96.8 kbps |
+
+Identical bytes on the wire quantum — every frame still passes the 246-vector
+certificate — but 2.4x less on the link and one syscall instead of eleven.
+
+FEC is what makes the lossy tiers usable: concealment hides damage, Reed-Solomon
+*repairs* it. Six corrupted bytes in a burst cost 27 bytes of parity and come back
+byte-identical; without it, SuperPack's joint CRC correctly detects the damage and
+drops the whole container.
+
+```lua
+local V = dofile("lua/dcf_voice.lua")
+local voice = V.new(V.configure("field"), function(datagrams)
+  for _, d in ipairs(datagrams) do udp:send(d) end     -- strings, ready for sendto
+end)
+voice:receive_datagram(buf)                            -- unwraps + repairs, then feeds L2
+```
+
+Setting `transport` is opt-in: leave it `nil` and `send()` still receives raw frames
+exactly as before.

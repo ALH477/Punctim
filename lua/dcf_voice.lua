@@ -23,8 +23,9 @@
 
 local HERE = (debug.getinfo(1, "S").source:gsub("^@", "")):match("(.*/)") or "./"
 local A = dofile(HERE .. "dcf_audio.lua")
+local X = dofile(HERE .. "dcf_transport.lua")
 
-local M = { audio = A }
+local M = { audio = A, transport = X }
 
 -- ── Configuration ───────────────────────────────────────────────────────────
 -- Every value below can be overridden per-call; M.configure deep-merges your
@@ -34,6 +35,16 @@ M.defaults = {
   block_ms     = 20,               -- L2 block period (the spec's quantum)
   channel      = A.BROADCAST,      -- rendezvous dst; see dcf_audio.channel_from_passphrase
   src_id       = 0x0001,           -- this node's u16 id
+
+  -- Datagram grouping (lua/dcf_transport.lua): a preset name ("lan" / "wan" /
+  -- "rf" / "acoustic" / "debug"), a config table, or nil.
+  --   nil  -> send() is handed raw frames (byte arrays); you group them yourself
+  --   set  -> send() is handed datagrams (strings), and receive_datagram() parses
+  --           them back. Batching is the single biggest link-cost win available:
+  --           11 frames as 11 datagrams is 198 kbps, as one datagram it is 86.
+  --           "rf"/"acoustic" add Reed-Solomon so a lossy medium CORRECTS damage
+  --           rather than leaving it to concealment.
+  transport    = nil,
 
   jitter = {
     target_ms   = 40,    -- nominal buffer depth (2 blocks) — latency vs loss
@@ -88,17 +99,18 @@ M.defaults = {
 -- Named starting points. Copy and override — these are just tables.
 M.presets = {
   -- switched LAN: minimal latency, loss is rare
-  lan    = { jitter = { target_ms = 20, max_ms = 60 } },
+  lan    = { jitter = { target_ms = 20, max_ms = 60 }, transport = "lan" },
   -- internet / VPN: absorb reordering and RTT jitter
-  wan    = { jitter = { target_ms = 60, max_ms = 300, grow_ms = 40 } },
+  wan    = { jitter = { target_ms = 60, max_ms = 300, grow_ms = 40 }, transport = "wan" },
   -- lossy RF / acoustic: deep buffer, aggressive concealment, DTX hard on
   field  = { jitter = { target_ms = 120, max_ms = 500, resync_ahead_ms = 1000 },
              plc = { max_consecutive = 12, fade = 0.8 },
+             transport = "rf",
              vad = { threshold = 0.035, hangover_ms = 400 } },
   -- studio jam: latency over everything, no silence gating
   studio = { jitter = { target_ms = 20, min_ms = 20, max_ms = 40, adaptive = false,
                         resync_ahead_ms = 200 },
-             vad = { enabled = false } },
+             transport = "lan", vad = { enabled = false } },
 }
 
 local function deep_merge(dst, src)
@@ -438,6 +450,7 @@ function M.new(cfg, send)
   return setmetatable({
     cfg = cfg, send = send,
     packet_id = 0,
+    transport = cfg.transport and X.new(cfg.transport) or nil,
     _rx = 0, _slot_seen = {},
     reasm = A.Reassembler.new(cfg.channel),
     jitter = M.new_jitter(cfg),
@@ -465,8 +478,24 @@ function Voice:capture(samples, ts_us)
   if self.cfg.hooks.on_packet_out then
     self.cfg.hooks.on_packet_out(frames, self.packet_id)
   end
-  if self.send then self.send(frames) end
+  if self.send then
+    -- With a transport configured the caller gets datagrams (one sendto each);
+    -- without one it gets the raw frames and does its own grouping.
+    self.send(self.transport and self.transport:wrap(frames) or frames)
+  end
   return frames
+end
+
+--- Receive a whole datagram (string) — the counterpart to a configured transport.
+--- Unwraps SuperPack containers and repairs Reed-Solomon damage, then feeds every
+--- recovered frame through receive(). Returns the frame count and any parse error.
+function Voice:receive_datagram(buf)
+  if not self.transport then
+    error("no transport configured; use receive(frame) or set cfg.transport")
+  end
+  local frames, err = self.transport:unwrap(buf)
+  for _, f in ipairs(frames) do self:receive(f) end
+  return #frames, err
 end
 
 --- Receive side: feed every inbound 17-byte frame.
@@ -535,6 +564,13 @@ function Voice:stats()
   local partial = 0
   for _ in pairs(self.reasm.slots) do partial = partial + 1 end
   s.reasm_partial = partial
+  if self.transport then
+    s.transport = self.transport.stats
+    if self.transport.stats.datagrams_out > 0 then
+      s.bytes_per_datagram =
+        self.transport.stats.bytes_out / self.transport.stats.datagrams_out
+    end
+  end
   if s.sent + s.suppressed > 0 then
     s.dtx_ratio = s.suppressed / (s.sent + s.suppressed)
   end

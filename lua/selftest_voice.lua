@@ -341,6 +341,120 @@ local n10 = #h:query({ channel = "c" })
 chk(n10 >= 3 and n10 <= 3 + 3, ("throttled retention held %d rows, want 3..6"):format(n10))
 print("  PASS  R10 retention exact by default, bounded overshoot when throttled")
 
+-- ── Transport integration (SuperPack + FEC) ─────────────────────────────────
+local X = dofile(HERE .. "dcf_transport.lua")
+
+-- T1: every batch mode is lossless end to end
+for _, mode in ipairs({ "none", "concat", "superpack" }) do
+  local t = X.new({ batch = mode })
+  local payload = {}
+  for i = 1, 40 do payload[i] = i end
+  local fr = A.packetize(0, payload, 1, 0, 0x11, 0x22, 0)
+  local dg = t:wrap(fr)
+  local back = {}
+  for _, d in ipairs(dg) do
+    for _, f in ipairs(t:unwrap(d)) do back[#back + 1] = f end
+  end
+  chk(#back == #fr, ("%s: %d frames back, want %d"):format(mode, #back, #fr))
+  for i = 1, #fr do
+    for k = 1, 17 do
+      chk(back[i] and back[i][k] == fr[i][k], ("%s: frame %d byte %d"):format(mode, i, k))
+    end
+  end
+  chk(mode ~= "none" or #dg == #fr, "none = one datagram per frame")
+  chk(mode == "none" or #dg == 1, mode .. " = one datagram for the burst")
+end
+print("  PASS  T1 transport round-trips every batch mode losslessly")
+
+-- T2: batching actually delivers the link saving the spec claims
+local none = X.report(40, { batch = "none" })
+local concat = X.report(40, { batch = "concat" })
+local sp = X.report(40, { batch = "superpack" })
+chk(none.datagrams == 11 and concat.datagrams == 1, "datagram counts")
+chk(math.abs(none.kbps - 198) < 1, ("none %.1f kbps, want ~198"):format(none.kbps))
+chk(math.abs(concat.kbps - 86) < 1, ("concat %.1f kbps, want ~86"):format(concat.kbps))
+chk(sp.kbps < concat.kbps, "superpack beats plain concat on bytes")
+chk(sp.link_bytes == concat.link_bytes - 10, "superpack saves 2 B per pair (5 pairs)")
+print(("  PASS  T2 measured link cost: %.0f -> %.0f -> %.0f kbps (none/concat/superpack)")
+        :format(none.kbps, concat.kbps, sp.kbps))
+
+-- T3: FEC corrects real in-flight corruption instead of concealing it
+local t = X.new("rf")
+local payload = {}
+for i = 1, 40 do payload[i] = i end
+local fr = A.packetize(0, payload, 1, 0, 0x11, 0x22, 0)
+local dg = t:wrap(fr)
+chk(#dg == 1, "rf preset still batches to one datagram")
+local b = X.s2a(dg[1])
+for _, i in ipairs({ 20, 21, 22, 23, 24, 25 }) do b[i] = (b[i] ~ 0xFF) & 0xFF end
+local back, err = t:unwrap(X.a2s(b))
+chk(err == nil and #back == #fr, ("FEC recovered %d/%d frames"):format(#back, #fr))
+local intact = true
+for i = 1, #fr do
+  for k = 1, 17 do if back[i][k] ~= fr[i][k] then intact = false end end
+end
+chk(intact, "recovered frames are byte-identical after 6 corrupted bytes")
+chk(t.stats.fec_corrected == 1, "correction was counted")
+-- and the same corruption WITHOUT FEC must not silently pass
+local raw = X.new({ batch = "superpack" })
+local rdg = raw:wrap(fr)
+local rb = X.s2a(rdg[1])
+for _, i in ipairs({ 20, 21, 22, 23, 24, 25 }) do rb[i] = (rb[i] ~ 0xFF) & 0xFF end
+local rback = raw:unwrap(X.a2s(rb))
+-- SuperPack's joint CRC catches the damage and rejects the container, so the
+-- frames inside are simply lost. That is the whole point: without FEC the damage
+-- is DETECTED and dropped; with FEC it is CORRECTED and delivered.
+chk(#rback < #fr, ("without FEC the same damage lost frames: %d/%d"):format(#rback, #fr))
+chk(raw.stats.malformed > 0, "damage was detected, not silently accepted")
+for _, f in ipairs(rback) do
+  chk(A.decode(f) ~= nil, "no corrupted frame slipped through undetected")
+end
+print("  PASS  T3 Reed-Solomon corrects damage that otherwise fails CRC")
+
+-- T4: transport config validation
+chk(not pcall(X.configure, { batch = "nope" }), "rejects unknown batch mode")
+chk(not pcall(X.configure, { fec = { parity = 17 } }), "rejects odd parity")
+chk(not pcall(X.configure, { mtu = 4 }), "rejects an MTU below one frame")
+chk(not pcall(X.configure, "no-such-preset"), "rejects unknown preset")
+chk(X.configure("acoustic").fec.parity == 32, "acoustic preset carries heavy FEC")
+print("  PASS  T4 transport config validation")
+
+-- T5: MTU splits a burst instead of emitting an oversized datagram
+t = X.new({ batch = "concat", mtu = 64 })
+dg = t:wrap(fr)
+chk(#dg > 1, "burst split across datagrams under a small MTU")
+for _, d in ipairs(dg) do chk(#d <= 64, ("datagram %d B exceeds MTU"):format(#d)) end
+local back2 = {}
+for _, d in ipairs(dg) do
+  for _, f in ipairs(t:unwrap(d)) do back2[#back2 + 1] = f end
+end
+chk(#back2 == #fr, "split burst still reassembles completely")
+print("  PASS  T5 MTU splitting stays lossless")
+
+-- T6: Voice uses the transport end to end, and stays backward compatible
+local dgrams = {}
+cfg = V.configure({ codec_id = A.CODEC_PCM_DIAG, channel = A.BROADCAST, src_id = 0x00A1,
+                    transport = "wan", vad = { enabled = false },
+                    jitter = { target_ms = 20, adaptive = false } })
+local tx2 = V.new(cfg, function(d) for _, x in ipairs(d) do dgrams[#dgrams + 1] = x end end)
+local rx2 = V.new(cfg)
+for i = 0, 4 do tx2:capture(block(A.PCM_DIAG_BLOCK), i * 20000) end
+chk(#dgrams == 5, ("5 blocks -> %d datagrams, want 5"):format(#dgrams))
+chk(type(dgrams[1]) == "string", "send() receives datagrams when a transport is set")
+local nf = 0
+for _, d in ipairs(dgrams) do nf = nf + rx2:receive_datagram(d) end
+chk(nf == 5 * 31, ("recovered %d frames, want %d"):format(nf, 5 * 31))
+local got5 = 0
+for _ = 1, 5 do local _, w = rx2:playout(); if w == "packet" then got5 = got5 + 1 end end
+chk(got5 == 5, ("end-to-end over transport recovered %d/5 blocks"):format(got5))
+chk(tx2:stats().transport.superpacked == 5 * 15, "superpack pairing counted")
+-- no transport configured => raw frames, exactly as before
+local rawv = V.new(V.configure({ codec_id = A.CODEC_PCM_DIAG }))
+chk(rawv.transport == nil, "transport is opt-in")
+chk(not pcall(function() return rawv:receive_datagram("x") end),
+    "receive_datagram refuses without a transport")
+print("  PASS  T6 Voice sends/receives datagrams; raw-frame path unchanged")
+
 if fail == 0 then
   print("ALL VOICE + HISTORY LAWS HOLD — dcf_voice.lua / dcf_history.lua CERTIFIED")
   os.exit(0)
