@@ -45,6 +45,16 @@ M.defaults = {
     shrink_after= 100,
     late_policy = "drop",-- "drop" (arrived after playout) or "accept" (best effort)
     max_slots   = 256,   -- hard cap on buffered packets (memory bound)
+    -- DTX leaves real gaps in packet_id: after 6 s of silence the next packet is
+    -- ~300 ids ahead. Without this the buffer conceals/silences its way across the
+    -- whole gap one block at a time before audio resumes. When the nearest queued
+    -- packet is further ahead than this, jump the clock to it instead.
+    resync_ahead_ms = 500,  -- 0 disables (grind across every gap)
+    -- Partially-reassembled packets whose remaining fragments never arrive would
+    -- otherwise leak one slot each for the life of the call. Hard-bound them and
+    -- evict oldest-first. A count is used rather than a timeout because a damaged
+    -- packet may be a single frame, so elapsed frames say nothing about its age.
+    reasm_max_partial = 64,
   },
 
   plc = {
@@ -69,6 +79,8 @@ M.defaults = {
     on_conceal         = nil, -- fn(packet_id, run_length)  -- PLC fired
     on_late            = nil, -- fn(packet_id, playout_id)
     on_drop            = nil, -- fn(packet_id, reason)
+    on_resync          = nil, -- fn(from_id, to_id, gap)  -- clock jumped a DTX gap
+    on_codec_mismatch  = nil, -- fn(got_id, want_id)
     on_stats           = nil, -- fn(stats)                  -- each pop
   },
 }
@@ -80,11 +92,12 @@ M.presets = {
   -- internet / VPN: absorb reordering and RTT jitter
   wan    = { jitter = { target_ms = 60, max_ms = 300, grow_ms = 40 } },
   -- lossy RF / acoustic: deep buffer, aggressive concealment, DTX hard on
-  field  = { jitter = { target_ms = 120, max_ms = 500 },
+  field  = { jitter = { target_ms = 120, max_ms = 500, resync_ahead_ms = 1000 },
              plc = { max_consecutive = 12, fade = 0.8 },
              vad = { threshold = 0.035, hangover_ms = 400 } },
   -- studio jam: latency over everything, no silence gating
-  studio = { jitter = { target_ms = 20, min_ms = 20, max_ms = 40, adaptive = false },
+  studio = { jitter = { target_ms = 20, min_ms = 20, max_ms = 40, adaptive = false,
+                        resync_ahead_ms = 200 },
              vad = { enabled = false } },
 }
 
@@ -128,8 +141,11 @@ function M.configure(a, b)
   assert(cfg.plc.fade >= 0 and cfg.plc.fade <= 1, "plc.fade must be 0..1")
   assert(cfg.src_id >= 0 and cfg.src_id <= 0xFFFF, "src_id must be u16")
   assert(cfg.channel >= 0 and cfg.channel <= 0xFFFF, "channel must be u16")
+  assert(j.resync_ahead_ms >= 0, "jitter.resync_ahead_ms must be >= 0")
+  assert(j.reasm_max_partial >= 1, "jitter.reasm_max_partial must be >= 1")
   cfg.hooks = cfg.hooks or {}
-  return cfg
+  cfg.__dcf_voice_config = true   -- so new()/new_jitter() can tell a built config
+  return cfg                      -- from a raw overrides table (they look alike)
 end
 
 -- ── Codec registry (extensible) ─────────────────────────────────────────────
@@ -169,7 +185,7 @@ M.register_codec(A.CODEC_FAUST_PM, {
     if not st.last_params then return nil end
     local p = {}
     for k, v in pairs(st.last_params) do p[k] = v end
-    p.amp = math.floor((p.amp or 0) * (st.fade or 0.65))
+    p.amp = math.floor((tonumber(p.amp) or 0) * (st.fade or 0.65))
     return p
   end,
 })
@@ -195,7 +211,7 @@ local Jitter = {}
 Jitter.__index = Jitter
 
 function M.new_jitter(cfg)
-  cfg = cfg or M.configure()
+  cfg = (type(cfg) == "table" and cfg.__dcf_voice_config) and cfg or M.configure(cfg)
   return setmetatable({
     cfg = cfg,
     slots = {},          -- packet_id -> pkt
@@ -206,8 +222,9 @@ function M.new_jitter(cfg)
     clean_run = 0,
     conceal_run = 0,
     plc_state = { fade = cfg.plc.fade },
-    stats = { pushed = 0, popped = 0, concealed = 0, late = 0,
-              dropped = 0, silence = 0, reordered = 0, max_occupancy = 0 },
+    stats = { pushed = 0, popped = 0, concealed = 0, late = 0, dropped = 0,
+              silence = 0, reordered = 0, resyncs = 0, resync_blocks_skipped = 0,
+              codec_mismatch = 0, max_occupancy = 0 },
   }, Jitter)
 end
 
@@ -272,14 +289,28 @@ function Jitter:pop()
   local pkt = self.slots[want]
 
   if not pkt then
-    -- Nothing for this slot. Only conceal once the buffer has actually filled to
-    -- depth; otherwise we are still priming and should wait.
-    if self.n < self:depth_packets() then
-      local any = false
-      for id in pairs(self.slots) do
-        if mod_diff(id, want) > 0 then any = true break end
-      end
-      if not any then return nil, "starved" end
+    -- What is the nearest thing we do have, ahead of the slot we wanted?
+    local nearest, gap = nil, nil
+    for id in pairs(self.slots) do
+      local d = mod_diff(id, want)
+      if d > 0 and (gap == nil or d < gap) then nearest, gap = id, d end
+    end
+
+    -- Only conceal once the buffer has filled to depth; otherwise still priming.
+    if self.n < self:depth_packets() and nearest == nil then
+      return nil, "starved"
+    end
+
+    -- DTX gap: the sender simply stopped talking, so these ids were never sent and
+    -- concealing across them adds latency for nothing. Jump the clock instead.
+    local resync = cfg.jitter.resync_ahead_ms
+    if nearest and resync > 0 and gap * cfg.block_ms > resync then
+      self.stats.resyncs = self.stats.resyncs + 1
+      self.stats.resync_blocks_skipped = self.stats.resync_blocks_skipped + gap
+      if h.on_resync then h.on_resync(want, nearest, gap) end
+      self.playout, self.conceal_run = nearest, 0
+      self.plc_state.last, self.plc_state.last_params = nil, nil
+      return self:pop()
     end
 
     self.playout = (want + 1) % SPACE
@@ -291,9 +322,19 @@ function Jitter:pop()
     end
     self.stats.concealed = self.stats.concealed + 1
     if h.on_conceal then h.on_conceal(want, self.conceal_run) end
-    local codec = M.codecs[cfg.codec_id]
-    local out = codec and codec.plc and codec.plc(self.plc_state) or nil
-    self.plc_state.last = out or self.plc_state.last
+    -- Conceal with the codec we last actually RECEIVED, not the one we transmit
+    -- with; a peer may be sending something else entirely.
+    local cid = self.last_codec_id or cfg.codec_id
+    local codec = M.codecs[cid]
+    if not (codec and codec.plc) then return nil, "silence" end
+    local okp, out = pcall(codec.plc, self.plc_state)
+    if not okp then return nil, "silence" end
+    -- Feed the result back into the right slot so concealment compounds instead of
+    -- decaying from the same original block every time.
+    if out ~= nil then
+      if codec.block_samples == 0 then self.plc_state.last_params = out
+      else self.plc_state.last = out end
+    end
     return out, "conceal"
   end
 
@@ -309,12 +350,18 @@ function Jitter:pop()
     self.clean_run = 0
   end
 
-  -- Remember the decoded block so PLC has something to work from.
+  -- Decode with the codec the PACKET declares, never the one we are configured to
+  -- send. Mixing those up silently reinterprets a peer's bytes as another format.
+  if pkt.codec_id ~= cfg.codec_id and pkt.codec_id ~= self.last_codec_id then
+    self.stats.codec_mismatch = self.stats.codec_mismatch + 1
+    if h.on_codec_mismatch then h.on_codec_mismatch(pkt.codec_id, cfg.codec_id) end
+  end
+  self.last_codec_id = pkt.codec_id
   local codec = M.codecs[pkt.codec_id]
   if codec and codec.decode then
     local okd, dec = pcall(codec.decode, pkt.payload)
-    if okd then
-      if cfg.codec_id == A.CODEC_FAUST_PM then self.plc_state.last_params = dec
+    if okd and dec ~= nil then
+      if codec.block_samples == 0 then self.plc_state.last_params = dec
       else self.plc_state.last = dec end
       pkt.samples = dec
     end
@@ -329,6 +376,7 @@ function Jitter:occupancy() return self.n end
 function Jitter:reset()
   self.slots, self.n, self.playout = {}, 0, nil
   self.conceal_run, self.clean_run, self.started = 0, 0, false
+  self.plc_state.last, self.plc_state.last_params, self.last_codec_id = nil, nil, nil
 end
 
 M.Jitter = Jitter
@@ -386,10 +434,11 @@ local Voice = {}
 Voice.__index = Voice
 
 function M.new(cfg, send)
-  cfg = (type(cfg) == "table" and cfg.jitter and cfg) or M.configure(cfg)
+  cfg = (type(cfg) == "table" and cfg.__dcf_voice_config) and cfg or M.configure(cfg)
   return setmetatable({
     cfg = cfg, send = send,
     packet_id = 0,
+    _rx = 0, _slot_seen = {},
     reasm = A.Reassembler.new(cfg.channel),
     jitter = M.new_jitter(cfg),
     vad = M.new_vad(cfg),
@@ -423,8 +472,55 @@ end
 --- Receive side: feed every inbound 17-byte frame.
 function Voice:receive(frame)
   local pkt = self.reasm:push(frame)
-  if pkt then self.jitter:push(pkt) end
+  if pkt then
+    self._slot_seen[pkt.packet_id] = nil
+    self.jitter:push(pkt)
+  end
+  self._rx = self._rx + 1
+  self:_sweep()
   return pkt
+end
+
+--- Bound partially-reassembled packets, evicting oldest-first. Without this a
+--- lossy link leaks one reassembler slot per damaged packet for the life of the
+--- call; dcf_audio's Reassembler only clears a slot when a packet COMPLETES.
+function Voice:_sweep()
+  local cap = self.cfg.jitter.reasm_max_partial
+  local live, n = {}, 0
+  for pid in pairs(self.reasm.slots) do
+    if self._slot_seen[pid] == nil then self._slot_seen[pid] = self._rx end
+    live[pid] = true
+    n = n + 1
+  end
+  for pid in pairs(self._slot_seen) do
+    if not live[pid] then self._slot_seen[pid] = nil end   -- completed or evicted
+  end
+  if n <= cap then return 0 end
+
+  local order = {}
+  for pid in pairs(live) do order[#order + 1] = pid end
+  table.sort(order, function(a, b)             -- oldest arrival first
+    local sa, sb = self._slot_seen[a], self._slot_seen[b]
+    if sa ~= sb then return sa < sb end
+    return a < b
+  end)
+  local dropped = 0
+  for i = 1, n - cap do
+    local pid = order[i]
+    self.reasm.slots[pid] = nil
+    self._slot_seen[pid] = nil
+    dropped = dropped + 1
+    self.jitter.stats.dropped = self.jitter.stats.dropped + 1
+    if self.cfg.hooks.on_drop then self.cfg.hooks.on_drop(pid, "incomplete") end
+  end
+  return dropped
+end
+
+--- Clear all receive state (call on channel change or after a long stall).
+function Voice:reset()
+  self.reasm = A.Reassembler.new(self.cfg.channel)
+  self.jitter:reset()
+  self._slot_seen, self._rx = {}, 0
 end
 
 --- Playout side: call once per block period. Same returns as Jitter:pop.
@@ -436,6 +532,9 @@ function Voice:stats()
   s.sent, s.suppressed = self.sent, self.suppressed
   s.depth_ms, s.occupancy = self.jitter.depth_ms, self.jitter.n
   s.rejected = self.reasm.rejected
+  local partial = 0
+  for _ in pairs(self.reasm.slots) do partial = partial + 1 end
+  s.reasm_partial = partial
   if s.sent + s.suppressed > 0 then
     s.dtx_ratio = s.suppressed / (s.sent + s.suppressed)
   end

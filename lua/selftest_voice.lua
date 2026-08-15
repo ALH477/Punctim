@@ -191,6 +191,156 @@ chk(#h:query({ channel = "z" }) == 1, "fallback store is fully functional")
 h:close()
 print("  PASS  auto backend degrades cleanly without libstreamdb")
 
+-- ── Regression laws (each pins a bug found in the polish pass) ──────────────
+
+-- R1: DTX leaves a gap in packet_id; the clock must jump it, not grind across it
+local resyncs = 0
+cfg = V.configure({ jitter = { target_ms = 20, adaptive = false, resync_ahead_ms = 500 },
+                    hooks = { on_resync = function() resyncs = resyncs + 1 end } })
+j = V.new_jitter(cfg)
+j:push({ packet_id = 0, ts_us = 0, codec_id = 1, payload = {} }); j:pop()
+j:push({ packet_id = 300, ts_us = 0, codec_id = 1, payload = {} })   -- 6 s of silence
+local pops = 0
+for _ = 1, 400 do
+  pops = pops + 1
+  local _, why = j:pop()
+  if why == "packet" then break end
+end
+chk(pops == 1, ("crossing a DTX gap took %d pops, want 1"):format(pops))
+chk(resyncs == 1, "resync hook fired once")
+chk(j.stats.resyncs == 1 and j.stats.resync_blocks_skipped == 299,
+    ("skipped %d blocks, want 299 (playout had already advanced past 0)")
+      :format(j.stats.resync_blocks_skipped))
+-- and a SHORT gap must still be concealed, not resynced away
+j = V.new_jitter(V.configure({ jitter = { target_ms = 20, adaptive = false,
+                                          resync_ahead_ms = 500 } }))
+j.plc_state.last = block(120)
+j:push({ packet_id = 0, ts_us = 0, codec_id = 1, payload = {} }); j:pop()
+j:push({ packet_id = 2, ts_us = 0, codec_id = 1, payload = {} })
+local _, why2 = j:pop()
+chk(why2 == "conceal", "a one-block hole is still concealed, not resynced")
+print("  PASS  R1 DTX gap resync (jumps long gaps, conceals short ones)")
+
+-- R2: a raw overrides table handed to new()/new_jitter() must be built, not trusted
+local v2 = V.new({ jitter = { target_ms = 100 } })
+chk(v2.cfg.codec_id ~= nil and v2.cfg.hooks ~= nil and v2.cfg.jitter.target_ms == 100,
+    "raw overrides table is normalised through configure()")
+chk(V.new_jitter({ jitter = { target_ms = 80 } }).cfg.block_ms == 20,
+    "new_jitter normalises a raw table too")
+chk(V.new_jitter(V.configure()).cfg.__dcf_voice_config, "a built config passes through")
+print("  PASS  R2 raw config tables are normalised, not silently half-initialised")
+
+-- R3: Faust-PM concealment decays in the PARAMS slot and compounds
+cfg = V.configure({ codec_id = A.CODEC_FAUST_PM, plc = { fade = 0.5, max_consecutive = 5 },
+                    jitter = { target_ms = 20, adaptive = false, resync_ahead_ms = 0 } })
+j = V.new_jitter(cfg)
+local pm = { f0 = 440, amp = 200, mod_index = 8, mod_ratio = 2,
+             bright = 100, env = 200, flags = 0 }
+j:push({ packet_id = 0, ts_us = 0, codec_id = 2, payload = A.pm_pack(pm) })
+j:push({ packet_id = 4, ts_us = 0, codec_id = 2, payload = A.pm_pack(pm) })
+j:pop()
+local amps = {}
+for _ = 1, 3 do
+  local o, k = j:pop()
+  if k == "conceal" and type(o) == "table" then amps[#amps + 1] = o.amp end
+end
+chk(#amps == 3, ("PM concealed %d blocks, want 3"):format(#amps))
+chk(amps[1] == 100 and amps[2] == 50 and amps[3] == 25, "PM amplitude decays and compounds")
+chk(j.plc_state.last == nil, "PM never writes params into the sample slot")
+print("  PASS  R3 Faust-PM conceal decays in the params slot (no type confusion)")
+
+-- R4: partial reassembly is hard-bounded, oldest evicted first
+local vo = V.new(V.configure({ codec_id = A.CODEC_PCM_DIAG, channel = A.BROADCAST,
+                               jitter = { reasm_max_partial = 64 } }))
+for i = 0, 499 do
+  vo:receive(A.packetize(1, { 1, 2, 3, 4 }, i % 2048, 0, 1, A.BROADCAST, 0)[1])
+end
+local partial = vo:stats().reasm_partial
+chk(partial == 64, ("partial slots %d, want cap 64"):format(partial))
+chk(vo.jitter.stats.dropped == 436, "evictions counted as drops")
+chk(vo.reasm.slots[499] ~= nil and vo.reasm.slots[0] == nil, "newest kept, oldest evicted")
+vo:reset()
+chk(vo:stats().reasm_partial == 0, "reset() clears receive state")
+print("  PASS  R4 orphaned reassembler slots are bounded, oldest-first")
+
+-- R5: decode follows the PACKET's codec, and a mismatch is reported
+local mism = 0
+cfg = V.configure({ codec_id = A.CODEC_PCM_DIAG,
+                    hooks = { on_codec_mismatch = function() mism = mism + 1 end } })
+j = V.new_jitter(cfg)
+j:push({ packet_id = 0, ts_us = 0, codec_id = A.CODEC_FAUST_PM, payload = A.pm_pack(pm) })
+local pkt = j:pop()
+chk(mism == 1 and j.stats.codec_mismatch == 1, "codec mismatch counted and hooked")
+chk(type(pkt.samples) == "table" and pkt.samples.f0 == 440,
+    "payload decoded as PM (the packet's codec), not as PCM samples")
+print("  PASS  R5 decode follows the packet's codec; mismatch is surfaced")
+
+-- R6: reopening a store resumes the sequence instead of overwriting history
+local shared = {}
+H.register_backend("shared", {
+  open = function() return shared end,
+  insert = function(h, k, v) if h[k] == nil then h[#h + 1] = k end h[k] = v return true end,
+  get = function(h, k) return h[k] end,
+  delete = function(h, k) h[k] = nil return true end,
+  search = function(h, sfx)
+    local o = {}
+    for _, k in ipairs(h) do
+      if h[k] and (sfx == "" or k:sub(-#sfx) == sfx) then o[#o + 1] = { k, h[k] } end
+    end
+    return o
+  end,
+  flush = function() return true end, close = function() end,
+})
+local resumed = 0
+local h1 = H.open({ backend = "shared", autoflush = 0 })
+h1:append({ ts_us = 1, src = 1, channel = "c", text = "s1-a" })
+h1:append({ ts_us = 2, src = 1, channel = "c", text = "s1-b" })
+local h2 = H.open({ backend = "shared", autoflush = 0,
+                    hooks = { on_resume = function() resumed = resumed + 1 end } })
+h2:append({ ts_us = 3, src = 1, channel = "c", text = "s2-a" })
+rows = h2:query({ channel = "c" })
+chk(#rows == 3, ("reopen+append kept %d rows, want 3 (was overwriting)"):format(#rows))
+chk(rows[1].text == "s1-a" and rows[3].text == "s2-a", "prior session survived")
+chk(resumed == 1 and h2.seq == 3, "sequence resumed from the store")
+print("  PASS  R6 reopening a store resumes seq (no silent history loss)")
+
+-- R7: a query that isn't a key suffix must be refused, not silently widened
+h = H.open({ backend = "memory", autoflush = 0 })
+h:append({ ts_us = 1, src = 0x00A1, channel = "a", text = "in-a" })
+h:append({ ts_us = 2, src = 0x00B2, channel = "b", text = "in-b" })
+chk(not pcall(function() return h:query({ src = 0x00A1 }) end),
+    "query by src alone must be refused (a reverse trie cannot answer it)")
+chk(#h:query({ channel = "a" }) == 1, "suffix query still works")
+chk(#h:query({ channel = "a", src = 0x00A1 }) == 1, "contiguous suffix run works")
+chk(#h:query({}) == 2, "unconstrained query returns everything")
+print("  PASS  R7 non-suffix queries refuse instead of matching everything")
+
+-- R8: schema guards catch both key-order footguns
+chk(not pcall(H.configure, { schema = { fields = { "channel", "src", "seq" } } }),
+    "seq last is rejected")
+chk(not pcall(H.configure, { schema = { fields = { "channel", "seq", "src" } } }),
+    "seq must be first (resume parses it from the head of the key)")
+print("  PASS  R8 schema guards on both ends of the key")
+
+-- R9: clear() honours keep_minimum
+h = H.open({ backend = "memory", autoflush = 0 })
+for i = 1, 5 do h:append({ ts_us = i, src = 1, channel = "c", text = "m" .. i }) end
+h:append({ ts_us = 9, src = 1, channel = "d", text = "other" })
+chk(h:clear("c") == 5 and #h:query({ channel = "c" }) == 0, "clear() empties one channel")
+chk(#h:query({ channel = "d" }) == 1, "clear() leaves other channels alone")
+print("  PASS  R9 clear() scoped to a channel")
+
+-- R10: retention is exact by default; throttling overshoots by a bounded amount
+h = H.open({ backend = "memory", autoflush = 0, retention = { max_per_channel = 3 } })
+for i = 1, 10 do h:append({ ts_us = i, src = 1, channel = "c", text = "m" .. i }) end
+chk(#h:query({ channel = "c" }) == 3, "default retention holds the cap exactly")
+h = H.open({ backend = "memory", autoflush = 0,
+             retention = { max_per_channel = 3, check_every = 4 } })
+for i = 1, 10 do h:append({ ts_us = i, src = 1, channel = "c", text = "m" .. i }) end
+local n10 = #h:query({ channel = "c" })
+chk(n10 >= 3 and n10 <= 3 + 3, ("throttled retention held %d rows, want 3..6"):format(n10))
+print("  PASS  R10 retention exact by default, bounded overshoot when throttled")
+
 if fail == 0 then
   print("ALL VOICE + HISTORY LAWS HOLD — dcf_voice.lua / dcf_history.lua CERTIFIED")
   os.exit(0)

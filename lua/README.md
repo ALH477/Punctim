@@ -77,6 +77,13 @@ voice:receive(frame)                              -- every inbound 17-byte frame
 local pkt, why = voice:playout()                  -- "packet" | "conceal" | "silence" | "starved"
 ```
 
+Notable knobs beyond the obvious: `jitter.resync_ahead_ms` jumps the playout clock
+across a DTX silence gap instead of concealing one block at a time across it (a 6 s
+gap is ~300 packet ids); `jitter.reasm_max_partial` hard-bounds half-reassembled
+packets so a lossy link cannot leak slots; `jitter.late_policy` chooses drop vs
+best-effort. Hooks fire on `resync`, `conceal`, `late`, `drop`, `codec_mismatch`, the
+talkspurt edges, and every pop.
+
 Presets: `lan`, `wan`, `field`, `studio`. Bring your own codec with
 `V.register_codec(id, { encode =, decode =, plc =, block_samples = })` — that is how
 Opus binds in once the host provides it; pure Lua ships PCM-diag and Faust-PM.
@@ -94,7 +101,12 @@ therefore built backwards — the field you scan by goes LAST:
                            search("@00a1@duet") -> one peer in it
 ```
 
-`dcf_history.lua` enforces that at config time (a schema with `seq` last is rejected),
+Two more sharp edges it handles for you: reopening a store **resumes the sequence
+counter** from what is already there (restarting at 1 silently overwrites prior
+history), and a query whose fields are not a contiguous run from the *end* of the
+schema is **refused** rather than quietly degrading to "match everything".
+
+`dcf_history.lua` enforces the key order at config time (a schema with `seq` last is rejected),
 and `H.configure` lets you change the fields, separator, padding, serialisation,
 retention and hooks. Backends are pluggable; with no native binding present the
 `auto` backend falls back to an in-memory store with identical suffix semantics, so

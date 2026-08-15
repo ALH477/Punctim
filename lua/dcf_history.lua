@@ -54,6 +54,11 @@ M.defaults = {
 
   retention = {
     max_per_channel = 0,     -- 0 = unlimited; else prune oldest beyond N
+    check_every     = 1,     -- prune every N appends. 1 = exact cap (default). A
+                             -- prune is a full channel scan, so raising this
+                             -- amortises O(n) per append -- at the cost of holding
+                             -- up to check_every-1 rows above max_per_channel
+                             -- between sweeps. Raise it on hot channels only.
     -- StreamDB has a known bug deleting the LAST remaining key (see
     -- DCF_CODE_REVIEW.md C5/C8/C9), so pruning always leaves one row behind.
     keep_minimum    = 1,
@@ -66,6 +71,7 @@ M.defaults = {
   hooks = {
     on_write  = nil,         -- fn(key, record)
     on_prune  = nil,         -- fn(key)
+    on_resume = nil,         -- fn(seq)  -- existing history found on open
     on_error  = nil,         -- fn(op, err)  -- called instead of raising
   },
 }
@@ -95,6 +101,10 @@ function M.configure(t)
          "makes channel/peer queries impossible (StreamDB is a reverse trie)")
   assert(s.separator ~= "" and not s.separator:find("%w"),
          "schema.separator must be a non-alphanumeric delimiter")
+  assert(s.fields[1] == "seq",
+         "schema: `seq` must be the FIRST field -- it is the zero-padded ordering " ..
+         "key, and resuming an existing store parses it from the head of the key")
+  assert(cfg.retention.check_every >= 1, "retention.check_every must be >= 1")
   cfg.hooks = cfg.hooks or {}
   return cfg
 end
@@ -222,12 +232,29 @@ function M.open(cfg)
     error("could not open history: " .. tostring(last_err))
   end
 
-  return setmetatable({
+  local self = setmetatable({
     cfg = cfg, be = M.backends[chosen], h = handle, backend_name = chosen,
-    seq = 0, writes = 0,
+    seq = 0, writes = 0, since_prune = 0,
     enc = cfg.encode or default_encode,
     dec = cfg.decode or default_decode,
   }, History)
+
+  -- Resume the sequence counter from what is already stored. Without this a
+  -- reopened store restarts at 1 and every append OVERWRITES an existing row --
+  -- silent history loss, and the corruption is invisible until you query.
+  local ok, rows = pcall(self.be.search, self.h, "")
+  if ok and rows then
+    local w, sep = cfg.schema.seq_width, cfg.schema.separator
+    local pat = "^(%d+)" .. (sep:gsub("%W", "%%%0"))
+    local maxseq = 0
+    for _, kv in ipairs(rows) do
+      local n = tonumber((kv[1] or ""):match(pat) or (kv[1] or ""):sub(1, w))
+      if n and n > maxseq then maxseq = n end
+    end
+    self.seq = maxseq
+    if maxseq > 0 and cfg.hooks.on_resume then cfg.hooks.on_resume(maxseq) end
+  end
+  return self
 end
 
 --- Build a key from a record using cfg.schema. Scan field goes LAST.
@@ -248,14 +275,27 @@ end
 --- Suffix selector for a query, e.g. select{channel="duet"} -> "@duet"
 --- and select{channel="duet", src=0x00a1} -> "@00a1@duet".
 function History:selector(q)
-  local s = self.cfg.schema
-  local tail = {}
+  local s, tail, stopped = self.cfg.schema, {}, nil
   for i = #s.fields, 1, -1 do
     local f = s.fields[i]
     local v = q[f]
-    if v == nil then break end
+    if v == nil then stopped = i break end
     if f == "src" then v = (s.src_fmt):format(v) end
     table.insert(tail, 1, tostring(v))
+  end
+  -- A reverse trie can only answer SUFFIX queries, so the constrained fields must
+  -- form an unbroken run from the end of the key. Asking for {src=...} with no
+  -- channel is not a narrower query -- it degrades to "match everything", which
+  -- looks like a working query returning wrong rows. Refuse it instead.
+  if stopped then
+    for i = 1, stopped do
+      if q[s.fields[i]] ~= nil then
+        error(("cannot query by %q without also constraining %q: StreamDB matches " ..
+               "by key SUFFIX, so query fields must form a contiguous run from the " ..
+               "end of the schema (%s)"):format(s.fields[i], s.fields[stopped],
+               table.concat(s.fields, s.separator)))
+      end
+    end
   end
   if #tail == 0 then return "" end
   return s.separator .. table.concat(tail, s.separator)
@@ -275,7 +315,13 @@ function History:append(rec)
   self.writes = self.writes + 1
   if self.cfg.hooks.on_write then self.cfg.hooks.on_write(key, rec) end
   if self.cfg.autoflush > 0 and self.writes % self.cfg.autoflush == 0 then self:flush() end
-  if self.cfg.retention.max_per_channel > 0 then self:prune(rec.channel) end
+  if self.cfg.retention.max_per_channel > 0 then
+    self.since_prune = self.since_prune + 1
+    if self.since_prune >= self.cfg.retention.check_every then
+      self.since_prune = 0
+      self:prune(rec.channel)
+    end
+  end
   return key
 end
 
@@ -316,6 +362,20 @@ function History:prune(channel)
       n = n + 1
       if self.cfg.hooks.on_prune then self.cfg.hooks.on_prune(rows[i][1]) end
     end
+  end
+  return n
+end
+
+--- Delete every row for a channel (or the whole store when channel is nil).
+--- Honours retention.keep_minimum: StreamDB mishandles removing the last key.
+function History:clear(channel)
+  local sel = channel and self:selector({ channel = channel }) or ""
+  local rows = self.be.search(self.h, sel) or {}
+  table.sort(rows, function(a, b) return a[1] < b[1] end)
+  local keep = self.cfg.retention.keep_minimum
+  local n = 0
+  for i = 1, math.max(0, #rows - (channel and 0 or keep)) do
+    if self.be.delete(self.h, rows[i][1]) then n = n + 1 end
   end
   return n
 end
