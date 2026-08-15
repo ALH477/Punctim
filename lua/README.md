@@ -14,6 +14,8 @@ from DeMoD LLC on request.
 | File | What |
 |------|------|
 | `dcf_audio.lua` | the framework: DeModFrame codec, L2 `packetize` / `Reassembler`, PCM-diag, PM params, and the **frequency rendezvous** helpers. Self-certifies on load (`M.CERTIFIED`). |
+| `dcf_snake.lua` | DCF-Snake L2: the 5:11 mixer plane (32 sources, <=8188 B/message), BEACON grandmaster media clock, `unwrap_pid`, and mixer timeline/skew/PI-servo helpers. Self-certifies on load. |
+| `selftest_snake.lua` | golden-vector certification for `dcf_snake.lua` (`lua lua/selftest_snake.lua`, exit 0/1) |
 | `dcf_transport.lua` | how a burst of frames becomes datagrams: SuperPack batching + Reed-Solomon, per-link presets (`lan`/`wan`/`rf`/`acoustic`) |
 | `dcf_voice.lua` | **L3**: jitter buffer (modular, adaptive), PLC, VAD/DTX, and the L4 voice pipeline. Fully config-driven — see `M.defaults`, `M.presets`, `M.register_codec`. |
 | `dcf_history.lua` | persistent chat/call history on [DeMoD StreamDB](https://github.com/ALH477/DeMoD-StreamDB), pluggable backends, configurable key schema + retention |
@@ -155,3 +157,33 @@ voice:receive_datagram(buf)                            -- unwraps + repairs, the
 
 Setting `transport` is opt-in: leave it `nil` and `send()` still receives raw frames
 exactly as before.
+
+## DCF-Snake — the mixer plane
+
+Where DCF-Audio carries a 20 ms block from one peer (an 11:5 `seq` split, <=124 B),
+`dcf_snake.lua` carries a whole quanta QSS commit-hop packet from one of **32
+numbered sources** (a 5:11 split, <=8188 B) plus a broadcast grandmaster clock.
+That is the shape a hub needs: many sources, one clock.
+
+```lua
+local S = dofile("lua/dcf_snake.lua")
+local frames = S.packetize(qss_packet, stream_id, ts_us, src, ch, S.MODE_LIVE, S.FLAG_ANCHOR)
+local beacon = S.beacon_packetize(S.pack_clock{ gm_sample_count = n }, 0, ts, src, ch)
+
+local tl = S.new_timeline(S.PID_MOD)      -- monotonic index across the rolling wrap
+local abs = tl:step(hop_index)
+local ppm = S.skew_ppm(my_samples, gm_samples)
+local corr, integ = S.pi_servo(ppm, integ)
+```
+
+**One reassembler per `dst`.** CTRL(3) carries both DCF-Audio (11:5) and DCF-Snake
+(5:11) — the same `seq` bits mean different things — so never multiplex the two on
+one channel. `new_reassembler()` accepts CTRL by default; pass `S.FBEACON` for the
+clock plane.
+
+**u64 vs Lua's signed integers.** `gm_sample_count` is a `u64`; Lua 5.3+ integers are
+64-bit but *signed*, so values at or above 2^63 cannot be written as a literal. The
+bit pattern is unaffected — Lua's `>>` is a logical shift, so pack/unpack round-trip
+the full u64 range byte-for-byte, and 2^64-1 simply reads back as `-1`. Use
+`S.gm_tostring()` / `S.gm_from_decimal()` when comparing against a decimal u64 from
+a vector or a Rust log. In practice 2^63-1 samples is ~6.1 million years at 48 kHz.
