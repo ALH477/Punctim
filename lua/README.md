@@ -1,7 +1,7 @@
-# DCF-Audio — Lua framework (LGPL, dual-licensed)
+# DCF — Lua framework (LGPL, dual-licensed)
 
-A pure-Lua, **self-certifying** implementation of the DCF-Audio L2 framing — the
-collaborative-audio adapter over the 17-byte `DeModFrame` wire quantum. Byte-identical
+Pure-Lua, **self-certifying** implementations of the DCF adapters over the 17-byte
+`DeModFrame` wire quantum — **audio** (collaborative audio) and **text** (chat). Byte-identical
 to the C / Rust / Python references (`codec/demod_audio.h`, `codec/src/audio.rs`,
 `python/MCP/audiolab_core.py`) and certified against the same golden vectors.
 
@@ -14,6 +14,8 @@ from DeMoD LLC on request.
 | File | What |
 |------|------|
 | `dcf_audio.lua` | the framework: DeModFrame codec, L2 `packetize` / `Reassembler`, PCM-diag, PM params, and the **frequency rendezvous** helpers. Self-certifies on load (`M.CERTIFIED`). |
+| `dcf_text.lua` | DCF-Text L2 `packetize` / `Reassembler` + channel rendezvous. Self-certifies on load (`M.CERTIFIED`). |
+| `selftest_text.lua` | golden-vector certification for `dcf_text.lua` (`lua lua/selftest_text.lua`, exit 0/1) |
 | `dcf_jam.lua` | headless CLI demo: stream to a channel, watch a tuned peer receive and a mistuned peer reject |
 | `selftest.lua` | golden-vector + channel certification (`lua lua/selftest.lua`, exit 0/1) |
 
@@ -33,6 +35,7 @@ channel** (the frame `dst` field) and are immediately connected:
 lua lua/dcf_jam.lua --passphrase basement-jam --codec pcm --loss 0.05
 lua lua/dcf_jam.lua --freq 1420 --blocks 50
 lua lua/selftest.lua
+lua lua/selftest_text.lua
 ```
 
 ```lua

@@ -135,6 +135,7 @@ the Go cert runs under `certify-go`.
 | Rust | `codec/src/text.rs` | `packetize` / `TextReassembler`, `channel_id` |
 | Python | `python/MCP/textlab_core.py` | `packetize` / `TextReassembler`, `channel_id` |
 | Go | `go/text/text.go` | `Packetize` / `TextReassembler`, `ChannelID` |
+| Lua | `lua/dcf_text.lua` | `packetize` / `new_reassembler`, `channel_id` — self-certifying (LGPL-3.0-only, dual-licensed; see `lua/LICENSING.md`) |
 
 `python/MCP/textlab_core.py` is the canonical source of truth (the generator
 `gen_text_vectors.py` emits the laws + vectors from it). An additional interoperable
