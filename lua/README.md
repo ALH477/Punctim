@@ -20,6 +20,7 @@ from DeMoD LLC on request.
 | `dcf_voice.lua` | **L3**: jitter buffer (modular, adaptive), PLC, VAD/DTX, and the L4 voice pipeline. Fully config-driven — see `M.defaults`, `M.presets`, `M.register_codec`. |
 | `dcf_history.lua` | persistent chat/call history on [DeMoD StreamDB](https://github.com/ALH477/DeMoD-StreamDB), pluggable backends, configurable key schema + retention |
 | `selftest_voice.lua` | L3 + history law certification (`lua lua/selftest_voice.lua`, exit 0/1) |
+| `dcf_talk.lua` | **headless end-to-end demo of the whole chat stack** — text, voice, transport, history, hub. Every number it prints is measured, not modelled. |
 | `dcf_jam.lua` | headless CLI demo: stream to a channel, watch a tuned peer receive and a mistuned peer reject |
 | `selftest.lua` | golden-vector + channel certification (`lua lua/selftest.lua`, exit 0/1) |
 
@@ -121,6 +122,22 @@ local h = H.open({ path = "chat.streamdb", retention = { max_per_channel = 10000
 h:append({ kind = "text", ts_us = ts, src = 0x00A1, channel = "duet", text = msg })
 for _, r in ipairs(h:query({ channel = "duet" }, { limit = 50 })) do render(r) end
 ```
+
+## Try the whole stack
+
+```sh
+lua lua/dcf_talk.lua                            # two peers: text + voice
+lua lua/dcf_talk.lua --loss 0.15                # drop datagrams  -> PLC conceals
+lua lua/dcf_talk.lua --transport rf --corrupt 0.3   # flip bytes  -> FEC repairs
+lua lua/dcf_talk.lua --hub 8                    # hub vs full mesh, measured
+```
+
+`--loss` and `--corrupt` are deliberately separate, because they exercise different
+machinery and conflating them would let the demo flatter itself. FEC cannot recover
+an erased datagram; concealment cannot repair one that arrived damaged. At 30%
+corruption on the `rf` preset all 60 blocks play with nothing concealed; the same
+damage without FEC plays 42 and conceals 18, with SuperPack's joint CRC correctly
+rejecting the containers it cannot fix.
 
 ## Transport: turning frames into datagrams
 

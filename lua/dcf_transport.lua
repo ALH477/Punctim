@@ -122,7 +122,7 @@ function M.new(cfg)
     cfg = cfg,
     stats = { frames_out = 0, frames_in = 0, datagrams_out = 0, datagrams_in = 0,
               bytes_out = 0, bytes_in = 0, superpacked = 0, fec_corrected = 0,
-              fec_failed = 0, malformed = 0 },
+              fec_bytes_repaired = 0, fec_failed = 0, malformed = 0 },
   }, T)
 end
 
@@ -197,13 +197,20 @@ function T:unwrap(datagram)
 
   local buf = datagram
   if cfg.fec.enabled then
-    local ok, dec = pcall(F.decode_message, buf)
+    -- decode_message returns (message, bytes_corrected). Compare against the
+    -- COUNT, never against the blob: the blob always differs from the message it
+    -- carries because it has parity attached, so `dec ~= buf` would report a
+    -- correction on every single successful decode.
+    local ok, dec, ncorr = pcall(F.decode_message, buf)
     if not ok or not dec then
       self.stats.fec_failed = self.stats.fec_failed + 1
       if cfg.strict then error("fec: unrecoverable datagram") end
       return {}, "fec-unrecoverable"
     end
-    if dec ~= buf then self.stats.fec_corrected = self.stats.fec_corrected + 1 end
+    if (ncorr or 0) > 0 then
+      self.stats.fec_corrected = self.stats.fec_corrected + 1
+      self.stats.fec_bytes_repaired = self.stats.fec_bytes_repaired + ncorr
+    end
     buf = dec
   end
 

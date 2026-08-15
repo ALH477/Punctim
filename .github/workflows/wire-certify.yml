@@ -526,6 +526,13 @@ jobs:
       - name: Smoke the rendezvous CLI
         run: lua5.4 lua/dcf_jam.lua --passphrase ci-jam --codec pcm --blocks 20
 
+      - name: Smoke the full chat stack end to end
+        run: |
+          lua5.4 lua/dcf_talk.lua --blocks 40 --quiet
+          lua5.4 lua/dcf_talk.lua --blocks 40 --loss 0.15 --quiet
+          lua5.4 lua/dcf_talk.lua --blocks 40 --transport rf --corrupt 0.3 --quiet
+          lua5.4 lua/dcf_talk.lua --blocks 40 --hub 8 --quiet
+
   certify-go:
     runs-on: ubuntu-latest
     steps:

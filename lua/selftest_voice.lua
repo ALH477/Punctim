@@ -455,6 +455,28 @@ chk(not pcall(function() return rawv:receive_datagram("x") end),
     "receive_datagram refuses without a transport")
 print("  PASS  T6 Voice sends/receives datagrams; raw-frame path unchanged")
 
+-- T7: fec_corrected must count REAL corrections, not every successful decode.
+-- The FEC blob always differs from the message it carries (it has parity
+-- attached), so comparing decoded output to the blob reports a correction every
+-- single time -- the demo printed "repaired 111 datagrams" on a clean link.
+t = X.new("rf")
+local clean = t:wrap(fr)
+for _, d in ipairs(clean) do t:unwrap(d) end
+chk(t.stats.fec_corrected == 0,
+    ("clean link reported %d corrections, want 0"):format(t.stats.fec_corrected))
+chk(t.stats.fec_bytes_repaired == 0, "no bytes repaired on a clean link")
+-- Corrupt the BODY, not the RS-protected header: decode_message accumulates its
+-- correction count from the body codewords only, so a header-only repair is
+-- silently fixed but not counted. Worth knowing before trusting the number.
+local damaged = X.s2a(clean[1])
+for _, at in ipairs({ 30, 31, 32, 33 }) do damaged[at] = (damaged[at] ~ 0xFF) & 0xFF end
+local rec = t:unwrap(X.a2s(damaged))
+chk(t.stats.fec_corrected == 1, "a damaged datagram reports exactly one correction")
+chk(t.stats.fec_bytes_repaired >= 4,
+    ("repaired %d bytes, want >= 4"):format(t.stats.fec_bytes_repaired))
+chk(#rec == #fr, ("recovered %d/%d frames from the repaired datagram"):format(#rec, #fr))
+print("  PASS  T7 FEC correction stats count real repairs only")
+
 if fail == 0 then
   print("ALL VOICE + HISTORY LAWS HOLD — dcf_voice.lua / dcf_history.lua CERTIFIED")
   os.exit(0)
