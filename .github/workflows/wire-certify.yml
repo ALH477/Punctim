@@ -508,8 +508,8 @@ jobs:
       - name: Certify the Lua DCF-Audio framework
         run: lua5.4 lua/selftest.lua
 
-      - name: Certify the Lua DCF-Text adapter
-        run: lua5.4 lua/selftest_text.lua
+      - name: Certify the Lua voice L3 + StreamDB history
+        run: lua5.4 lua/selftest_voice.lua
 
       - name: Certify the Lua SuperPack container
         run: lua5.4 lua/dcf_superpack.lua
