@@ -508,6 +508,23 @@ jobs:
       - name: Certify the Lua DCF-Audio framework
         run: lua5.4 lua/selftest.lua
 
+      - name: Certify the Lua voice L3 + StreamDB history
+        run: lua5.4 lua/selftest_voice.lua
+
+      - name: Certify the deployment profiles and link budget
+        run: |
+          lua5.4 lua/selftest_profile.lua
+          lua5.4 lua/dcf_talk.lua --budget
+
+      - name: Certify the Lua agent harness
+        run: lua5.4 lua/selftest_agent.lua
+
+      - name: Certify the Lua DCF-Snake adapter
+        run: lua5.4 lua/selftest_snake.lua
+
+      - name: Certify the Lua transport (SuperPack + FEC batching)
+        run: lua5.4 -e 'local X=dofile("lua/dcf_transport.lua") local r=X.report(40,"wan") assert(r.datagrams==1 and r.kbps<90, "transport batching regressed") print(("transport OK: %d frames -> %d datagram, %.1f kbps"):format(r.frames,r.datagrams,r.kbps))'
+
       - name: Certify the Lua SuperPack container
         run: lua5.4 lua/dcf_superpack.lua
 
@@ -516,6 +533,13 @@ jobs:
 
       - name: Smoke the rendezvous CLI
         run: lua5.4 lua/dcf_jam.lua --passphrase ci-jam --codec pcm --blocks 20
+
+      - name: Smoke the full chat stack end to end
+        run: |
+          lua5.4 lua/dcf_talk.lua --blocks 40 --quiet
+          lua5.4 lua/dcf_talk.lua --blocks 40 --loss 0.15 --quiet
+          lua5.4 lua/dcf_talk.lua --blocks 40 --transport rf --corrupt 0.3 --quiet
+          lua5.4 lua/dcf_talk.lua --blocks 40 --hub 8 --quiet
 
   certify-go:
     runs-on: ubuntu-latest
