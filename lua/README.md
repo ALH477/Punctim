@@ -20,6 +20,8 @@ from DeMoD LLC on request.
 | `dcf_voice.lua` | **L3**: jitter buffer (modular, adaptive), PLC, VAD/DTX, and the L4 voice pipeline. Fully config-driven — see `M.defaults`, `M.presets`, `M.register_codec`. |
 | `dcf_history.lua` | persistent chat/call history on [DeMoD StreamDB](https://github.com/ALH477/DeMoD-StreamDB), pluggable backends, configurable key schema + retention |
 | `selftest_voice.lua` | L3 + history law certification (`lua lua/selftest_voice.lua`, exit 0/1) |
+| `dcf_profile.lua` | end-to-end deployment profiles (`handheld` / `marine` / `expedition` / `studio` / `room` / `bench`), link-budget preflight, and first-contact diagnostics |
+| `selftest_profile.lua` | 8 profile laws (`lua lua/selftest_profile.lua`, exit 0/1) |
 | `dcf_agent.lua` | LLM agent harness: mention gating, token budget + rolling summary, streaming reply chunker, barge-in, DTX-gated STT. Backends injected as callbacks. **Read-write — never expose as an MCP server.** |
 | `selftest_agent.lua` | 12 agent laws (`lua lua/selftest_agent.lua`, exit 0/1) |
 | `dcf_talk.lua` | **headless end-to-end demo of the whole chat stack** — text, voice, transport, history, hub. Every number it prints is measured, not modelled. |
@@ -206,3 +208,40 @@ bit pattern is unaffected — Lua's `>>` is a logical shift, so pack/unpack roun
 the full u64 range byte-for-byte, and 2^64-1 simply reads back as `-1`. Use
 `S.gm_tostring()` / `S.gm_from_decimal()` when comparing against a decimal u64 from
 a vector or a Rust log. In practice 2^63-1 samples is ~6.1 million years at 48 kHz.
+
+## Before you plug anything in
+
+```sh
+lua lua/dcf_talk.lua --budget                    # does every profile fit its medium?
+lua lua/dcf_talk.lua --profile marine --loss 0.2 # run one, then read the diagnostics
+```
+
+A profile pairs codec, jitter, DTX, transport and FEC into one named deployment
+and **refuses incoherent combinations** — `studio` voice over an `acoustic`
+transport is nonsense, and nothing previously stopped you writing it.
+
+`--budget` is the honest preflight. It measures through the real transport, and
+it charges IPv4+UDP headers only to media that actually carry them.
+
+### The live-voice floor
+
+DCF-Audio sends a descriptor frame **plus at least one data frame** per 20 ms
+block. Even a one-byte codec therefore costs `2 x 17 B x 50 = 13.6 kbps` — before
+any codec, FEC or header. No configuration reaches below it, because the
+descriptor is what makes reassembly possible.
+
+So a medium slower than ~14 kbps cannot carry a live call at all. It carries text
+and async voice notes, and `expedition` says exactly that (`live_voice = false`).
+Law 2 checks **every** profile's `live_voice` claim against its own measured
+budget, so a profile cannot promise something the arithmetic denies.
+
+### First contact
+
+Two machines that cannot hear each other fail identically for a dozen reasons.
+`dcf_profile.diagnose(stats)` maps observed counters onto the cause, most likely
+first — and it distinguishes the two that look alike and need opposite fixes:
+
+- **erasure** (datagrams dropped) → concealment hides it; FEC cannot help
+- **corruption** (bytes flipped) → FEC repairs it; concealment cannot
+
+Every `dcf_talk` run ends with this read-out.

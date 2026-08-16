@@ -27,6 +27,7 @@ local V  = dofile(HERE .. "dcf_voice.lua")
 local X  = dofile(HERE .. "dcf_transport.lua")
 local S  = dofile(HERE .. "dcf_snake.lua")
 local Hs = dofile(HERE .. "dcf_history.lua")
+local Pr = dofile(HERE .. "dcf_profile.lua")
 
 -- ── CLI ─────────────────────────────────────────────────────────────────────
 local opt = {
@@ -45,16 +46,59 @@ while i <= #arg do
   elseif a == "--hub" then opt.hub = math.tointeger(tonumber(val())) or 0
   elseif a == "--seed" then opt.seed = math.tointeger(tonumber(val())) or 0
   elseif a == "--quiet" then opt.quiet = true
+  elseif a == "--profile" then opt.profile = val()
+  elseif a == "--budget" then opt.budget = true
+  elseif a == "--medium" then opt.medium = val()
   elseif a == "--help" or a == "-h" then
     print("usage: lua dcf_talk.lua [--channel NAME] [--blocks N]")
     print("       [--loss 0..1]      drop whole datagrams  -> concealment (PLC)")
     print("       [--corrupt 0..1]   flip bytes in flight  -> correction (FEC)")
     print("       [--transport lan|wan|rf|acoustic|debug] [--hub N] [--seed N] [--quiet]")
+    print("       [--profile handheld|marine|expedition|studio|room|bench]")
+    print("       [--budget]         preflight: does every profile fit its medium?")
+    print("       [--medium NAME]    budget one profile against another medium")
     os.exit(0)
   else error("unknown option: " .. a) end
   i = i + 1
 end
 math.randomseed(opt.seed)
+
+-- ── Preflight: run this before you carry anything into the field ────────────
+if opt.budget then
+  print()
+  print(("\27[1mDCF link budget\27[0m   live-voice floor %.1f kbps "
+         .. "(descriptor + 1 data frame per 20 ms — no codec reaches below it)")
+          :format(Pr.MIN_LIVE_VOICE_BPS / 1000))
+  print()
+  print(("  %-11s %-9s %-30s %5s %10s %11s  %s")
+          :format("PROFILE", "CODEC", "MEDIUM", "frm", "need", "capacity", "VERDICT"))
+  local rows = opt.profile
+    and { Pr.budget(opt.profile, opt.medium or Pr.profiles[opt.profile].media) }
+    or Pr.report()
+  local bad = 0
+  for _, b in ipairs(rows) do
+    local colour = (b.verdict == "fits" and "\27[32m")
+                or (b.verdict == "impossible" and "\27[31m") or "\27[33m"
+    print(("  %-11s %-9s %-30s %5d %9.1fk %10.1fk  %s%s\27[0m%s")
+            :format(b.profile, b.codec, b.medium, b.frames_per_block,
+                    b.needed_kbps, b.capacity_kbps, colour, b.verdict,
+                    b.consistent and "" or "  <-- INCONSISTENT"))
+    if not b.consistent then bad = bad + 1 end
+  end
+  print()
+  for _, b in ipairs(rows) do
+    if b.verdict ~= "fits" then print(("  %-11s %s"):format(b.profile, b.advice)) end
+  end
+  print()
+  os.exit(bad == 0 and 0 or 1)
+end
+
+-- A profile overrides the loose --transport flag with a coherent pairing.
+local PROFILE
+if opt.profile then
+  PROFILE = Pr.build(opt.profile)
+  opt.transport = nil
+end
 
 local function say(...) if not opt.quiet then print(...) end end
 local function rule(t)
@@ -67,10 +111,16 @@ local CH = T.channel_id(opt.channel)
 local ALICE, BOB = 0x00A1, 0x00B2
 
 say()
-local cfg_fec_on = X.configure(opt.transport).fec.enabled
+local tcfg = PROFILE and PROFILE.transport or X.configure(opt.transport)
+local cfg_fec_on = tcfg.fec.enabled
+if PROFILE and not opt.quiet then
+  print()
+  print(("\27[1m%s\27[0m — %s"):format(PROFILE.name, PROFILE.summary))
+  print(("  %s"):format(PROFILE.notes))
+end
 say(("\27[1mDCF-Talk\27[0m  channel %q -> 0x%04X   transport=%s (FEC %s)   loss=%.0f%%  corrupt=%.0f%%")
-      :format(opt.channel, CH, opt.transport, cfg_fec_on and "on" or "off",
-              opt.loss * 100, opt.corrupt * 100))
+      :format(opt.channel, CH, opt.profile or opt.transport,
+              cfg_fec_on and "on" or "off", opt.loss * 100, opt.corrupt * 100))
 
 -- ── A lossy virtual link ────────────────────────────────────────────────────
 -- Two independent failure modes, because they exercise different machinery:
@@ -106,8 +156,8 @@ rule("text")
 local hist = Hs.open({ backend = "auto", autoflush = 0 })
 say(("  history backend: %s"):format(hist.backend_name))
 
-local tx = X.new(opt.transport)
-local rx = X.new(opt.transport)
+local tx = X.new(tcfg)
+local rx = X.new(tcfg)
 local inbox = T.new_reassembler(CH)
 local received = {}
 
@@ -144,12 +194,12 @@ say(("  %d/%d delivered · %d rows in history · replay from store: %d")
 rule("voice")
 local vcfg = V.configure({
   codec_id = A.CODEC_PCM_DIAG, channel = CH, src_id = ALICE, block_ms = 20,
-  transport = opt.transport,
+  transport = PROFILE and tcfg or opt.transport,
   vad = { enabled = true, threshold = 0.02, hangover_ms = 100 },
   jitter = { target_ms = 40, resync_ahead_ms = 500 },
 })
 local rcfg = V.configure({ codec_id = A.CODEC_PCM_DIAG, channel = CH, src_id = BOB,
-                           transport = opt.transport,
+                           transport = PROFILE and tcfg or opt.transport,
                            jitter = { target_ms = 40, resync_ahead_ms = 500 } })
 
 local listener = V.new(rcfg)
@@ -265,6 +315,18 @@ if opt.hub > 0 then
 end
 
 -- ── verdict ─────────────────────────────────────────────────────────────────
+rule("diagnostics")
+do
+  local d = Pr.diagnose(ls)
+  for _, hit in ipairs(d) do
+    local mark = hit.id == "healthy" and "\27[32m OK \27[0m" or "\27[33mNOTE\27[0m"
+    say(("  [%s] %s"):format(mark, hit.id))
+    if hit.id ~= "healthy" then
+      for line in hit.say:gmatch("[^\n]+") do say(("        %s"):format(line)) end
+    end
+  end
+end
+
 rule()
 local ok = (#received == #script) and (played + concealed + silent > 0) and (ts.sent > 0)
 if opt.loss == 0 then ok = ok and (concealed == 0) end
