@@ -511,6 +511,9 @@ jobs:
       - name: Certify the Lua voice L3 + StreamDB history
         run: lua5.4 lua/selftest_voice.lua
 
+      - name: Certify the Lua agent harness
+        run: lua5.4 lua/selftest_agent.lua
+
       - name: Certify the Lua DCF-Snake adapter
         run: lua5.4 lua/selftest_snake.lua
 

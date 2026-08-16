@@ -20,6 +20,8 @@ from DeMoD LLC on request.
 | `dcf_voice.lua` | **L3**: jitter buffer (modular, adaptive), PLC, VAD/DTX, and the L4 voice pipeline. Fully config-driven — see `M.defaults`, `M.presets`, `M.register_codec`. |
 | `dcf_history.lua` | persistent chat/call history on [DeMoD StreamDB](https://github.com/ALH477/DeMoD-StreamDB), pluggable backends, configurable key schema + retention |
 | `selftest_voice.lua` | L3 + history law certification (`lua lua/selftest_voice.lua`, exit 0/1) |
+| `dcf_agent.lua` | LLM agent harness: mention gating, token budget + rolling summary, streaming reply chunker, barge-in, DTX-gated STT. Backends injected as callbacks. **Read-write — never expose as an MCP server.** |
+| `selftest_agent.lua` | 12 agent laws (`lua lua/selftest_agent.lua`, exit 0/1) |
 | `dcf_talk.lua` | **headless end-to-end demo of the whole chat stack** — text, voice, transport, history, hub. Every number it prints is measured, not modelled. |
 | `dcf_jam.lua` | headless CLI demo: stream to a channel, watch a tuned peer receive and a mistuned peer reject |
 | `selftest.lua` | golden-vector + channel certification (`lua lua/selftest.lua`, exit 0/1) |
