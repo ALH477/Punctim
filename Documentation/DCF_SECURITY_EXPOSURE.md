@@ -74,6 +74,22 @@ stand-in** to demonstrate the principle — once the bytes on the wire are no lo
 DCF `ProtoMessage`, the wiretap decodes nothing. It is not cryptography and must never
 be mistaken for the real mitigation, which is WireGuard or an equivalent.
 
+## Key material never rides the wire (DCF-QKD)
+
+One module now handles key material: the ETSI GS QKD 014 bridge
+([`DCF_QKD_SPEC.md`](DCF_QKD_SPEC.md)). It does **not** change the rule above — it
+observes it. The bridge holds delivered keys in process memory and hands them to the
+calling application; what crosses the DCF wire is the **`key_ID`** only, a non-secret
+UUID that is useless without an authenticated session to a KME that still holds the
+key. **Key material MUST NOT be placed in a `DeModFrame` payload**, and an automated
+test (`python/tests/test_qkd_bridge.py::TestExportInvariant`) taps a live exchange and
+fails if any window of a delivered key appears on the wire.
+
+The exposure the beacon *does* add is traffic analysis: an on-path observer learns
+which peers are keying, how often, and when, and can correlate that with data-plane
+activity. That is the same class of leak this document already describes for
+membership and topology, and it has the same mitigation — the tunnel below.
+
 ## The one rule
 
 Keep the DCF wire plaintext; put the crypto in the tunnel under it. That preserves the

@@ -44,13 +44,19 @@ dcf-sdr = "dcf.modem.sdr:main"
 dcf-node = "dcf_node:main"
 # Bridge DeModFrames across transports (UDP / audio / SDR / file) for any network shape.
 dcf-bridge = "dcf.bridge:main"
+# ETSI GS QKD 014 key-delivery bridge: end-to-end harness over a loopback transport.
+dcf-qkd-demo = "dcf.qkd.demo:main"
 
 [tool.setuptools]
 # dcf_node.py is a top-level script module; the SDR modem + reference codecs ship
 # *under* the dcf package (dcf.modem, dcf.MCP) so their sibling-relative sys.path
 # resolution works identically from-source and once installed.
 py-modules = ["dcf_node"]
-packages = ["dcf", "dcf.modem", "dcf.MCP"]
+packages = [
+  "dcf", "dcf.modem", "dcf.MCP",
+  # Subpackages: each is importable from-source, so each must also ship in the wheel.
+  "dcf.pipe", "dcf.qkd", "dcf.sense", "dcf.spa",
+]
 
 [tool.setuptools.package-dir]
 "dcf" = "dcf"

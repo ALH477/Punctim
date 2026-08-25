@@ -759,6 +759,17 @@
               runtimeInputs = [ meshPython ];
               text = ''exec ${meshPython}/bin/python ${self}/matrix-bridge/mesh_mcp.py http "$@"'';
             };
+            # DCF-QKD: the ETSI GS QKD 014 end-to-end harness — no network and no
+            # photonic hardware, running the flow over a loopback transport against a
+            # mock KME pair.  dcf/qkd/ is itself stdlib-only, but it composes with
+            # dcf.transport, which imports the acoustic/IQ modems and so needs numpy
+            # (the one runtime dependency python/pyproject.toml declares).
+            qkdPython = pkgs.python3.withPackages (ps: [ ps.numpy ]);
+            qkdDemo = pkgs.writeShellApplication {
+              name = "dcf-qkd-demo";
+              runtimeInputs = [ qkdPython ];
+              text = ''exec ${qkdPython}/bin/python ${self}/python/dcf/qkd/demo.py "$@"'';
+            };
             mkApp = drv: bin: { type = "app"; program = "${drv}/bin/${bin}"; };
           in {
             a2a = mkApp interactive "dcf-a2a";
@@ -773,6 +784,7 @@
             agent-tui = mkApp agentTUI "dcf-agent-tui";
             agent-serve = mkApp agentServe "dcf-agent-serve";
             agent-mcp = mkApp agentMCP "dcf-agent-mcp";
+            qkd-demo = mkApp qkdDemo "dcf-qkd-demo";
             default = mkApp interactive "dcf-a2a";
           };
 

@@ -386,6 +386,59 @@ jobs:
         working-directory: codec
         run: cargo test --test certify_text
 
+  certify-qkd:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run the canonical Python reference selftest
+        run: python3 python/MCP/qkdlab_core.py
+
+      - name: Regenerate qkd vectors and diff against committed
+        run: |
+          python3 python/MCP/gen_qkd_vectors.py /tmp/qkd_vectors.json
+          diff /tmp/qkd_vectors.json    Documentation/qkd_vectors.json
+          diff /tmp/qkd_vectors.json    python/MCP/qkd_vectors.json
+          diff /tmp/qkd_vectors.gen.h   codec/qkd_vectors.gen.h
+          echo "qkd vectors: committed == regenerated"
+
+      - name: Build and run C qkd certification (L2-only)
+        run: |
+          gcc -std=c11 -Wall -Wextra -I codec \
+            -o /tmp/test_qkd_certify C_SDK/tests/test_qkd_certify.c -lm
+          /tmp/test_qkd_certify
+
+      - name: Run Rust qkd certification
+        working-directory: codec
+        run: |
+          cargo test --test certify_qkd
+          cargo test --lib qkd
+
+  # DCF-QKD bridge: the ETSI GS QKD 014 runtime (client + mock KME + SAE flow) over a
+  # loopback DCF transport.  Stdlib only; no network, no photonic hardware.
+  # Implements no cryptography; the wire carries key_IDs, never key material — the
+  # TestExportInvariant case enforces that.  See Documentation/DCF_QKD_SPEC.md.
+  qkd-bridge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Beacon L2 laws + bridge end-to-end
+        working-directory: python
+        run: python3 -m unittest tests.test_qkd_beacon tests.test_qkd_bridge -v
+      - name: End-to-end demo (machine-readable)
+        run: python3 python/dcf/qkd/demo.py --json
+
   certify-sstv:
     runs-on: ubuntu-latest
     steps:

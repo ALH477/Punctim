@@ -244,6 +244,59 @@ gcc -std=c11 -I codec C_SDK/tests/test_snake_certify.c   -lm -o /tmp/sc && /tmp/
 gcc -std=c11 -I codec C_SDK/tests/test_monitor_certify.c -lm -o /tmp/mc && /tmp/mc  # C (cue)
 ```
 
+## DCF-QKD (ETSI GS QKD 014 key-ID beacon over the wire)
+
+A control adapter over `DeModFrame` that fills the one gap **ETSI GS QKD 014
+deliberately leaves out of scope**: the transport of a `key_ID` from the master SAE
+to the slave SAE. Every deployment has to invent a carrier, and the arithmetic makes
+the quantum an unusually good fit — `key_ID = UUID = 128 bits = 16 bytes = exactly
+4 x 4-byte payloads`. One key_ID is serialised into exactly **4** ordinary `CTRL`
+(type 3) frames, byte-certified across **C/Rust/Python**. Spec:
+`Documentation/DCF_QKD_SPEC.md`.
+
+> **Nothing here is quantum.** The "wire quantum" is quantum as in **quanta** — the
+> indivisible 17-byte frame. A `key_ID` is an opaque identifier minted by external
+> KME hardware; keys come from that hardware (`os.urandom` in the mock). Never
+> describe this as quantum communication.
+
+- `seq = epoch[15:2] | frag_idx[1:0]` (14:2, unique among the CTRL adapters: audio
+  11:5, cue 9:7, snake 5:11). **No descriptor fragment** — a key_ID is always 16 B,
+  so length and frag_total are known a priori and all four fragments are data. This
+  is normative; emitting a descriptor is non-conforming. There are consequently no
+  descriptor flags.
+- Reassembly is keyed by `(src, dst, epoch)` (two SAEs may beacon one epoch at
+  once), order-independent, dup-suppressed, and **bounded** (oldest evicted past
+  `max_pending`, default 64).
+- L2 references: `codec/demod_qkd.h` (C), `codec/src/qkd.rs` (Rust),
+  `python/MCP/qkdlab_core.py` (Python, canonical). Vectors:
+  `Documentation/qkd_vectors.json` (+ identical `python/MCP/` copy) and
+  `codec/qkd_vectors.gen.h`. CI: `certify-qkd` + `qkd-bridge`.
+- **The bridge runtime** is `python/dcf/qkd/` (**stdlib only**): `etsi014.py` (the
+  ETSI 014 client — status/enc_keys/dec_keys, optional mTLS), `mock_kme.py` (a mock
+  KME pair over one shared keystore = the simulated QKD link), `beacon.py` (key_ID
+  over any `dcf.transport.Transport`), `sae.py` (`MasterSae`/`SlaveSae`), `demo.py`.
+  It works unchanged against QuKayDee or vendor hardware via `--external`.
+
+**Export posture — read `DCF_QKD_SPEC.md` before touching this.** The module
+implements no cryptographic algorithm, but it *does* hold delivered key material in
+memory, which is a different posture from the rest of the tree. The normative rule:
+**key material MUST NOT be placed in a `DeModFrame` payload** — the wire carries the
+key_ID (a non-secret identifier) and nothing else. It is enforced by
+`TestExportInvariant` in `python/tests/test_qkd_bridge.py`, which taps the wire and
+fails on any 4-byte window of a delivered key. **Never wire a delivered key into a
+cipher at the DCF layer**; that collapses the whole project's export posture, not
+just this module's. SPA's ECCN 5A002 Note (g) authentication carve-out does **not**
+apply here.
+
+```sh
+python3 python/MCP/gen_qkd_vectors.py /tmp/qkd.json             # regen + verify laws
+cd codec && cargo test --test certify_qkd && cargo test --lib qkd  # Rust
+gcc -std=c11 -I codec C_SDK/tests/test_qkd_certify.c -lm -o /tmp/qc && /tmp/qc  # C
+python3 python/dcf/qkd/demo.py --count 3                        # end-to-end, loopback
+nix run .#qkd-demo -- --count 3                                 # same, hermetic
+cd python && python3 -m unittest tests.test_qkd_beacon tests.test_qkd_bridge -v
+```
+
 ## DCF SuperPack (the paired-frame container)
 
 An **opt-in container adapter**, not a new wire format: SuperPack packs **two**

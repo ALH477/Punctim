@@ -13,6 +13,7 @@ pub mod modulation;
 pub mod monitor;
 pub mod pipe;
 pub mod pipemulti;
+pub mod qkd;
 pub mod snake;
 pub mod sstv;
 pub mod superpack;

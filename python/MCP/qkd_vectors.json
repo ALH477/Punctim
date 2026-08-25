@@ -1,0 +1,316 @@
+{
+ "format": "DCF-QKD key-ID beacon L2 framing v1 (adapter over the 17-byte DeModFrame quantum)",
+ "spec": "seq = epoch[15:2] | frag_idx[1:0]; frag_idx 0..3 = key_id_bytes[idx*4 .. +4]; no descriptor, no padding (a key_ID is always 16 B); type=CTRL(3), version=1",
+ "constants": {
+  "frag_bits": 2,
+  "frags": 4,
+  "key_id_bytes": 16,
+  "max_epoch": 16383,
+  "frame_type_ctrl": 3,
+  "broadcast": 65535
+ },
+ "anchors": {
+  "exampleKeyIdBeacon": {
+   "epoch": 10,
+   "ts_us": 66051,
+   "src": 161,
+   "dst": 55382,
+   "key_id": "574bace1-4c27-49a1-babd-663fdb624d00",
+   "key_id_bytes": "574bace14c2749a1babd663fdb624d00",
+   "frames": [
+    "d313002800a1d856574bace1010203a8d3",
+    "d313002900a1d8564c2749a1010203f5ce",
+    "d313002a00a1d856babd663f0102033fc2",
+    "d313002b00a1d856db624d000102034a37"
+   ]
+  }
+ },
+ "theorem": "L2 framing is a fixed bit-placement adapter over the certified DeModFrame; matching these framing + reassembly vectors pins the C and Rust implementations to this reference on the entire input space.  The key_ID is opaque to L2 and always 16 bytes, so the beacon needs no descriptor and the vectors are invariant to key_ID content.  The 246-vector wire certificate is untouched.",
+ "framing": [
+  {
+   "src": 1,
+   "dst": 65535,
+   "epoch": 0,
+   "ts_us": 0,
+   "key_id": "00000000-0000-0000-0000-000000000000",
+   "key_id_bytes": "00000000000000000000000000000000",
+   "frames": [
+    "d31300000001ffff00000000000000a114",
+    "d31300010001ffff00000000000000a261",
+    "d31300020001ffff00000000000000a7fe",
+    "d31300030001ffff00000000000000a48b"
+   ]
+  },
+  {
+   "src": 1,
+   "dst": 2,
+   "epoch": 1,
+   "ts_us": 74565,
+   "key_id": "ffffffff-ffff-ffff-ffff-ffffffffffff",
+   "key_id_bytes": "ffffffffffffffffffffffffffffffff",
+   "frames": [
+    "d313000400010002ffffffff012345a732",
+    "d313000500010002ffffffff012345a447",
+    "d313000600010002ffffffff012345a1d8",
+    "d313000700010002ffffffff012345a2ad"
+   ]
+  },
+  {
+   "src": 161,
+   "dst": 55382,
+   "epoch": 63,
+   "ts_us": 1043915,
+   "key_id": "574bace1-4c27-49a1-babd-663fdb624d00",
+   "key_id_bytes": "574bace14c2749a1babd663fdb624d00",
+   "frames": [
+    "d31300fc00a1d856574bace10fedcba67f",
+    "d31300fd00a1d8564c2749a10fedcbfb62",
+    "d31300fe00a1d856babd663f0fedcb316e",
+    "d31300ff00a1d856db624d000fedcb449b"
+   ]
+  },
+  {
+   "src": 48879,
+   "dst": 4660,
+   "epoch": 4096,
+   "ts_us": 16777215,
+   "key_id": "d54b214e-60eb-4f1c-afb0-62a7b23fc20e",
+   "key_id_bytes": "d54b214e60eb4f1cafb062a7b23fc20e",
+   "frames": [
+    "d3134000beef1234d54b214effffffa1ea",
+    "d3134001beef123460eb4f1cffffff8643",
+    "d3134002beef1234afb062a7ffffff0a16",
+    "d3134003beef1234b23fc20efffffff654"
+   ]
+  },
+  {
+   "src": 65534,
+   "dst": 29483,
+   "epoch": 16383,
+   "ts_us": 255,
+   "key_id": "fe06d19c-67ec-d7ce-b5a9-56631b356e0c",
+   "key_id_bytes": "fe06d19c67ecd7ceb5a956631b356e0c",
+   "frames": [
+    "d313fffcfffe732bfe06d19c0000fff1bd",
+    "d313fffdfffe732b67ecd7ce0000ff1d6a",
+    "d313fffefffe732bb5a956630000ff4b18",
+    "d313fffffffe732b1b356e0c0000fff952"
+   ]
+  }
+ ],
+ "reassembly": [
+  {
+   "name": "in_order",
+   "accept_dst": null,
+   "input_frames": [
+    "d313001400010002574bace10102036405",
+    "d3130015000100024c2749a10102033918",
+    "d313001600010002babd663f010203f314",
+    "d313001700010002db624d0001020386e1",
+    "d313001800010002d54b214e010210a603",
+    "d31300190001000260eb4f1c01021081aa",
+    "d313001a00010002afb062a70102100dff",
+    "d313001b00010002b23fc20e010210f1bd"
+   ],
+   "keys": [
+    {
+     "epoch": 5,
+     "ts_us": 66051,
+     "src": 1,
+     "dst": 2,
+     "key_id": "574bace1-4c27-49a1-babd-663fdb624d00",
+     "key_id_bytes": "574bace14c2749a1babd663fdb624d00"
+    },
+    {
+     "epoch": 6,
+     "ts_us": 66064,
+     "src": 1,
+     "dst": 2,
+     "key_id": "d54b214e-60eb-4f1c-afb0-62a7b23fc20e",
+     "key_id_bytes": "d54b214e60eb4f1cafb062a7b23fc20e"
+    }
+   ],
+   "lost": []
+  },
+  {
+   "name": "reordered",
+   "accept_dst": null,
+   "input_frames": [
+    "d313001a00010002afb062a70102100dff",
+    "d313001600010002babd663f010203f314",
+    "d313001700010002db624d0001020386e1",
+    "d3130015000100024c2749a10102033918",
+    "d313001b00010002b23fc20e010210f1bd",
+    "d31300190001000260eb4f1c01021081aa",
+    "d313001800010002d54b214e010210a603",
+    "d313001400010002574bace10102036405"
+   ],
+   "keys": [
+    {
+     "epoch": 6,
+     "ts_us": 66064,
+     "src": 1,
+     "dst": 2,
+     "key_id": "d54b214e-60eb-4f1c-afb0-62a7b23fc20e",
+     "key_id_bytes": "d54b214e60eb4f1cafb062a7b23fc20e"
+    },
+    {
+     "epoch": 5,
+     "ts_us": 66051,
+     "src": 1,
+     "dst": 2,
+     "key_id": "574bace1-4c27-49a1-babd-663fdb624d00",
+     "key_id_bytes": "574bace14c2749a1babd663fdb624d00"
+    }
+   ],
+   "lost": []
+  },
+  {
+   "name": "frag_drop_lost",
+   "accept_dst": null,
+   "input_frames": [
+    "d313001400010002574bace10102036405",
+    "d3130015000100024c2749a10102033918",
+    "d313001700010002db624d0001020386e1",
+    "d313001800010002d54b214e010210a603",
+    "d31300190001000260eb4f1c01021081aa",
+    "d313001a00010002afb062a70102100dff",
+    "d313001b00010002b23fc20e010210f1bd"
+   ],
+   "keys": [
+    {
+     "epoch": 6,
+     "ts_us": 66064,
+     "src": 1,
+     "dst": 2,
+     "key_id": "d54b214e-60eb-4f1c-afb0-62a7b23fc20e",
+     "key_id_bytes": "d54b214e60eb4f1cafb062a7b23fc20e"
+    }
+   ],
+   "lost": [
+    {
+     "epoch": 5,
+     "src": 1,
+     "dst": 2
+    }
+   ]
+  },
+  {
+   "name": "duplicate",
+   "accept_dst": null,
+   "input_frames": [
+    "d313001400010002574bace10102036405",
+    "d313001400010002574bace10102036405",
+    "d3130015000100024c2749a10102033918",
+    "d3130015000100024c2749a10102033918",
+    "d313001600010002babd663f010203f314",
+    "d313001700010002db624d0001020386e1",
+    "d313001800010002d54b214e010210a603",
+    "d31300190001000260eb4f1c01021081aa",
+    "d313001a00010002afb062a70102100dff",
+    "d313001b00010002b23fc20e010210f1bd"
+   ],
+   "keys": [
+    {
+     "epoch": 5,
+     "ts_us": 66051,
+     "src": 1,
+     "dst": 2,
+     "key_id": "574bace1-4c27-49a1-babd-663fdb624d00",
+     "key_id_bytes": "574bace14c2749a1babd663fdb624d00"
+    },
+    {
+     "epoch": 6,
+     "ts_us": 66064,
+     "src": 1,
+     "dst": 2,
+     "key_id": "d54b214e-60eb-4f1c-afb0-62a7b23fc20e",
+     "key_id_bytes": "d54b214e60eb4f1cafb062a7b23fc20e"
+    }
+   ],
+   "lost": []
+  },
+  {
+   "name": "interleaved_epochs",
+   "accept_dst": null,
+   "input_frames": [
+    "d313001400010002574bace10102036405",
+    "d313001800010002d54b214e010210a603",
+    "d3130015000100024c2749a10102033918",
+    "d31300190001000260eb4f1c01021081aa",
+    "d313001600010002babd663f010203f314",
+    "d313001a00010002afb062a70102100dff",
+    "d313001700010002db624d0001020386e1",
+    "d313001b00010002b23fc20e010210f1bd"
+   ],
+   "keys": [
+    {
+     "epoch": 5,
+     "ts_us": 66051,
+     "src": 1,
+     "dst": 2,
+     "key_id": "574bace1-4c27-49a1-babd-663fdb624d00",
+     "key_id_bytes": "574bace14c2749a1babd663fdb624d00"
+    },
+    {
+     "epoch": 6,
+     "ts_us": 66064,
+     "src": 1,
+     "dst": 2,
+     "key_id": "d54b214e-60eb-4f1c-afb0-62a7b23fc20e",
+     "key_id_bytes": "d54b214e60eb4f1cafb062a7b23fc20e"
+    }
+   ],
+   "lost": []
+  },
+  {
+   "name": "two_srcs_same_epoch",
+   "accept_dst": null,
+   "input_frames": [
+    "d313001c00010002574bace1020304652b",
+    "d313001c00090002d54b214e020304d948",
+    "d313001d000100024c2749a10203043836",
+    "d313001d0009000260eb4f1c020304fee1",
+    "d313001e00010002babd663f020304f23a",
+    "d313001e00090002afb062a702030472b4",
+    "d313001f00010002db624d0002030487cf",
+    "d313001f00090002b23fc20e0203048ef6"
+   ],
+   "keys": [
+    {
+     "epoch": 7,
+     "ts_us": 131844,
+     "src": 1,
+     "dst": 2,
+     "key_id": "574bace1-4c27-49a1-babd-663fdb624d00",
+     "key_id_bytes": "574bace14c2749a1babd663fdb624d00"
+    },
+    {
+     "epoch": 7,
+     "ts_us": 131844,
+     "src": 9,
+     "dst": 2,
+     "key_id": "d54b214e-60eb-4f1c-afb0-62a7b23fc20e",
+     "key_id_bytes": "d54b214e60eb4f1cafb062a7b23fc20e"
+    }
+   ],
+   "lost": []
+  },
+  {
+   "name": "foreign_dst_ignored",
+   "accept_dst": 39321,
+   "input_frames": [
+    "d313001400010002574bace10102036405",
+    "d3130015000100024c2749a10102033918",
+    "d313001600010002babd663f010203f314",
+    "d313001700010002db624d0001020386e1",
+    "d313001800010002d54b214e010210a603",
+    "d31300190001000260eb4f1c01021081aa",
+    "d313001a00010002afb062a70102100dff",
+    "d313001b00010002b23fc20e010210f1bd"
+   ],
+   "keys": [],
+   "lost": []
+  }
+ ]
+}
