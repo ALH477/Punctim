@@ -69,7 +69,7 @@ def create_app(config_path: str = "agents.jsonc", mesh_url: str = "") -> FastAPI
     from .__main__ import load_config
 
     app = FastAPI(
-        title="HydraMesh Agent API",
+        title="Punctim Agent API",
         description="LLM agent system over DCF mesh — encryption-free for export control",
         version="0.1.0",
     )

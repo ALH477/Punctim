@@ -96,4 +96,4 @@ def test_banner_shown_on_every_command(capsys):
     main(["backends"])
     captured = capsys.readouterr()
     assert "▲" in captured.out
-    assert "HydraMesh" in captured.out
+    assert "Punctim" in captured.out

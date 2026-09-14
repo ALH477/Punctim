@@ -3,7 +3,7 @@ requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "hydramesh-langgraph-agents"
+name = "punctim-langgraph-agents"
 version = "0.1.0"
 description = "LangGraph multi-agent system communicating over DCF mesh via MCP"
 requires-python = ">=3.11"

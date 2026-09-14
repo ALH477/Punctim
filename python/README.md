@@ -1,4 +1,4 @@
-# demod-dcf — DeMoD Communications Framework (DCF / HydraMesh), Python SDK
+# demod-dcf — DeMoD Communications Framework (DCF / Punctim), Python SDK
 
 A handshakeless, **encryption-free**, export-control-compliant mesh protocol built on
 one tiny invariant: the **17-byte `DeModFrame` wire quantum**, certified byte-identical
@@ -55,5 +55,5 @@ beneath WireGuard; **on RF there is no WireGuard** — treat an over-the-air lin
 public broadcast and apply operator-supplied, export-compliant crypto *above* the frame
 if you need confidentiality.
 
-- Source & full docs: https://github.com/ALH477/HydraMesh
+- Source & full docs: https://github.com/ALH477/Punctim
 - License: **LGPL-3.0-only**

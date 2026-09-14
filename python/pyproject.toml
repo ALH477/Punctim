@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: LGPL-3.0-only
-# Packaging for the DeMoD Communications Framework (DCF / HydraMesh) Python SDK.
+# Packaging for the DeMoD Communications Framework (DCF / Punctim) Python SDK.
 # Build a wheel:   cd python && python3 -m build
 # Install locally: pip install ./python            (add [grpc] for the gRPC client)
 # Publish:         see RELEASING.md (needs a PyPI token; not run by CI).
@@ -10,7 +10,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "demod-dcf"
 version = "0.3.0"
-description = "DeMoD Communications Framework (DCF / HydraMesh) — the certified 17-byte wire quantum, a stdlib UDP self-healing mesh node, and a Reed-Solomon-FEC SDR modem (mesh over UDP *or* radio)."
+description = "DeMoD Communications Framework (DCF / Punctim) — the certified 17-byte wire quantum, a stdlib UDP self-healing mesh node, and a Reed-Solomon-FEC SDR modem (mesh over UDP *or* radio)."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "LGPL-3.0-only" }
@@ -33,9 +33,9 @@ dependencies = ["numpy>=1.21"]
 grpc = ["grpcio", "grpcio-tools", "protobuf", "click", "jsonschema", "networkx"]
 
 [project.urls]
-Homepage = "https://github.com/ALH477/HydraMesh"
-Documentation = "https://github.com/ALH477/HydraMesh/tree/main/Documentation"
-Repository = "https://github.com/ALH477/HydraMesh"
+Homepage = "https://github.com/ALH477/Punctim"
+Documentation = "https://github.com/ALH477/Punctim/tree/main/Documentation"
+Repository = "https://github.com/ALH477/Punctim"
 
 [project.scripts]
 # Mesh over radio: frame -> RS-FEC -> IQ -> SoapySDR / .cf32 -> frame.

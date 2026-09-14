@@ -1,6 +1,6 @@
 # Copyright (C) 2026 DeMoD LLC
 # SPDX-License-Identifier: LGPL-3.0-only
-"""Shared state schema for all LangGraph agent graphs in HydraMesh."""
+"""Shared state schema for all LangGraph agent graphs in Punctim."""
 from __future__ import annotations
 
 from typing import Annotated, Any, TypedDict

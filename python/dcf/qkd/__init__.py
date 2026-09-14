@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: LGPL-3.0-only
 # Copyright (c) 2026 DeMoD LLC.
-"""DCF-QKD — a bridge from DCF/HydraMesh to ETSI GS QKD 014 key delivery.
+"""DCF-QKD — a bridge from DCF/Punctim to ETSI GS QKD 014 key delivery.
 
   beacon   — key-ID beacon over any DCF transport (thin runtime over qkdlab_core)
   etsi014  — ETSI GS QKD 014 client: status / enc_keys / dec_keys, optional mTLS

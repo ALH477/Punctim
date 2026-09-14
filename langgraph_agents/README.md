@@ -1,6 +1,6 @@
 # LangGraph Multi-Agent System
 
-LLM-powered agents that communicate over the HydraMesh DCF mesh in realtime using the Model Context Protocol (MCP).
+LLM-powered agents that communicate over the Punctim DCF mesh in realtime using the Model Context Protocol (MCP).
 
 ![License: LGPL v3](https://img.shields.io/badge/License-LGPLv3-blue.svg)
 ![Encryption-free](https://img.shields.io/badge/Encryption-EAR%2FITAR%20compliant-green)
@@ -190,7 +190,7 @@ docker run -p 8000:8000 alh477/dcf-agent
 
 ## Lisp DSL integration
 
-The Lisp SDK (`lisp/src/hydramesh.lisp`) has native agent functions that call the API server over HTTP. No external HTTP library needed — the implementation uses usocket + flexi-streams (already in the dependency closure).
+The Lisp SDK (`lisp/src/punctim.lisp`) has native agent functions that call the API server over HTTP. No external HTTP library needed — the implementation uses usocket + flexi-streams (already in the dependency closure).
 
 ```lisp
 (dcf-agent-health)                         ;; check API server
@@ -204,10 +204,10 @@ The Lisp SDK (`lisp/src/hydramesh.lisp`) has native agent functions that call th
 
 CLI subcommands:
 ```bash
-hydramesh agent-health
-hydramesh agent-backends
-hydramesh agent-providers
-hydramesh agent-chat "hello"
+punctim agent-health
+punctim agent-backends
+punctim agent-providers
+punctim agent-chat "hello"
 ```
 
 ## Use cases

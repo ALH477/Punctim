@@ -1,6 +1,6 @@
 # Copyright (C) 2026 DeMoD LLC
 # SPDX-License-Identifier: LGPL-3.0-only
-"""CLI for the HydraMesh LangGraph agent system.
+"""CLI for the Punctim LangGraph agent system.
 
 Subcommands:
   agents    — list configured agents from agents.jsonc
@@ -235,7 +235,7 @@ def cmd_mcp(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dcf-agent",
-        description="HydraMesh LangGraph agent CLI",
+        description="Punctim LangGraph agent CLI",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -297,13 +297,13 @@ def _print_banner() -> None:
     console, _, Panel, _ = _try_rich_print()
     if console and Panel:
         console.print(Panel(
-            f"[cyan]{tri}[/cyan]\n[dim]HydraMesh LangGraph Agent System v0.1.0[/dim]",
+            f"[cyan]{tri}[/cyan]\n[dim]Punctim LangGraph Agent System v0.1.0[/dim]",
             border_style="cyan",
             padding=(0, 2),
         ))
     else:
         print(tri)
-        print("HydraMesh LangGraph Agent System v0.1.0")
+        print("Punctim LangGraph Agent System v0.1.0")
     print()
 
 

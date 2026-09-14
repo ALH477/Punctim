@@ -1,6 +1,6 @@
 # Copyright (C) 2026 DeMoD LLC
 # SPDX-License-Identifier: LGPL-3.0-only
-"""Interactive TUI for the HydraMesh LangGraph agent system.
+"""Interactive TUI for the Punctim LangGraph agent system.
 
 Built with Textual. Features:
   - Agent config panel (left sidebar)
@@ -182,7 +182,7 @@ class AgentTUI(App):
         yield Footer()
 
     def on_mount(self) -> None:
-        self.title = "HydraMesh Agent TUI"
+        self.title = "Punctim Agent TUI"
         self.sub_title = f"{self.config_path}"
 
         # Discover available backends
@@ -201,7 +201,7 @@ class AgentTUI(App):
             tri = sierpinski(depth=3)
             for line in tri.split("\n"):
                 self._log_raw(f"[cyan]{line}[/cyan]")
-            self._log("system", "HydraMesh LangGraph Agent TUI — ready.")
+            self._log("system", "Punctim LangGraph Agent TUI — ready.")
 
         self._log("system", f"Backends: {', '.join(self.backends_list)}")
         self._log("system", f"Mesh URL: {self.mesh_url}")

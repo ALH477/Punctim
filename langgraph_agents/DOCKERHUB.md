@@ -1,13 +1,13 @@
 # dcf-agent
 
-LangGraph multi-agent LLM system for the HydraMesh DCF framework.
+LangGraph multi-agent LLM system for the Punctim DCF framework.
 
 ![License: LGPL v3](https://img.shields.io/badge/License-LGPLv3-blue.svg)
 ![Encryption-free](https://img.shields.io/badge/Encryption-EAR%2FITAR%20compliant-green)
 
 ## What this is
 
-A Docker image that runs LLM-powered agents communicating over the HydraMesh DCF mesh in realtime using the Model Context Protocol (MCP). Built with LangGraph state graphs, pluggable LLM backends, and a universal API system.
+A Docker image that runs LLM-powered agents communicating over the Punctim DCF mesh in realtime using the Model Context Protocol (MCP). Built with LangGraph state graphs, pluggable LLM backends, and a universal API system.
 
 **Encryption-free for export control purposes** — agents communicate over the same plaintext DCF transport. No cryptographic layers bundled.
 
@@ -144,14 +144,14 @@ Encryption-free by design. Safe for EAR/ITAR-regulated environments where crypto
 
 ## Source
 
-- **Repo**: [https://github.com/ALH477/HydraMesh](https://github.com/ALH477/HydraMesh)
+- **Repo**: [https://github.com/ALH477/Punctim](https://github.com/ALH477/Punctim)
 - **Agent source**: `langgraph_agents/` directory
 - **License**: LGPL-3.0-only
 - **Built with**: Nix + DockerTools (hermetic, reproducible)
 
 ## Related images
 
-- [`alh477/hydramesh`](https://hub.docker.com/r/alh477/hydramesh) — Lisp SDK node with agent DSL integration
+- [`alh477/punctim`](https://hub.docker.com/r/alh477/punctim) — Lisp SDK node with agent DSL integration
 - [`alh477/dcf-go`](https://hub.docker.com/r/alh477/dcf-go) — Go mesh node
 - [`alh477/dcf-rs`](https://hub.docker.com/r/alh477/dcf-rs) — Rust mesh node
 - [`alh477/dcf-python`](https://hub.docker.com/r/alh477/dcf-python) — Python mesh node
