@@ -4,7 +4,7 @@
 [`WIRE_QUANTUM_SPEC.md`](WIRE_QUANTUM_SPEC.md) and [`DCF_AUDIO_SPEC.md`](DCF_AUDIO_SPEC.md).
 
 DCF-Control carries **engine control operations** (the messages a GUI sends to a real-time
-audio engine: load an effect, set a parameter, trigger a note) over HydraMesh. It
+audio engine: load an effect, set a parameter, trigger a note) over Punctim. It
 introduces **no new wire format**: a control op is an **adapter** over the 17-byte
 `DeModFrame` quantum, serialised as a **DCF-Text** message (a burst of `DATA` frames). It
 exists so the DeMoD stack (orchestrator + demod-rt + demod-ui) can run **split across a

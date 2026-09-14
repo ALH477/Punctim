@@ -5,7 +5,7 @@
 [`DCF_GAME_SPEC.md`](DCF_GAME_SPEC.md) and [`DCF_AUDIO_SPEC.md`](DCF_AUDIO_SPEC.md).
 
 DCF-Text carries UTF-8 text — human chat and **agent-to-agent** messages — over the
-HydraMesh mesh. It introduces **no new wire format**: one message is an **adapter**
+Punctim mesh. It introduces **no new wire format**: one message is an **adapter**
 over the 17-byte `DeModFrame` quantum, serialised into a short burst of ordinary
 `DATA` (type 0) frames. The framing is **content-agnostic and byte-deterministic
 across C, Rust, Python, and Go**, pinned by a finite certificate exactly like the

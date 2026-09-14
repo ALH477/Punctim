@@ -271,7 +271,7 @@ lossless pipes. It leaves the high-throughput data plane, the
 original control messages, and the DeModFrame invariant untouched.
 The encoding is byte-aligned, fixed-slot, and golden-vector friendly
 so that it can be implemented and certified with the same discipline
-already applied to the rest of HydraMesh.
+already applied to the rest of Punctim.
 
 ---
 

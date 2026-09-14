@@ -1,6 +1,6 @@
 # DCF wire exposure: the plaintext mesh and how to deploy it safely
 
-DCF / HydraMesh is **encryption-free by design**. The core wire — the 17-byte
+DCF / Punctim is **encryption-free by design**. The core wire — the 17-byte
 `DeModFrame` and the `ProtoMessage` UDP envelope that carries it — contains no
 confidentiality, integrity-against-tampering, or authentication mechanism. This is a
 deliberate, load-bearing decision for EAR/ITAR export compliance

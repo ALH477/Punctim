@@ -12,7 +12,7 @@ sd_hide_title: true
   <div class="dcf-cta">
     <a class="dcf-btn" href="WIRE_QUANTUM_SPEC.html">Read the wire spec →</a>
     <a class="dcf-btn ghost" href="_include/agent-to-agent.html">Agents over the mesh</a>
-    <a class="dcf-btn ghost" href="https://github.com/ALH477/HydraMesh">GitHub</a>
+    <a class="dcf-btn ghost" href="https://github.com/ALH477/Punctim">GitHub</a>
   </div>
   <pre class="dcf-frame">sync(0xD3) │ flags[ver│type] │ seq │ src │ dst │ payload(4B) │ ts24 │ crc16</pre>
 </div>

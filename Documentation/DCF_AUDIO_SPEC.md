@@ -4,7 +4,7 @@
 [`WIRE_QUANTUM_SPEC.md`](WIRE_QUANTUM_SPEC.md).
 
 DCF-Audio carries real-time, collaborative audio (jamming, talkback) over the
-HydraMesh mesh. It introduces **no new wire format**: a 20 ms codec block is an
+Punctim mesh. It introduces **no new wire format**: a 20 ms codec block is an
 **adapter** over the 17-byte `DeModFrame` quantum, serialised into a short burst of
 ordinary `CTRL` (type 3) frames. The framing is **codec-agnostic and
 byte-deterministic across C, Rust, and Python**, and is pinned by a finite

@@ -1,4 +1,4 @@
-# HydraPack — Universal Serialization for HydraMesh
+# HydraPack — Universal Serialization for Punctim
 
 **Version 0.1** · DeMoD LLC · LGPL-3.0 · This document is normative.
 **Companion documents:**
@@ -8,7 +8,7 @@
 - [`SUPERPACK_SPEC.md`](SUPERPACK_SPEC.md) (paired-frame container)
 
 > **Scope.** HydraPack is the single serialization layer that sits above both
-> of HydraMesh's data planes. It produces either a sequence of 4-byte quanta
+> of Punctim's data planes. It produces either a sequence of 4-byte quanta
 > (for the wire quantum / adapter path) or a contiguous byte buffer (for the
 > DCF-Pipe data plane). The choice is driven by size and schema policy.
 > HydraPack never invents a new wire format; it only decides *how* application
@@ -349,7 +349,7 @@ gcc -std=c11 -I codec C_SDK/tests/test_hydrapack_certify.c -o /tmp/hp && /tmp/hp
 
 HydraPack is the single point at which an abstract value becomes
 either a short burst of 4-byte quanta or a bulk byte stream.
-Everything below it is already defined by the existing HydraMesh
+Everything below it is already defined by the existing Punctim
 specifications.
 
 ---

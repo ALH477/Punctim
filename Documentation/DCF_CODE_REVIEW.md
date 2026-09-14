@@ -1,6 +1,6 @@
-# DCF / HydraMesh code review
+# DCF / Punctim code review
 
-**DeMoD LLC · C SDK v5.2.0 + HydraMesh v2.2.0 (incl. StreamDB C lib)**
+**DeMoD LLC · C SDK v5.2.0 + Punctim v2.2.0 (incl. StreamDB C lib)**
 Frank engineering review with root-cause diagnosis, plus shipped fixes. Items
 marked *(verified)* were reproduced and checked in-container — SBCL for the Lisp,
 a GF(2)/codec harness for the wire layer. Apply notes are in §Apply.
@@ -46,7 +46,7 @@ review. Below, severity-ordered.
 
 > **Status (v0.3.0): all CRITICAL items below are RESOLVED.** C1–C6 are applied in
 > source (the C SDK builds and the wire cert passes); C7–C9 were folded from
-> `lisp/hydramesh-hotfix.lisp` into `lisp/src/hydramesh.lisp` with a load-time
+> `lisp/punctim-hotfix.lisp` into `lisp/src/punctim.lisp` with a load-time
 > self-cert and the `certify-lisp` CI job. Descriptions are retained for history;
 > see `CHANGELOG.md` and `Documentation/DCF_BACKLOG.md`.
 
@@ -118,7 +118,7 @@ need a real delimiter. Do **not** ship the placeholder COBS.
 **C7. Lisp `crc16-ccitt` returns `#xFFFF` for all input *(verified)*.** An inner
 `let*` shadows the running `crc`; every iteration's work is discarded. The wire
 integrity check was vacuous and every Haskell/Python/Rust frame was rejected.
-*Fix:* `hydramesh-hotfix.lisp` F1. SBCL run: broken → `#xFFFF`; fixed → `0x29B1`
+*Fix:* `punctim-hotfix.lisp` F1. SBCL run: broken → `#xFFFF`; fixed → `0x29B1`
 for "123456789" and `0xA963` for the exampleFrame body. The hotfix asserts both
 anchors at load and refuses to load if the codec is wrong. See
 `wire_quanta_category.md` §7 for why this is, precisely, a broken validity
@@ -219,7 +219,7 @@ POSIX; Windows has `_stricmp`/`_isatty`. *Fix:* a small platform shim.
 
 ## LOW / DX — the things that waste a new user's first hour
 
-**D1. Documentation drift.** The HydraMesh README advertises a TUI, middleware,
+**D1. Documentation drift.** The Punctim README advertises a TUI, middleware,
 and Dijkstra routing not present in v2.2.0; the C compilation guide cites a line
 count and features the built library doesn't expose. Trim the docs to what ships,
 or mark the rest "planned."
@@ -290,7 +290,7 @@ top-level `LICENSE` exists, `CPACK_RESOURCE_FILE_LICENSE` points at it
 and `lisp/flake.nix`) plus all language manifests now declare `LGPL-3.0-only`. The
 GPL-3.0 notice stays scoped to the DOOM example only.
 
-**Remove the slur in the HydraMesh acknowledgments. (RESOLVED)** A line in the
+**Remove the slur in the Punctim acknowledgments. (RESOLVED)** A line in the
 `lisp/README.md` acknowledgments section contained a slur with outsized
 reputational stakes — it could not ship in a repo you license, demo, or hand to a
 donee. The offending line has been removed.
@@ -299,13 +299,13 @@ donee. The offending line has been removed.
 
 ## Apply
 
-1. **Lisp — edit source first, then load the hotfix.** In `src/hydramesh.lisp`
+1. **Lisp — edit source first, then load the hotfix.** In `src/punctim.lisp`
    remove `:cl-json-schema` from both the `ql:quickload` list and the
    `defpackage :d-lisp (:use …)` form (it's not in the Quicklisp dist; the bare
    `quickload` aborts the load before anything could patch it). Then:
    ```lisp
-   (load "src/hydramesh.lisp")
-   (load "hydramesh-hotfix.lisp")   ; prints "wire codec :CERTIFIED" on success
+   (load "src/punctim.lisp")
+   (load "punctim-hotfix.lisp")   ; prints "wire codec :CERTIFIED" on success
    ```
    The hotfix late-binds every fix through the function cell, so already-compiled
    callers pick them up. Fold the bodies back into source for permanence.
@@ -347,7 +347,7 @@ donee. The offending line has been removed.
 |---|---|
 | `DCF_CODE_REVIEW.md` | this document |
 | `c_sdk_fixes.patch` | C SDK fixes (C1–C6, H1, M1–M3, C5; verified `dcf_interface.h` hunk) |
-| `hydramesh-hotfix.lisp` | Lisp fixes F1–F9, self-certifying; SBCL-verified |
+| `punctim-hotfix.lisp` | Lisp fixes F1–F9, self-certifying; SBCL-verified |
 | `wire_quanta_category.md` | the cemented-wire-quantum formalization (Thms 1–4) |
 | `wirelab_core.py` | reference codec |
 | `verify_laws.py` | executable laws; regenerates the certificate |

@@ -4,7 +4,7 @@
 [`DCF_AUDIO_SPEC.md`](DCF_AUDIO_SPEC.md) and [`DCF_CONTROL_SPEC.md`](DCF_CONTROL_SPEC.md).
 
 DCF-Telemetry carries the **engine → GUI readback** (per-slot meters, transport state,
-optional scope) over HydraMesh, so the DeMoD GUI can drive a split engine (VM / wired
+optional scope) over Punctim, so the DeMoD GUI can drive a split engine (VM / wired
 offloader). It is an **adapter** over the 17-byte `DeModFrame`, reusing DCF-Audio's L2
 framing exactly: one telemetry block per engine tick → a burst of `CTRL` frames. It carries
 the same data demod-rt publishes locally in `/dev/shm/demod-rt-meters` (`DemodRtMeters`).

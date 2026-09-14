@@ -10,7 +10,7 @@ rhetoric to a checkable universal property with a finite certificate.
 All claims here are machine-anchored. The constants `0x29B1`, `0x4EC3`, `0xA963`
 and the frame `D31012340001FFFFDEADBEEFAB12CDA963` are produced by
 `verify_laws.py` and re-checked by `wirelab_mcp.py --selftest`, the SBCL run in
-`hydramesh-hotfix.lisp`, and the Lua self-test in `wirelab.lua`. Notation is
+`punctim-hotfix.lisp`, and the Lua self-test in `wirelab.lua`. Notation is
 plain Unicode; ⊕ is GF(2) addition (XOR), B = GF(2), Bⁿ the n-bit words.
 
 ---
@@ -33,7 +33,7 @@ This document is dual in spirit and disjoint in content. It treats a frame as an
   as the **unique mediating isomorphism**. *This is the definition of "cemented."*
 - §6: the **finite certificate** — affineness over GF(2) collapses
   "agree on all 2¹⁰⁸ frames" to "agree on 109 + 137 vectors."
-- §7: a worked failure — the shipped HydraMesh CRC bug as a *broken equalizer*,
+- §7: a worked failure — the shipped Punctim CRC bug as a *broken equalizer*,
   SBCL-verified before and after.
 - §8: where the two documents meet (commuting functors; RTT as enrichment).
 
@@ -293,9 +293,9 @@ vectors to certify that SDK.
 
 ---
 
-## §7. Worked failure: the HydraMesh CRC as a broken equalizer
+## §7. Worked failure: the Punctim CRC as a broken equalizer
 
-The shipped `crc16-ccitt` in `lisp/src/hydramesh.lisp` had an inner `let*` that
+The shipped `crc16-ccitt` in `lisp/src/punctim.lisp` had an inner `let*` that
 shadowed the running `crc`, so every iteration's update was discarded and the
 function **returned `#xFFFF` for all input**. This is not just "a bug"; in the
 language of §2 it is a *collapse of the syndrome map*.
@@ -324,7 +324,7 @@ coupling and instead demands a fixed CRC literal. So:
 > **Verification (SBCL, in-container).**
 > broken('123456789') = `#xFFFF` (expected `0x29B1`) — bug reproduced.
 > fixed ('123456789') = `0x29B1`; fixed(exampleFrame body) = `0xA963` — cone
-> restored. The fix is in `hydramesh-hotfix.lisp` (F1), which then asserts both
+> restored. The fix is in `punctim-hotfix.lisp` (F1), which then asserts both
 > anchors at load time and refuses to load if the codec is not a cone.
 
 This is the formalism earning its keep: "the Lisp SDK fails to preserve the
@@ -362,7 +362,7 @@ SDK builds the same one*.
 | `golden_vectors.json` | the 109 + 137 finite certificate of §6 (Theorem 4 proof object) |
 | `wirelab_mcp.py` | MCP server: `crc16_ccitt`, `encode_frame`, `decode_frame`, `field_map`, `bitflip_audit`, `certify`, `golden_vectors` |
 | `wirelab.lua` | DeMoD UI front panel; self-certifies the pure-Lua codec against the anchors on launch |
-| `hydramesh-hotfix.lisp` | restores the Lisp codec to a cone (§7) and asserts the anchors |
+| `punctim-hotfix.lisp` | restores the Lisp codec to a cone (§7) and asserts the anchors |
 
 **To certify a new or modified SDK (the §5 cone test, reduced to §6):**
 1. Have the SDK emit, in golden order, its 109 encoded basis frames and 137
@@ -372,4 +372,4 @@ SDK builds the same one*.
    frames and all 2¹³⁶ words ⇒ by Theorem 3 it is a faithful cone, canonically
    isomorphic to every other faithful SDK. That is the certificate of *cemented*.
 Any mismatch points at the exact basis vector — i.e. the exact bit — that drifted,
-the way the `0x29B1` anchor instantly localized the HydraMesh shadowing bug.
+the way the `0x29B1` anchor instantly localized the Punctim shadowing bug.

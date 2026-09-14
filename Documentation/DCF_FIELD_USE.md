@@ -1,6 +1,6 @@
 # DCF Field Testing & Intended Use
 
-How DCF / HydraMesh is meant to be deployed off-grid — over cheap handheld radios and
+How DCF / Punctim is meant to be deployed off-grid — over cheap handheld radios and
 heterogeneous mesh links — and how to field-test it rigorously before you trust it.
 
 > **What DCF is NOT.** DCF is an experimental, **plaintext**, encryption-free research

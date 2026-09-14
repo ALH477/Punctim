@@ -5,7 +5,7 @@
 [`DCF_AUDIO_SPEC.md`](DCF_AUDIO_SPEC.md).
 
 DCF-Game carries real-time multiplayer game traffic — player-state snapshots,
-input frames, and discrete events — over the HydraMesh mesh. It introduces **no
+input frames, and discrete events — over the Punctim mesh. It introduces **no
 new wire format**: one game message is an **adapter** over the 17-byte
 `DeModFrame` quantum, serialised into a short burst of ordinary `DATA` (type 0)
 frames. The framing is **message-type-agnostic and byte-deterministic across C,

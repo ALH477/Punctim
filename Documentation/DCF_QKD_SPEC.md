@@ -17,7 +17,7 @@
 > *key material never reaches a `DeModFrame`* — is normative, not advisory.
 
 DCF-QKD carries the **`key_ID`** of an ETSI GS QKD 014 key-delivery exchange across
-the HydraMesh mesh. It introduces **no new wire format**: one `key_ID` is an
+the Punctim mesh. It introduces **no new wire format**: one `key_ID` is an
 **adapter** over the 17-byte `DeModFrame` quantum, serialised into exactly four
 ordinary `CTRL` (type 3) frames. The framing is **content-agnostic and
 byte-deterministic across C, Rust, and Python**, pinned by a finite certificate
@@ -38,7 +38,7 @@ key_ID = UUID = 128 bits = 16 bytes = exactly 4 × 4-byte DeModFrame payloads
 ```
 
 Conform everywhere the standard *is* specified; extend only at the layer it leaves
-open. A parallel key-delivery scheme would make HydraMesh the one node that nothing
+open. A parallel key-delivery scheme would make Punctim the one node that nothing
 else can talk to.
 
 | Layer | Spec | This repo |
@@ -361,7 +361,7 @@ the UDP socket; never add encryption to the codec. See
 
 ## Appendix A — self-classification memo (fill-in)
 
-> **Item:** HydraMesh DCF-QKD key-ID beacon adapter and ETSI GS QKD 014 bridge
+> **Item:** Punctim DCF-QKD key-ID beacon adapter and ETSI GS QKD 014 bridge
 > (`python/dcf/qkd/`, `codec/demod_qkd.h`, `codec/src/qkd.rs`,
 > `python/MCP/qkdlab_core.py`), version ____.
 >

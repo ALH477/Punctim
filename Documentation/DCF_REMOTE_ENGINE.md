@@ -1,4 +1,4 @@
-# DCF Remote Engine — splitting the DeMoD audio stack over HydraMesh
+# DCF Remote Engine — splitting the DeMoD audio stack over Punctim
 
 **Draft** · DeMoD LLC · Informative overview. Normative detail lives in
 [`DCF_CONTROL_SPEC.md`](DCF_CONTROL_SPEC.md) (GUI → engine) and
@@ -8,7 +8,7 @@
 
 Run the deterministic DeMoD audio stack **split across a link**: the real-time engine
 (orchestrator + demod-rt) on a **VM or a tightly-wired offloader**, and the GUI (demod-ui)
-on the workstation. HydraMesh is the transport. The engine goes on isolated/dedicated
+on the workstation. Punctim is the transport. The engine goes on isolated/dedicated
 hardware; the GUI stays on the host.
 
 ## Why it is small
@@ -17,7 +17,7 @@ demod-ui never touches the engine directly. Locally it talks over:
 - a **Unix control socket** (`$DEMOD_CONTROL_SOCK`, JSON-lines ops) — GUI → engine, and
 - **shared memory** (`/dev/shm/demod-rt-meters`, `/dev/shm/demod-params`) — engine → GUI.
 
-Both become HydraMesh adapters. The engine (orchestrator + demod-rt) is **not modified**.
+Both become Punctim adapters. The engine (orchestrator + demod-rt) is **not modified**.
 
 ```
         HOST (workstation)                    ENGINE (VM / wired offloader)
@@ -87,7 +87,7 @@ lowest-latency option and the default.
 
 ## Security
 
-The HydraMesh wire is **encryption-free by design** (`DCF_SECURITY_EXPOSURE.md`), and control
+The Punctim wire is **encryption-free by design** (`DCF_SECURITY_EXPOSURE.md`), and control
 ops are forgeable. So: plaintext on a **trusted** VM/wired link; **WireGuard beneath** the
 UDP on an untrusted one; optional **Ed25519 pairing-auth above the wire** (reusing the DeMoD
 `dm.crypto`) so the bridge only accepts ops from an authenticated GUI. Never add crypto to
@@ -105,10 +105,10 @@ the L1 codec.
 
 ## Where it lives
 
-- **HydraMesh**: these three docs + the DCF-Control / DCF-Telemetry reference codecs
+- **Punctim**: these three docs + the DCF-Control / DCF-Telemetry reference codecs
   (`codec/*.h`, `lua/*`) + golden vectors.
 - **DeMoD monorepo**: `demod-remote-bridge` (engine), `dm.dcf` (framework), `remote.lua` +
-  `select.lua` case (app), and the flake targets. Consumes HydraMesh as a pinned input.
+  `select.lua` case (app), and the flake targets. Consumes Punctim as a pinned input.
 
 ## Certification
 

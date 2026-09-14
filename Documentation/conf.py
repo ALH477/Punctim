@@ -46,7 +46,7 @@ for _rel, _dest in [
 # ── HTML / theme ──────────────────────────────────────────────────────────────
 html_theme = "furo"
 html_title = "DeMoD Communication Framework"
-html_baseurl = "https://alh477.github.io/HydraMesh/"
+html_baseurl = "https://alh477.github.io/Punctim/"
 html_show_sphinx = False
 pygments_style = "friendly"
 pygments_dark_style = "dracula"
@@ -54,7 +54,7 @@ pygments_dark_style = "dracula"
 html_theme_options = {
     "sidebar_hide_name": False,
     "navigation_with_keys": True,
-    "source_repository": "https://github.com/ALH477/HydraMesh",
+    "source_repository": "https://github.com/ALH477/Punctim",
     "source_branch": "main",
     "source_directory": "Documentation/",
     # Signal-cyan brand over deep-indigo ink — see _static/custom.css for the

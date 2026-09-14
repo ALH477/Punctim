@@ -1,7 +1,7 @@
 # DCF-Pipe: lossless bulk-data transfer over the wire
 
 **0.x — pre-release, reference implementation below**
-**Developed by DeMoD LLC** · **License:** LGPL-3.0 (library), consistent with the HydraMesh core.
+**Developed by DeMoD LLC** · **License:** LGPL-3.0 (library), consistent with the Punctim core.
 
 > **Scope.** DCF-Pipe adds the one thing the DCF adapter family lacked: a
 > **high-throughput, lossless bulk transfer**. It uses the 17-byte wire quantum as a
