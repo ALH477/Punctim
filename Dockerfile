@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 # ============================================================================
-# HydraMesh / DCF — umbrella certification image
+# Punctim / DCF — umbrella certification image
 # ============================================================================
-# There is no single "HydraMesh app". The one invariant is the 17-byte
+# There is no single "Punctim app". The one invariant is the 17-byte
 # DeModFrame wire quantum and its cross-language certificate; everything else
 # is an adapter over it. So this image ships the PROOF, not a server: it builds
 # the reference toolchains (Python + Rust + C + Go) and runs the certification
@@ -10,9 +10,9 @@
 # selftest, regenerated-vs-committed audio vectors, Rust wire+audio certs, C
 # wire+audio certs) plus the Go SDK cert (wire + game/audio/text + UDP node).
 #
-#   docker build -t alh477/hydramesh:latest .
-#   docker run --rm alh477/hydramesh:latest          # re-runs the full cert
-#   docker run --rm alh477/hydramesh:latest test     # per-language tests
+#   docker build -t alh477/punctim:latest .
+#   docker run --rm alh477/punctim:latest          # re-runs the full cert
+#   docker run --rm alh477/punctim:latest test     # per-language tests
 # ----------------------------------------------------------------------------
 FROM rust:1.83-bookworm AS cert
 

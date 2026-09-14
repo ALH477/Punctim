@@ -1,6 +1,6 @@
 # alh477/dcf-rs — DCF mesh node (Rust)
 
-The **DCF / HydraMesh** Rust SDK node (`dcf`), the reference UDP node. It carries the
+The **DCF / Punctim** Rust SDK node (`dcf`), the reference UDP node. It carries the
 certified 17-byte **DeModFrame** over a binary **ProtoMessage / UDP** envelope and
 **meshes with `alh477/dcf-go` and `alh477/dcf-c`**. A gRPC management port is also exposed.
 
@@ -25,4 +25,4 @@ docker run --rm alh477/dcf-rs benchmark     --peer-id p --count 100
 - **Adapters:** DCF-Game and DCF-Audio (L2), certified against the shared golden vectors.
 
 Tags: `latest`, `0.3.0`. Ports: `7777/udp`, `50051/tcp`. License: **LGPL-3.0-only**.
-Source & full docs: https://github.com/ALH477/HydraMesh
+Source & full docs: https://github.com/ALH477/Punctim

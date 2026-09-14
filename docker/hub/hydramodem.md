@@ -1,6 +1,6 @@
 # alh477/hydramodem — HydraModem acoustic modem toolbox
 
-**HydraModem** carries the certified 17-byte **DeModFrame** of the DCF / HydraMesh protocol
+**HydraModem** carries the certified 17-byte **DeModFrame** of the DCF / Punctim protocol
 over **sound** (a WAV/file or line/acoustic medium) — continuous-phase **M-FSK** with
 preamble/sync acquisition, symbol-timing recovery (±3000 ppm), and soft-Viterbi convolutional
 FEC. It is a *transport beneath the wire quantum*: the frame rides opaquely, so the 246-vector
@@ -42,8 +42,8 @@ docker run --rm -v "$PWD:/m" alh477/hydramodem frame_rx /m/f.wav
 - **FDMA** channels via `--base-freq`/`--tone-spacing`; multiple nodes share one line.
 - Powers **DCF-Sense** (wired sensor telemetry, e.g. greenhouses) — see the spec.
 
-Specs: [`HydraModem`](https://github.com/ALH477/HydraMesh/blob/main/hydramodem/README.md) ·
-[`DCF_SENSE_SPEC.md`](https://github.com/ALH477/HydraMesh/blob/main/Documentation/DCF_SENSE_SPEC.md).
+Specs: [`HydraModem`](https://github.com/ALH477/Punctim/blob/main/hydramodem/README.md) ·
+[`DCF_SENSE_SPEC.md`](https://github.com/ALH477/Punctim/blob/main/Documentation/DCF_SENSE_SPEC.md).
 
 Tags: `latest`, `0.3.0` (image); HydraModem component v1.0.0. License: **LGPL-3.0-only**.
-Source & full docs: https://github.com/ALH477/HydraMesh
+Source & full docs: https://github.com/ALH477/Punctim

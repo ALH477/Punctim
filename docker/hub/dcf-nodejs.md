@@ -1,6 +1,6 @@
 # alh477/dcf-nodejs — DCF mesh node (Node.js)
 
-The **DCF / HydraMesh** Node.js mesh node — a dependency-free stdlib `dgram` UDP node. It
+The **DCF / Punctim** Node.js mesh node — a dependency-free stdlib `dgram` UDP node. It
 carries the certified 17-byte **DeModFrame** as **bare frames batched into 32-byte
 SuperPacks**, the same dialect as the Python node, so it **meshes with `alh477/dcf-python`**
 (verified both directions).
@@ -26,4 +26,4 @@ docker run --rm alh477/dcf-nodejs version
 - **Adapter:** a faithful JS port of the certified DCF-Text L2 framing + SuperPack.
 
 Tags: `latest`, `0.3.0`. Ports: `7801/udp`. License: **LGPL-3.0-only**.
-Source & full docs: https://github.com/ALH477/HydraMesh
+Source & full docs: https://github.com/ALH477/Punctim

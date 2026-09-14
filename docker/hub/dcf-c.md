@@ -1,6 +1,6 @@
 # alh477/dcf-c — DCF mesh node (C) + Faust-DSP modem
 
-The **DCF / HydraMesh** C SDK node (`dcfnode`). Two transports for the certified 17-byte
+The **DCF / Punctim** C SDK node (`dcfnode`). Two transports for the certified 17-byte
 **DeModFrame**:
 
 1. **ProtoMessage / UDP** — byte-identical to the Go/Rust nodes, so it **meshes with
@@ -28,7 +28,7 @@ docker run --rm -v ch:/m alh477/dcf-c recv-modem --medium /m/x.dcfm
 
 - **Quantum:** 17-byte `DeModFrame` — certified, shared across SDKs.
 - **Transports:** ProtoMessage/UDP (mesh with Go/Rust); Faust modem (FSK/OOK/PSK/QAM).
-- Spec: [`DCF_MODEM_SPEC.md`](https://github.com/ALH477/HydraMesh/blob/main/Documentation/DCF_MODEM_SPEC.md).
+- Spec: [`DCF_MODEM_SPEC.md`](https://github.com/ALH477/Punctim/blob/main/Documentation/DCF_MODEM_SPEC.md).
 
 Tags: `latest`, `0.3.0`. Ports: `7777/udp`. License: **LGPL-3.0-only**.
-Source & full docs: https://github.com/ALH477/HydraMesh
+Source & full docs: https://github.com/ALH477/Punctim

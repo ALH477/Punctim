@@ -1,6 +1,6 @@
 # alh477/dcf-python — DCF mesh node (Python)
 
-The **DCF / HydraMesh** Python mesh endpoint (`a2a` over `DcfTextNode`). It carries the
+The **DCF / Punctim** Python mesh endpoint (`a2a` over `DcfTextNode`). It carries the
 certified 17-byte **DeModFrame** as **bare frames batched into 32-byte SuperPacks** over UDP,
 with a frequency-channel rendezvous on the frame `dst`. It **meshes with `alh477/dcf-nodejs`**
 (the same bare-frame + SuperPack dialect).
@@ -28,4 +28,4 @@ docker run --rm alh477/dcf-python send "hello" --channel duet --peers HOST:7801
 > (WireGuard/Tailscale) for confidentiality.
 
 Tags: `latest`, `0.3.0`. Ports: `7801/udp`. License: **LGPL-3.0-only**.
-Source & full docs: https://github.com/ALH477/HydraMesh
+Source & full docs: https://github.com/ALH477/Punctim

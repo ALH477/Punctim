@@ -1,7 +1,7 @@
 # alh477/dcf-go — DCF mesh node (Go)
 
-A real **DCF / HydraMesh** node built on the stdlib-only Go SDK
-([`go/`](https://github.com/ALH477/HydraMesh/tree/main/go)). It carries the certified
+A real **DCF / Punctim** node built on the stdlib-only Go SDK
+([`go/`](https://github.com/ALH477/Punctim/tree/main/go)). It carries the certified
 17-byte **DeModFrame** wire quantum over a binary **ProtoMessage / UDP** envelope, so it
 **meshes with `alh477/dcf-rs` and `alh477/dcf-c`**.
 
@@ -30,4 +30,4 @@ docker run --rm alh477/dcf-go version
 - **Adapters:** DCF-Game, DCF-Audio (L2), DCF-Text, all certified against the shared golden vectors.
 
 Tags: `latest`, `0.3.0`. Ports: `7777/udp`. License: **LGPL-3.0-only**.
-Source & full docs: https://github.com/ALH477/HydraMesh
+Source & full docs: https://github.com/ALH477/Punctim

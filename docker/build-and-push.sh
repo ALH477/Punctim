@@ -27,7 +27,7 @@
 #   hydramodem              — acoustic-modem toolbox (frame_tx/frame_rx, tx/rx_campaign,
 #                             dcf_loopback, sense_node). A WAV/file PHY, not a UDP node;
 #                             default cmd runs the interop self-test. See DCF_SENSE_SPEC.md.
-#   hydramesh               — Common Lisp SDK CLI (the `hydramesh` node + StreamDB).
+#   punctim               — Common Lisp SDK CLI (the `punctim` node + StreamDB).
 #                             Versioned 2.2.0 (its own scheme), not the default VERSION.
 #
 # Builds run at low priority with capped cores (nice + --cores) so they don't
@@ -65,7 +65,7 @@ case "$target" in
   dcf-cpp)    build_one dcf-cpp    docker-dcf-cpp ;;
   dcf-gns)    build_one dcf-gns    docker-dcf-gns ;;
   hydramodem) build_one hydramodem docker-hydramodem ;;
-  hydramesh)  build_one hydramesh  docker-hydramesh 2.2.0 ;;  # Lisp SDK; own version
+  punctim)  build_one punctim  docker-punctim 2.2.0 ;;  # Lisp SDK; own version
   all)
     build_one dcf-go     docker-dcf-go
     build_one dcf-rs     docker-dcf-rust
@@ -75,8 +75,8 @@ case "$target" in
     build_one dcf-cpp    docker-dcf-cpp
     build_one dcf-gns    docker-dcf-gns
     build_one hydramodem docker-hydramodem
-    build_one hydramesh  docker-hydramesh 2.2.0
+    build_one punctim  docker-punctim 2.2.0
     ;;
-  *) echo "unknown target: $target (dcf-go|dcf-rs|dcf-python|dcf-nodejs|dcf-c|dcf-cpp|dcf-gns|hydramodem|hydramesh|all)"; exit 2 ;;
+  *) echo "unknown target: $target (dcf-go|dcf-rs|dcf-python|dcf-nodejs|dcf-c|dcf-cpp|dcf-gns|hydramodem|punctim|all)"; exit 2 ;;
 esac
 echo "DONE"

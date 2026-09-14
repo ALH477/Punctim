@@ -1,6 +1,6 @@
 # alh477/dcf-cpp — DCF gRPC node (C++)
 
-The **DCF / HydraMesh** C++ node (`dcfcpp`): a "supercharged" **gRPC** transport for the
+The **DCF / Punctim** C++ node (`dcfcpp`): a "supercharged" **gRPC** transport for the
 certified 17-byte **DeModFrame** and 32-byte **SuperPack**. The headline is a
 **bidirectional `MeshStream`** — two nodes exchange frames, SuperPacks, and PING/PONG in
 both directions — plus unary `SendFrame`, server-streaming `Subscribe`, and gRPC **health +
@@ -30,4 +30,4 @@ docker run --rm alh477/dcf-cpp version
   / game/audio/text adapter frames).
 
 Tags: `latest`, `0.3.0`. Ports: `50051/tcp`. License: **LGPL-3.0-only**.
-Source & full docs: https://github.com/ALH477/HydraMesh
+Source & full docs: https://github.com/ALH477/Punctim

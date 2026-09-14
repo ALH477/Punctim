@@ -396,7 +396,7 @@
               Cmd = [ "--bind" "0.0.0.0:7100" "--http" "0.0.0.0:8000"
                       "--archive" "/var/dcf-radio" "--dvr" "6h" ];
               ExposedPorts = { "7100/udp" = { }; "8000/tcp" = { }; };
-              Labels = { "org.opencontainers.image.source" = "https://github.com/ALH477/HydraMesh"; };
+              Labels = { "org.opencontainers.image.source" = "https://github.com/ALH477/Punctim"; };
             };
           };
 
@@ -408,7 +408,7 @@
               Entrypoint = [ "${dcf-go}/bin/dcfnode" ];
               Cmd = [ "start" ];
               ExposedPorts = { "7777/udp" = { }; };
-              Labels = { "org.opencontainers.image.source" = "https://github.com/ALH477/HydraMesh"; };
+              Labels = { "org.opencontainers.image.source" = "https://github.com/ALH477/Punctim"; };
             };
           };
 
@@ -420,7 +420,7 @@
               Entrypoint = [ "${dcf-rust}/bin/dcf" ];
               Cmd = [ "start" ];
               ExposedPorts = { "7777/udp" = { }; "50051/tcp" = { }; };
-              Labels = { "org.opencontainers.image.source" = "https://github.com/ALH477/HydraMesh"; };
+              Labels = { "org.opencontainers.image.source" = "https://github.com/ALH477/Punctim"; };
             };
           };
 
@@ -440,7 +440,7 @@
               Entrypoint = [ "${dcf-python-node}/bin/dcf-node" ];
               Cmd = [ "recv" "--follow" ];
               ExposedPorts = { "7801/udp" = { }; };
-              Labels = { "org.opencontainers.image.source" = "https://github.com/ALH477/HydraMesh"; };
+              Labels = { "org.opencontainers.image.source" = "https://github.com/ALH477/Punctim"; };
             };
           };
 
@@ -454,7 +454,7 @@
               Entrypoint = [ "${dcf-c}/bin/dcfnode" ];
               Cmd = [ "start" ];
               ExposedPorts = { "7777/udp" = { }; };
-              Labels = { "org.opencontainers.image.source" = "https://github.com/ALH477/HydraMesh"; };
+              Labels = { "org.opencontainers.image.source" = "https://github.com/ALH477/Punctim"; };
             };
           };
 
@@ -467,7 +467,7 @@
               Entrypoint = [ "${dcf-cpp}/bin/dcfcpp" ];
               Cmd = [ "serve" ];
               ExposedPorts = { "50051/tcp" = { }; };
-              Labels = { "org.opencontainers.image.source" = "https://github.com/ALH477/HydraMesh"; };
+              Labels = { "org.opencontainers.image.source" = "https://github.com/ALH477/Punctim"; };
             };
           };
 
@@ -483,7 +483,7 @@
               Entrypoint = [ "${dcf-cpp-gns}/bin/dcfcpp" ];
               Cmd = [ "serve-gns" "--port" "27015" ];
               ExposedPorts = { "27015/udp" = { }; };
-              Labels = { "org.opencontainers.image.source" = "https://github.com/ALH477/HydraMesh"; };
+              Labels = { "org.opencontainers.image.source" = "https://github.com/ALH477/Punctim"; };
             };
           };
 
@@ -502,7 +502,7 @@
               Entrypoint = [ "${dcf-nodejs-node}/bin/dcf-node-js" ];
               Cmd = [ "recv" "--follow" ];
               ExposedPorts = { "7801/udp" = { }; };
-              Labels = { "org.opencontainers.image.source" = "https://github.com/ALH477/HydraMesh"; };
+              Labels = { "org.opencontainers.image.source" = "https://github.com/ALH477/Punctim"; };
             };
           };
 
@@ -518,7 +518,7 @@
             config = {
               Env = [ "PATH=${hydramodem-tools}/bin:${pkgs.coreutils}/bin:${pkgs.bashInteractive}/bin" ];
               Cmd = [ "dcf_loopback" ];
-              Labels = { "org.opencontainers.image.source" = "https://github.com/ALH477/HydraMesh"; };
+              Labels = { "org.opencontainers.image.source" = "https://github.com/ALH477/Punctim"; };
             };
           };
 
@@ -553,7 +553,7 @@
               Entrypoint = [ "${agentCLI}/bin/dcf-agent" ];
               Cmd = [ "serve" "--host" "0.0.0.0" "--port" "8000" ];
               ExposedPorts = { "8000/tcp" = {}; };
-              Labels = { "org.opencontainers.image.source" = "https://github.com/ALH477/HydraMesh"; };
+              Labels = { "org.opencontainers.image.source" = "https://github.com/ALH477/Punctim"; };
             };
           };
 
@@ -609,7 +609,7 @@
             doCheck = true;
             checkPhase = "make -C hydramodem check";
             installPhase = "make -C hydramodem PREFIX=$out install";
-            meta.description = "HydraModem — acoustic M-FSK modem for the 17-byte HydraMesh/DCF frame";
+            meta.description = "HydraModem — acoustic M-FSK modem for the 17-byte Punctim/DCF frame";
             meta.license = pkgs.lib.licenses.lgpl3Only;
           };
 
@@ -732,14 +732,14 @@
         };
 
         # Runnable entry points for the agent-to-agent mesh feature.
-        #   nix run github:ALH477/HydraMesh#a2a         guided setup + run
-        #   nix run github:ALH477/HydraMesh#a2a-demo    stdlib loopback smoke test
-        #   nix run github:ALH477/HydraMesh#a2a-config  generate an MCP config for any agent client
-        #   nix run github:ALH477/HydraMesh#a2a-send    send a message onto the mesh (no MCP)
-        #   nix run github:ALH477/HydraMesh#a2a-recv    receive mesh text (no MCP)
-        #   nix run github:ALH477/HydraMesh#mesh-agent  the DeModFrame MCP endpoint (stdio)
-        #   nix run github:ALH477/HydraMesh#mesh-http   shared HTTP mesh service (mesh_mcp.py http)
-        #   nix run github:ALH477/HydraMesh#mesh-viz    live web dashboard of mesh agents
+        #   nix run github:ALH477/Punctim#a2a         guided setup + run
+        #   nix run github:ALH477/Punctim#a2a-demo    stdlib loopback smoke test
+        #   nix run github:ALH477/Punctim#a2a-config  generate an MCP config for any agent client
+        #   nix run github:ALH477/Punctim#a2a-send    send a message onto the mesh (no MCP)
+        #   nix run github:ALH477/Punctim#a2a-recv    receive mesh text (no MCP)
+        #   nix run github:ALH477/Punctim#mesh-agent  the DeModFrame MCP endpoint (stdio)
+        #   nix run github:ALH477/Punctim#mesh-http   shared HTTP mesh service (mesh_mcp.py http)
+        #   nix run github:ALH477/Punctim#mesh-viz    live web dashboard of mesh agents
         apps =
           let
             # The matrix-bridge/*.py scripts self-locate their imports (they add
@@ -870,7 +870,7 @@
             meta.description = "Lisp SDK dev shell";
           };
 
-          # HydraMesh communications client (Tauri 2: client/). Build/run with:
+          # Punctim communications client (Tauri 2: client/). Build/run with:
           #   nix develop .#comms
           #   cd client && npm install && cargo tauri dev
           comms = pkgs.mkShell {
@@ -888,9 +888,9 @@
               pkgs.alsa-lib pkgs.libopus
             ];
             shellHook = ''
-              echo "◈ HydraMesh comms client — cd client && npm install && cargo tauri dev"
+              echo "◈ Punctim comms client — cd client && npm install && cargo tauri dev"
             '';
-            meta.description = "HydraMesh Tauri comms client dev shell";
+            meta.description = "Punctim Tauri comms client dev shell";
           };
 
           # Browser WASM client (codec-wasm/ + web/) and the WS↔UDP bridge.
@@ -904,12 +904,12 @@
               pkgs.nodejs pkgs.pkg-config
             ];
             shellHook = ''
-              echo "◈ HydraMesh WASM shell"
+              echo "◈ Punctim WASM shell"
               echo "  cd web && npm install && npm run build   # single inlined index.html"
               echo "  npm --prefix web run certify             # cert WASM vs golden vectors"
               echo "  cargo run --manifest-path web/bridge/Cargo.toml -- --listen 127.0.0.1:7000"
             '';
-            meta.description = "HydraMesh browser WASM client + WS↔UDP bridge dev shell";
+            meta.description = "Punctim browser WASM client + WS↔UDP bridge dev shell";
           };
 
           # LangGraph agent system (langgraph_agents/). The CLI and TUI are
@@ -931,7 +931,7 @@
             ];
             shellHook = ''
               export PYTHONPATH="${self}/langgraph_agents''${PYTHONPATH:+:$PYTHONPATH}"
-              echo "◈ HydraMesh LangGraph agent shell"
+              echo "◈ Punctim LangGraph agent shell"
               echo "  dcf-agent backends                     # list LLM backends"
               echo "  dcf-agent chat --backend echo 'hi'     # one-shot chat"
               echo "  dcf-agent agents --config langgraph_agents/agents.jsonc"
@@ -940,7 +940,7 @@
               echo "  dcf-agent mcp                            # MCP server (stdio)"
               echo "  cd langgraph_agents && pytest -v        # run tests"
             '';
-            meta.description = "HydraMesh LangGraph agent CLI/TUI/API/MCP dev shell";
+            meta.description = "Punctim LangGraph agent CLI/TUI/API/MCP dev shell";
           };
         };
       }

@@ -20,7 +20,7 @@ NET="dcf-interop-$$"; MODEM_VOL="dcf-modem-$$"
 GO="$ORG/dcf-go:$TAG"; RS="$ORG/dcf-rs:$TAG"; PY="$ORG/dcf-python:$TAG"
 JS="$ORG/dcf-nodejs:$TAG"; C="$ORG/dcf-c:$TAG"; CPP="$ORG/dcf-cpp:$TAG"; HM="$ORG/hydramodem:$TAG"
 # The Lisp SDK image is versioned on its own scheme (2.2.0), not $TAG.
-HML="$ORG/hydramesh:${HYDRAMESH_TAG:-latest}"
+HML="$ORG/punctim:${PUNCTIM_TAG:-latest}"
 fails=0
 pass() { echo "  PASS  $*"; }
 fail() { echo "  FAIL  $*"; fails=$((fails + 1)); }
@@ -39,14 +39,14 @@ docker run --rm "$C"   version 2>&1 | grep -qi "DeModFrame"     && pass "dcf-c" 
 docker run --rm "$PY"  --help  2>&1 | grep -qiE "usage|recv"    && pass "dcf-python" || fail "dcf-python help"
 docker run --rm "$JS"  version 2>&1 | grep -qi "dcfnode(js)"    && pass "dcf-nodejs" || fail "dcf-nodejs version"
 docker run --rm "$CPP" version 2>&1 | grep -qi "gRPC node" && pass "dcf-cpp" || fail "dcf-cpp version"
-docker run --rm "$HML" version 2>&1 | grep -q "2.2.0"          && pass "hydramesh (Lisp)" || fail "hydramesh version"
+docker run --rm "$HML" version 2>&1 | grep -q "2.2.0"          && pass "punctim (Lisp)" || fail "punctim version"
 # Cross-cert: the Lisp node self-certifies the DeModFrame wire codec against the
 # same anchors as every other language (frame CRC 0xA963 roundtrip, etc.) — its
 # `test` suite must be green. Assert "no failures" rather than a hardcoded check
 # count: the count legitimately grows as the SDK gains tests (it went 16 -> 23
 # when the agent DSL landed), and pinning it turned suite *growth* into a red
 # interop run.
-docker run --rm "$HML" test 2>&1 | grep -qE "Fail: 0 \( *0%\)" && pass "hydramesh wire/adapter self-cert (green, agrees on DeModFrame)" || fail "hydramesh wire cert"
+docker run --rm "$HML" test 2>&1 | grep -qE "Fail: 0 \( *0%\)" && pass "punctim wire/adapter self-cert (green, agrees on DeModFrame)" || fail "punctim wire cert"
 
 echo "== 2. ProtoMessage/UDP mesh: dcf-go / dcf-rs / dcf-c =="
 docker run -d --name go-hub --network "$NET" "$GO" start --bind 0.0.0.0:7777 >/dev/null; sleep 1
@@ -94,7 +94,7 @@ echo
 if [ "$fails" -eq 0 ]; then
   echo "ALL INTEROP CHECKS PASSED — 6 DCF node images mesh across ProtoMessage/UDP (go/rust/c),"
   echo "bare-frame+SuperPack (python/nodejs), the Faust modem (c), and gRPC (cpp); plus the"
-  echo "hydramodem acoustic toolbox (frame round-trip over a shared volume) and the hydramesh"
+  echo "hydramodem acoustic toolbox (frame round-trip over a shared volume) and the punctim"
   echo "Lisp node (self-certifies the same DeModFrame wire codec, 16/16)."
 else
   echo "$fails INTEROP CHECK(S) FAILED"; exit 1

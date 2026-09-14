@@ -1,4 +1,4 @@
-# DCF / HydraMesh — bring the node backends up together.
+# DCF / Punctim — bring the node backends up together.
 # SPDX-License-Identifier: LGPL-3.0-only
 #
 #   docker compose -f docker/docker-compose.yml up            # the meshing nodes + hydramodem self-test
@@ -14,7 +14,7 @@
 #   gRPC bidi MeshStream    : dcf-cpp
 #   Steam/GNS hub           : dcf-gns
 #   acoustic WAV/file PHY   : hydramodem  (frame_tx/frame_rx/sense_node — not a UDP node)
-#   Common Lisp SDK         : hydramesh   (the `hydramesh` CLI + StreamDB; runs its self-test)
+#   Common Lisp SDK         : punctim   (the `punctim` CLI + StreamDB; runs its self-test)
 name: dcf
 
 networks:
@@ -68,11 +68,11 @@ services:
     restart: unless-stopped
 
   # ── Common Lisp SDK node ────────────────────────────────────────────────────
-  # The hermetic Lisp image (alh477/hydramesh). On `up` it runs the wire-codec +
+  # The hermetic Lisp image (alh477/punctim). On `up` it runs the wire-codec +
   # adapter FiveAM self-test (exit 0 iff every check passes) and exits; override
-  # the command with `start` + a mounted /etc/hydramesh/config.json to run a node.
-  hydramesh:
-    image: alh477/hydramesh:latest
+  # the command with `start` + a mounted /etc/punctim/config.json to run a node.
+  punctim:
+    image: alh477/punctim:latest
     command: ["test"]
     restart: "no"
 
