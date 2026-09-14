@@ -1,5 +1,5 @@
 <!-- SPDX-License-Identifier: LGPL-3.0-only -->
-# HydraMesh — browser WASM comms client
+# Punctim — browser WASM comms client
 
 The DCF protocol compiled to WebAssembly, driving the same redesigned comms UI as
 the desktop client (`client/src/App.vue`, shared via the `@ipc` alias), delivered

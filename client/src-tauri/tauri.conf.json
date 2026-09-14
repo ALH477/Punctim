@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "HydraMesh",
+  "productName": "Punctim",
   "version": "0.1.0",
   "identifier": "ltd.demod.hydramesh",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "HydraMesh — Comms",
+        "title": "Punctim — Comms",
         "width": 980,
         "height": 720,
         "minWidth": 640,

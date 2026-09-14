@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Core permissions for the HydraMesh comms client main window (events + window). All comms/audio/recording go through custom #[tauri::command]s, which need no extra permission.",
+  "description": "Core permissions for the Punctim comms client main window (events + window). All comms/audio/recording go through custom #[tauri::command]s, which need no extra permission.",
   "windows": ["main"],
   "permissions": ["core:default"]
 }

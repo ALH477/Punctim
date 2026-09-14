@@ -1,6 +1,6 @@
-# HydraMesh — communications client
+# Punctim — communications client
 
-A dedicated, cross-platform **comms client** for the HydraMesh / DCF mesh, built on the
+A dedicated, cross-platform **comms client** for the Punctim / DCF mesh, built on the
 repo's own Rust crates: `dcf-rust-sdk` (`rust/` — node, transport, peers, mesh) and the
 certified `dcf-wire-codec` (`codec/` — the 17-byte DeModFrame wire + DCF-Audio), with
 **cpal** for real-time audio. Tauri 2 (Rust core + a lean Vue 3 UI).

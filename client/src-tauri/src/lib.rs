@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 // Copyright (c) 2026 DeMoD LLC.
-//! HydraMesh communications client — Tauri core. Bridges the dcf-rust-sdk node
+//! Punctim communications client — Tauri core. Bridges the dcf-rust-sdk node
 //! (mesh/transport/peers), the certified dcf-wire-codec (wire + DCF-Audio), and cpal
 //! audio I/O to a web UI. Connect | Peers | Messages | Jam | Wire over the
 //! frequency-channel rendezvous.
@@ -353,5 +353,5 @@ pub fn run() {
             open_url
         ])
         .run(tauri::generate_context!())
-        .expect("error while running HydraMesh client");
+        .expect("error while running Punctim client");
 }

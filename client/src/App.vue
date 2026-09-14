@@ -1,11 +1,11 @@
 <!-- SPDX-License-Identifier: LGPL-3.0-only -->
 <!-- Copyright (c) 2026 DeMoD LLC. -->
 <!--
-  HydraMesh comms — redesigned shell. The thesis: the CHANNEL is the connection.
+  Punctim comms — redesigned shell. The thesis: the CHANNEL is the connection.
   The left spine makes "who can hear me right now" the always-true ambient fact —
   identity, the tuner, and a channel-grouped roster. The five views (Messages /
   Jam / Arena / Radio / Wire) ride the same handshakeless rendezvous. Visual
-  language + tokens are ported from the DeMoD HydraMesh design system.
+  language + tokens are ported from the DeMoD Punctim design system.
 -->
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
@@ -93,7 +93,7 @@ const codecs = computed(() => CODECS.filter((c) => c.id === 'pcm' || caps.opus))
 // each tick to a meter that decays — real signal where there is real traffic.
 const levels = reactive({ self: 0, peers: {} as Record<number, number> })
 const jamPeers = computed(() => Object.entries(levels.peers).map(([src, level]) => ({ src: Number(src), level })))
-const rec = reactive({ on: false, dir: 'hydramesh-rec', result: null as RecordingResult | null })
+const rec = reactive({ on: false, dir: 'punctim-rec', result: null as RecordingResult | null })
 const recState = computed<'idle' | 'recording'>(() => (rec.on ? 'recording' : 'idle'))
 
 // ── arena (dot game) ─────────────────────────────────────────────────────
@@ -107,7 +107,7 @@ const game = reactive({
 let lastPosSent = 0
 
 // ── radio ────────────────────────────────────────────────────────────────
-const radio = reactive({ on: false, bind: '0.0.0.0:7110', http: '127.0.0.1:8000', archive: 'hydramesh-radio', status: 'off' })
+const radio = reactive({ on: false, bind: '0.0.0.0:7110', http: '127.0.0.1:8000', archive: 'punctim-radio', status: 'off' })
 
 // ── wire inspector (local certified decode for byte-strip + validity) ─────
 const W_SYNC = 0xd3, W_VER = 1

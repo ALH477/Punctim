@@ -7,7 +7,7 @@
   "main": "src/frame.js",
   "keywords": [
     "dcf",
-    "hydramesh",
+    "punctim",
     "mesh",
     "wire-protocol",
     "codec",
@@ -32,11 +32,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ALH477/HydraMesh.git"
+    "url": "https://github.com/ALH477/Punctim.git"
   },
-  "homepage": "https://github.com/ALH477/HydraMesh#readme",
+  "homepage": "https://github.com/ALH477/Punctim#readme",
   "bugs": {
-    "url": "https://github.com/ALH477/HydraMesh/issues"
+    "url": "https://github.com/ALH477/Punctim/issues"
   },
   "engines": {
     "node": ">=14"

@@ -1,15 +1,15 @@
 # SPDX-License-Identifier: LGPL-3.0-only
 # Copyright (c) 2026 DeMoD LLC.
 [package]
-name = "hydramesh-client"
+name = "punctim-client"
 version = "0.3.0"
-description = "HydraMesh — dedicated communications client (mesh, messaging, DCF-Audio)"
+description = "Punctim — dedicated communications client (mesh, messaging, DCF-Audio)"
 authors = ["DeMoD LLC"]
 edition = "2021"
 license = "LGPL-3.0-only"
 
 [lib]
-name = "hydramesh_client_lib"
+name = "punctim_client_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -24,7 +24,7 @@ parking_lot = "0.12"
 log = "0.4"
 env_logger = "0.11"
 
-# HydraMesh engine: the node/transport/peers/mesh + the certified wire/audio codec.
+# Punctim engine: the node/transport/peers/mesh + the certified wire/audio codec.
 dcf-rust-sdk = { path = "../../rust" }
 dcf-wire-codec = { path = "../../codec" }
 
