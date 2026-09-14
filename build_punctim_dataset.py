@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Convert HydraMesh into a JSONL training dataset.
+"""Convert Punctim into a JSONL training dataset.
 
 Modes:
   wire     — spec → codec implementation (teaches wire protocol)
@@ -7,9 +7,9 @@ Modes:
   certify  — vectors + implementation → verification code (teaches certification)
 
 Usage:
-  python build_hydramesh_dataset.py --mode wire --out wire_train.jsonl
-  python build_hydramesh_dataset.py --mode adapter --out adapter_train.jsonl
-  python build_hydramesh_dataset.py --mode certify --out certify_train.jsonl
+  python build_punctim_dataset.py --mode wire --out wire_train.jsonl
+  python build_punctim_dataset.py --mode adapter --out adapter_train.jsonl
+  python build_punctim_dataset.py --mode certify --out certify_train.jsonl
 """
 import argparse
 import json
@@ -267,9 +267,9 @@ def build_certify_examples() -> list[dict]:
 # ── CLI ─────────────────────────────────────────────────────────────────────
 
 def main():
-    ap = argparse.ArgumentParser(description="Build JSONL training dataset from HydraMesh")
+    ap = argparse.ArgumentParser(description="Build JSONL training dataset from Punctim")
     ap.add_argument("--mode", choices=["wire", "adapter", "certify"], default="wire")
-    ap.add_argument("--out", type=Path, default=Path("hydramesh_train.jsonl"))
+    ap.add_argument("--out", type=Path, default=Path("punctim_train.jsonl"))
     ap.add_argument("--min-chars", type=int, default=0, help="Skip examples where assistant content < N chars")
     args = ap.parse_args()
 
