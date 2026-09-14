@@ -246,15 +246,26 @@
             meta.mainProgram = "hydramesh";
           };
 
-          # Python SDK
+          # Python SDK. `pyproject`/`build-system` are explicit: nixpkgs dropped the
+          # implicit setuptools default, and without them the derivation fails to
+          # evaluate ("does not configure a `format`").  numpy is the one runtime
+          # dependency python/pyproject.toml declares (dcf.transport imports the
+          # acoustic/IQ modems unconditionally).
           dcf-python = pkgs.python3Packages.buildPythonPackage {
             pname = "dcf-python";
             version = "0.3.0";
             src = self + "/python";
-            propagatedBuildInputs = with pkgs.python3Packages; [ protobuf grpcio grpcio-tools ];
+            pyproject = true;
+            build-system = with pkgs.python3Packages; [ setuptools ];
+            propagatedBuildInputs = with pkgs.python3Packages; [ numpy protobuf grpcio grpcio-tools ];
             preBuild = ''
               python -m grpc_tools.protoc -I${self} --python_out=dcf --grpc_python_out=dcf ${self}/messages.proto ${self}/services.proto
             '';
+            # The wheel ships dcf, dcf.modem, dcf.MCP and the dcf.{pipe,qkd,sense,spa}
+            # subpackages; prove every one of them imports from the installed layout.
+            pythonImportsCheck = [
+              "dcf" "dcf.MCP" "dcf.pipe" "dcf.qkd" "dcf.sense" "dcf.spa"
+            ];
             meta.description = "Python SDK for DCF";
             meta.license = pkgs.lib.licenses.lgpl3Only;
           };
