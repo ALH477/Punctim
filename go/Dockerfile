@@ -2,7 +2,7 @@
 # ============================================================================
 # DCF Go SDK — certification image
 # ============================================================================
-# The Go module (github.com/ALH477/HydraMesh/go) is a stdlib-only *library*
+# The Go module (github.com/ALH477/Punctim/go) is a stdlib-only *library*
 # with no main package, so there is no app binary to ship. What this image
 # ships instead is the PROOF: it builds the module and its entrypoint runs the
 # full certification suite — the 246 golden wire vectors plus the game/audio/

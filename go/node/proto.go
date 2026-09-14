@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 
-// Package node provides a stdlib-only UDP DcfNode for HydraMesh/DCF, mirroring the
+// Package node provides a stdlib-only UDP DcfNode for Punctim/DCF, mirroring the
 // working subset of the Rust reference SDK (rust/src/lib.rs) and wiring in the certified
 // DCF-Game, DCF-Audio, and DCF-Text adapters (the go/game, go/audio, go/text packages).
 //

@@ -12,9 +12,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ALH477/HydraMesh/go/audio"
-	"github.com/ALH477/HydraMesh/go/game"
-	"github.com/ALH477/HydraMesh/go/text"
+	"github.com/ALH477/Punctim/go/audio"
+	"github.com/ALH477/Punctim/go/game"
+	"github.com/ALH477/Punctim/go/text"
 )
 
 // peerAddr is a peer's host/port plus a best-effort resolved IP (for addr matching

@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/ALH477/HydraMesh/go/dcf"
+	"github.com/ALH477/Punctim/go/dcf"
 )
 
 // textVectors mirrors Documentation/text_vectors.json.

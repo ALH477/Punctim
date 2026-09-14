@@ -2,7 +2,7 @@
 
 package node
 
-// MeshRuntime drives the certified self-healing algorithms (github.com/ALH477/HydraMesh/go/mesh)
+// MeshRuntime drives the certified self-healing algorithms (github.com/ALH477/Punctim/go/mesh)
 // from live PING/PONG and the DCF-Mesh control adapter (MsgMesh). Each tick it folds per-peer
 // PONG/timeout into the liveness FSM (status Healthy/Degraded/Unreachable), and — by mode —
 // runs the AUTO/master loop: AUTO nodes REPORT to the master, the master elects + broadcasts
@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ALH477/HydraMesh/go/mesh"
+	"github.com/ALH477/Punctim/go/mesh"
 )
 
 const (

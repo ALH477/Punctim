@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/ALH477/HydraMesh/go/dcf"
+	"github.com/ALH477/Punctim/go/dcf"
 )
 
 // gameVectors mirrors Documentation/game_vectors.json.

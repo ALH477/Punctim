@@ -1,12 +1,12 @@
 <!-- SPDX-License-Identifier: LGPL-3.0-only -->
-# HydraMesh / DCF — Go SDK
+# Punctim / DCF — Go SDK
 
 A **stdlib-only** Go implementation of the DeMoD Communication Framework: the certified 17-byte
 `DeModFrame` wire quantum, the three adapters that ride over it (game / audio / text), and a UDP
 node that ties them together. No third-party dependencies — `go.mod` has no `require` block and
 there is no `go.sum`.
 
-Module: `github.com/ALH477/HydraMesh/go` (Go 1.21+).
+Module: `github.com/ALH477/Punctim/go` (Go 1.21+).
 
 ## Packages
 
@@ -42,8 +42,8 @@ import (
     "net"
     "time"
 
-    "github.com/ALH477/HydraMesh/go/node"
-    "github.com/ALH477/HydraMesh/go/text"
+    "github.com/ALH477/Punctim/go/node"
+    "github.com/ALH477/Punctim/go/text"
 )
 
 // Embed DefaultMessageHandler; override only the arms you care about.

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 
 // Command dcfnode is a runnable DCF node CLI over the stdlib-only Go SDK
-// (github.com/ALH477/HydraMesh/go/node) — the Go analogue of the Rust `dcf`
+// (github.com/ALH477/Punctim/go/node) — the Go analogue of the Rust `dcf`
 // binary. It exposes the same capabilities the SDK has: run a UDP DeModFrame
 // node, peer with others, measure per-peer RTT, and send every adapter
 // (position, audio, DCF-Game, DCF-Text) over the certified 17-byte wire.
@@ -30,10 +30,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ALH477/HydraMesh/go/audio"
-	"github.com/ALH477/HydraMesh/go/game"
-	"github.com/ALH477/HydraMesh/go/node"
-	"github.com/ALH477/HydraMesh/go/text"
+	"github.com/ALH477/Punctim/go/audio"
+	"github.com/ALH477/Punctim/go/game"
+	"github.com/ALH477/Punctim/go/node"
+	"github.com/ALH477/Punctim/go/text"
 )
 
 const version = "0.3.0"

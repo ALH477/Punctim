@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ALH477/HydraMesh/go/game"
-	"github.com/ALH477/HydraMesh/go/text"
+	"github.com/ALH477/Punctim/go/game"
+	"github.com/ALH477/Punctim/go/text"
 )
 
 // eventually polls cond every step until it is true or the deadline elapses, failing the test
