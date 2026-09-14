@@ -1,5 +1,5 @@
 {
-  description = "Nix flake for HydraMesh (D-LISP) SDK – Emacs + SLY focused development";
+  description = "Nix flake for Punctim (D-LISP) SDK – Emacs + SLY focused development";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -16,7 +16,7 @@
         };
 
         # Required Quicklisp systems — kept in sync with the actual
-        # (ql:quickload ...) / defpackage list in src/hydramesh.lisp. cl-protobufs
+        # (ql:quickload ...) / defpackage list in src/punctim.lisp. cl-protobufs
         # and jsonschema were dropped from the source (and jsonschema is not in
         # nixpkgs lispPackages), so they are not listed here.
         qlSystems = [
@@ -37,9 +37,9 @@
           epkgs.sly
         ]);
 
-        # The HydraMesh executable – robust production build
-        hydramesh = pkgs.stdenv.mkDerivation {
-          pname = "hydramesh";
+        # The Punctim executable – robust production build
+        punctim = pkgs.stdenv.mkDerivation {
+          pname = "punctim";
           version = "2.2.0";
 
           src = self;
@@ -51,26 +51,26 @@
 
           buildPhase = ''
             ${sbclWithDeps}/bin/sbcl --no-userinit --non-interactive \
-              --load src/hydramesh.lisp \
+              --load src/punctim.lisp \
               --eval '(in-package :d-lisp)' \
-              --eval '(dcf-deploy "hydramesh")' \
+              --eval '(dcf-deploy "punctim")' \
               --quit
           '';
 
           installPhase = ''
             mkdir -p $out/bin
-            cp hydramesh $out/bin/hydramesh
+            cp punctim $out/bin/punctim
           '';
 
           meta = with pkgs.lib; {
-            description = "HydraMesh SDK executable";
+            description = "Punctim SDK executable";
             license = licenses.lgpl3Only;
             platforms = platforms.all;
           };
         };
 
       in {
-        packages.default = hydramesh;
+        packages.default = punctim;
 
         devShells.default = pkgs.mkShell {
           buildInputs = [
@@ -88,7 +88,7 @@
             # Create minimal Emacs init with SLY configured for SBCL
             mkdir -p $HOME/.emacs.d
             cat > $HOME/.emacs.d/init.el <<'EOF'
-            ;; Minimal SLY configuration for HydraMesh development
+            ;; Minimal SLY configuration for Punctim development
             (require 'sly)
             (setq inferior-lisp-program "${sbclWithDeps}/bin/sbcl")
             (add-hook 'lisp-mode-hook #'sly-mode)
@@ -98,12 +98,12 @@
             EOF
 
             echo "══════════════════════════════════════════════════════════════"
-            echo "HydraMesh development shell (Emacs + SLY) ready!"
+            echo "Punctim development shell (Emacs + SLY) ready!"
             echo "• Start Emacs: emacs"
             echo "• In Emacs: M-x sly  → connects to SBCL with all deps loaded"
-            echo "• Open hydramesh.lisp and evaluate forms with C-x C-e"
+            echo "• Open punctim.lisp and evaluate forms with C-x C-e"
             echo "• Build executable: nix build .#"
-            echo "• Run tests: (fiveam:run! 'hydramesh-suite) in REPL"
+            echo "• Run tests: (fiveam:run! 'punctim-suite) in REPL"
             echo "══════════════════════════════════════════════════════════════"
           '';
         };

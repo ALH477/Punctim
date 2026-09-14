@@ -4,7 +4,7 @@
 ;;;; Loadable under bare SBCL (no Quicklisp, no CFFI). The certify-lisp CI loads
 ;;;; this file and exits non-zero unless the cross-language anchors match — the
 ;;;; Lisp analogue of the dependency-free C cert (C_SDK/tests/test_wire_certify.c).
-;;;; The full SDK codec lives in hydramesh.lisp (its crc16-ccitt is identical and
+;;;; The full SDK codec lives in punctim.lisp (its crc16-ccitt is identical and
 ;;;; self-certifies on load); this file lets CI prove the wire algorithm without
 ;;;; pulling the SDK's Quicklisp dependency graph.
 

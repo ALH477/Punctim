@@ -1,4 +1,4 @@
-# HydraMesh (formerly DeMoD-LISP / D-LISP) SDK for DeMoD Communication Framework (DCF)
+# Punctim (formerly DeMoD-LISP / D-LISP) SDK for DeMoD Communication Framework (DCF)
 
 **Version 2.2.0** | **Updated: June 28, 2026**  
 **Developed by DeMoD LLC**
@@ -8,12 +8,12 @@
 
 ## Overview
 
-HydraMesh (formerly DeMoD-LISP / D-LISP) is a high-performance, production-ready Common Lisp implementation of the DeMoD Communication Framework (DCF), a free and open-source (FOSS) framework designed for low-latency, modular, and interoperable data exchange. Tailored for applications in IoT, gaming, distributed computing, and edge networking, HydraMesh provides a robust Domain-Specific Language (DSL) for seamless integration with DCF's modular architecture. It supports multiple transport protocols, self-healing P2P redundancy, AI-driven network optimization, and integrates **StreamDB** for persistent storage, making it ideal for developers building scalable, fault-tolerant communication systems.
+Punctim (formerly DeMoD-LISP / D-LISP) is a high-performance, production-ready Common Lisp implementation of the DeMoD Communication Framework (DCF), a free and open-source (FOSS) framework designed for low-latency, modular, and interoperable data exchange. Tailored for applications in IoT, gaming, distributed computing, and edge networking, Punctim provides a robust Domain-Specific Language (DSL) for seamless integration with DCF's modular architecture. It supports multiple transport protocols, self-healing P2P redundancy, AI-driven network optimization, and integrates **StreamDB** for persistent storage, making it ideal for developers building scalable, fault-tolerant communication systems.
 
-This SDK, developed by **DeMoD LLC** with significant contributions from **Grok 4 Heavy** (xAI's advanced AI model), emphasizes reliability, extensibility, and compliance with U.S. export regulations (no encryption by default). It is part of the DCF mono repository and interoperates with other language SDKs (e.g., C, Python) for cross-platform compatibility. The rebranding to HydraMesh reflects a focus on resilient, multi-headed network topologies, while retaining full compatibility with DCF's command set (e.g., `dcf-send`, `dcf-db-insert`) for seamless migration.
+This SDK, developed by **DeMoD LLC** with significant contributions from **Grok 4 Heavy** (xAI's advanced AI model), emphasizes reliability, extensibility, and compliance with U.S. export regulations (no encryption by default). It is part of the DCF mono repository and interoperates with other language SDKs (e.g., C, Python) for cross-platform compatibility. The rebranding to Punctim reflects a focus on resilient, multi-headed network topologies, while retaining full compatibility with DCF's command set (e.g., `dcf-send`, `dcf-db-insert`) for seamless migration.
 
 ### Efficiency Highlight: ~899 Lines of Code
-HydraMesh achieves its extensive functionality in approximately **899 non-comment, non-blank lines of code** (verified across the core implementation and plugins). This remarkable efficiency is made possible by Common Lisp's expressive features, such as macros (e.g., `def-dcf-plugin` for concise plugin definitions) and CLOS for type-safe abstractions. The enhanced integration of StreamDB adds powerful persistence with minimal overhead, maintaining a lean codebase while delivering a full SDK/DSL. This compactness ensures maintainability, reduces deployment overhead, and highlights Lisp's power for building complex systems with minimal verbosity.
+Punctim achieves its extensive functionality in approximately **899 non-comment, non-blank lines of code** (verified across the core implementation and plugins). This remarkable efficiency is made possible by Common Lisp's expressive features, such as macros (e.g., `def-dcf-plugin` for concise plugin definitions) and CLOS for type-safe abstractions. The enhanced integration of StreamDB adds powerful persistence with minimal overhead, maintaining a lean codebase while delivering a full SDK/DSL. This compactness ensures maintainability, reduces deployment overhead, and highlights Lisp's power for building complex systems with minimal verbosity.
 
 - **Core Breakdown**:
   - `d-lisp.lisp` (main SDK/DSL): ~899 lines
@@ -151,7 +151,7 @@ HydraMesh achieves its extensive functionality in approximately **899 non-commen
 (dcf-quick-start-client "config.json")
 
 ;; Send a Message
-(dcf-quick-send "Hello, HydraMesh!" "localhost:50052")
+(dcf-quick-send "Hello, Punctim!" "localhost:50052")
 
 ;; Persist Data to StreamDB
 (dcf-db-insert "/test/key" "{\"data\": \"value\", \"schema_version\": \"2.1.0\"}")
@@ -177,9 +177,9 @@ For WASM targets (e.g., browser-based nodes), ensure `libstreamdb.wasm` is loade
 
 ### StreamDB Integration (Enhanced in v2.1.0)
 
-StreamDB serves as HydraMesh's persistence layer, storing states, metrics, and logs with low-latency queries. Key enhancements:
+StreamDB serves as Punctim's persistence layer, storing states, metrics, and logs with low-latency queries. Key enhancements:
 
-- **Async Operations**: Non-blocking CRUD with callbacks (e.g., `dcf-db-get-async`) for real-time apps, integrated with HydraMesh's event loop.
+- **Async Operations**: Non-blocking CRUD with callbacks (e.g., `dcf-db-get-async`) for real-time apps, integrated with Punctim's event loop.
 - **Transactions**: ACID batch ops via `dcf-db-begin-transaction-async`, `dcf-db-commit-transaction-async`, etc., now extended to gRPC RPCs (`dcf-begin-transaction`, etc.) for end-to-end atomicity.
 - **Schema Validation**: JSON data validated against schemas (e.g., `*streamdb-metrics-schema*`) on insert/query for type safety, with Protobuf `schema_version` checks for compatibility.
 - **WASM Compatibility**: No-mmap fallback for embedded/browser targets, with examples for UI config fetches.
@@ -191,7 +191,7 @@ Use Case: In IoT, persist sensor data atomically during batch transactions with 
 
 ### Plugins
 
-Extend HydraMesh with plugins for custom transports (DCF commands remain compatible):
+Extend Punctim with plugins for custom transports (DCF commands remain compatible):
 
 ```lisp
 (def-dcf-plugin my-transport
@@ -250,7 +250,7 @@ For WASM, compile with CL-WASM tools for browser deployment.
 
 ## Key Design Principles:
 
-### 1. **Minimal Core (hydramesh.core)**
+### 1. **Minimal Core (punctim.core)**
 - Only essential abstractions: node, transport protocol, codec registry
 - ~50 lines of code
 - Everything else is optional
@@ -288,9 +288,9 @@ And get `send-position-update` generated automatically!
 Mix and match DSLs:
 ```lisp
 (defpackage :my-game
-  (:use :hydramesh.game-net    ; Gaming
-        :hydramesh.audio-stream ; Voice chat
-        :hydramesh.metrics))    ; Monitoring
+  (:use :punctim.game-net    ; Gaming
+        :punctim.audio-stream ; Voice chat
+        :punctim.metrics))    ; Monitoring
 ```
 
 ### 5. **Zero Boilerplate**
@@ -310,7 +310,7 @@ Each DSL speaks its domain's language:
 - **IoT**: `defsensor`, `report`, `aggregate`
 
 
-## Why HydraMesh?
+## Why Punctim?
 
 - **Performance**: Sub-ms messaging with StreamDB's low-latency persistence.
 - **Modularity**: Plugins and middleware for easy customization.

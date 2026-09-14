@@ -21,7 +21,7 @@
 // Cross-language parity:
 //   C        transport/dcf_frame.h  dcf_frame_encode / dcf_frame_decode
 //   Haskell  DCF.Transport.Frame    encodeFrame / decodeFrame
-//   Lisp     hydramesh.lisp         encode-dcf-frame / decode-dcf-frame
+//   Lisp     punctim.lisp         encode-dcf-frame / decode-dcf-frame
 //   Rust     dcf/rust/src/frame.rs  Frame::encode / Frame::decode  ← this file
 
 // ── Constants ─────────────────────────────────────────────────────────────────

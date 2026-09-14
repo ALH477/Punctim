@@ -759,10 +759,10 @@ jobs:
       - name: Certify the Lisp DeModFrame wire + FEC codecs against the golden vectors
         run: sbcl --non-interactive --load lisp/src/wire.lisp --load lisp/src/fec.lisp
 
-      # Build the StreamDB foreign library and run the full HydraMesh SDK FiveAM
+      # Build the StreamDB foreign library and run the full Punctim SDK FiveAM
       # suite. continue-on-error so a flaky Quicklisp bootstrap (which needs the
       # network) can't fail the job — the dependency-free cert above is the gate.
-      - name: Build libstreamdb + run the HydraMesh FiveAM suite
+      - name: Build libstreamdb + run the Punctim FiveAM suite
         continue-on-error: true
         run: |
           sudo apt-get install -y uuid-dev curl
@@ -774,5 +774,5 @@ jobs:
           sbcl --non-interactive \
             --load quicklisp.lisp \
             --eval '(quicklisp-quickstart:install :path "quicklisp/")' \
-            --load lisp/src/hydramesh.lisp \
+            --load lisp/src/punctim.lisp \
             --eval '(sb-ext:exit :code (if (d-lisp::run-tests) 0 1))'

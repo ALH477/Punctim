@@ -32,7 +32,7 @@
  *   Haskell  DCF.Transport.Frame    encodeFrame / decodeFrame
  *   C        transport/dcf_frame.h  dcf_frame_encode / dcf_frame_decode
  *   Rust     transport/dcf_frame.rs Frame::encode / Frame::decode
- *   Lisp     hydramesh.lisp         encode-dcf-frame / decode-dcf-frame
+ *   Lisp     punctim.lisp         encode-dcf-frame / decode-dcf-frame
  */
 
 #pragma once

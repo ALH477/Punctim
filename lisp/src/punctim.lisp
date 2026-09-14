@@ -1,4 +1,4 @@
-;; DeMoD-LISP (D-LISP) Delivered as HydraMesh
+;; DeMoD-LISP (D-LISP) Delivered as Punctim
 ;; Version 2.2.0 | November 5, 2025
 ;; License: Lesser GNU General Public License v3.0 (LGPL-3.0)
 ;; Part of the DCF mono repo: https://github.com/ALH477/DeMoD-Communication-Framework
@@ -250,11 +250,11 @@
     (list :event-type event-type :data data)))
 
 ;; ============================================================================
-;; DCF-FRAME ADAPTER — Haskell DeModFrame ↔ HydraMesh proto-message bridge
+;; DCF-FRAME ADAPTER — Haskell DeModFrame ↔ Punctim proto-message bridge
 ;; ============================================================================
 ;;
 ;; The Haskell dcf-faust-sdr package defines a 17-byte RF transport frame
-;; (DeModFrame). HydraMesh uses a separate 17-byte UDP wire format (proto-message
+;; (DeModFrame). Punctim uses a separate 17-byte UDP wire format (proto-message
 ;; header: 1+4+8+4 bytes). They coexist at different layers:
 ;;
 ;;   proto-message  → game/audio application layer   (this file, UDP)
@@ -430,10 +430,10 @@
 ;; Define the suite up front so every test below (and the second block further
 ;; down) registers into it. def-suite must precede the first test/in-suite.
 #+fiveam
-(fiveam:def-suite hydramesh-suite
-  :description "HydraMesh v2.2.0 Tests")
+(fiveam:def-suite punctim-suite
+  :description "Punctim v2.2.0 Tests")
 #+fiveam
-(fiveam:in-suite hydramesh-suite)
+(fiveam:in-suite punctim-suite)
 
 #+fiveam
 (fiveam:test dcf-frame-crc-test
@@ -1264,7 +1264,7 @@ matching is case- and punctuation-insensitive (immune to cl-json key mangling)."
 (defun dcf-help ()
   (format nil "~
 ╔══════════════════════════════════════════════════════════════════════════╗
-║         DeMoD-LISP v2.2.0 - HydraMesh: UDP Gaming & Audio SDK           ║
+║         DeMoD-LISP v2.2.0 - Punctim: UDP Gaming & Audio SDK           ║
 ╚══════════════════════════════════════════════════════════════════════════╝
 
 **Quick Start for Gaming:**
@@ -1294,7 +1294,7 @@ matching is case- and punctuation-insensitive (immune to cl-json key mangling)."
 (dcf-agent-chat \"hello\" :backend \"glm5p2\")
 (dcf-agent-set-url \"http://192.168.1.50:8000\")
 
-**CLI:** sbcl --load hydramesh.lisp --eval '(main \"help\")'
+**CLI:** sbcl --load punctim.lisp --eval '(main \"help\")'
 
 Repo: https://github.com/ALH477/DeMoD-Communication-Framework"))
 
@@ -1354,7 +1354,7 @@ Repo: https://github.com/ALH477/DeMoD-Communication-Framework"))
 
 ;; Tests (suite defined above near the adapter tests; just keep adding to it)
 #+fiveam
-(fiveam:in-suite hydramesh-suite)
+(fiveam:in-suite punctim-suite)
 
 #+fiveam
 (fiveam:test binary-test
@@ -1384,7 +1384,7 @@ Repo: https://github.com/ALH477/DeMoD-Communication-Framework"))
 (defun run-tests ()
   "Run the FiveAM suite, print the report, and return T iff every check passed.
    Callers (e.g. the `test` subcommand / CI) turn the boolean into an exit code."
-  (let ((results (fiveam:run 'hydramesh-suite)))
+  (let ((results (fiveam:run 'punctim-suite)))
     (fiveam:explain! results)
     (fiveam:results-status results)))
 
@@ -1392,7 +1392,7 @@ Repo: https://github.com/ALH477/DeMoD-Communication-Framework"))
 ;; thunk with no arguments, so a bare #'main would always take the no-args (help)
 ;; branch. This matches the Dockerfile's save-lisp-and-die invocation.
 (defun dcf-deploy (&optional output-file)
-  (sb-ext:save-lisp-and-die (or output-file "hydramesh")
+  (sb-ext:save-lisp-and-die (or output-file "punctim")
                             :executable t
                             :toplevel (lambda () (apply #'main (rest sb-ext:*posix-argv*)))))
 

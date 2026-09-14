@@ -1,5 +1,5 @@
 # ============================================================================
-# HydraMesh Lisp - Hardened Docker Image
+# Punctim Lisp - Hardened Docker Image
 # Multi-stage build with SBCL and security best practices
 # ============================================================================
 
@@ -25,10 +25,10 @@ WORKDIR /build
 
 # Copy source files
 COPY src/ /build/src/
-COPY hydramesh.asd /build/
+COPY punctim.asd /build/
 COPY streamdb/ /build/streamdb/
 
-# Build the StreamDB foreign library that hydramesh.lisp loads at startup
+# Build the StreamDB foreign library that punctim.lisp loads at startup
 # (cffi:use-foreign-library libstreamdb). Compiled from source so it is portable
 # into the runtime image; installed on the default loader path.
 RUN gcc -shared -fPIC -O2 \
@@ -42,9 +42,9 @@ RUN ros -e '(ql:quickload (quote (:cffi :uuid :usocket :bordeaux-threads :log4cl
 
 # Build the executable core image using ros
 RUN ros -e '(ql:quickload (quote (:cffi :uuid :usocket :bordeaux-threads :log4cl :trivial-backtrace :flexi-streams :fiveam :ieee-floats :cl-json)) :silent t)' \
-    -l /build/src/hydramesh.lisp \
+    -l /build/src/punctim.lisp \
     -e '(in-package :d-lisp)' \
-    -e '(sb-ext:save-lisp-and-die "/build/hydramesh" :executable t :toplevel (lambda () (apply (function main) (rest sb-ext:*posix-argv*))) :compression 9)'
+    -e '(sb-ext:save-lisp-and-die "/build/punctim" :executable t :toplevel (lambda () (apply (function main) (rest sb-ext:*posix-argv*))) :compression 9)'
 
 # -----------------------------------------------------------------------------
 # Stage 2: Hardened Runtime
@@ -65,45 +65,45 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && find / -type f -perm /2000 -exec chmod g-s {} \; 2>/dev/null || true
 
 # Create non-root user
-RUN groupadd -g 10001 hydramesh && \
-    useradd -u 10001 -g hydramesh -s /usr/sbin/nologin -M -d /var/lib/hydramesh hydramesh
+RUN groupadd -g 10001 punctim && \
+    useradd -u 10001 -g punctim -s /usr/sbin/nologin -M -d /var/lib/punctim punctim
 
 # Create directories
-RUN mkdir -p /etc/hydramesh /var/lib/hydramesh /var/log/hydramesh && \
-    chown -R hydramesh:hydramesh /var/lib/hydramesh /var/log/hydramesh
+RUN mkdir -p /etc/punctim /var/lib/punctim /var/log/punctim && \
+    chown -R punctim:punctim /var/lib/punctim /var/log/punctim
 
 # Copy executable from builder
-COPY --from=builder --chown=hydramesh:hydramesh /build/hydramesh /usr/local/bin/hydramesh
+COPY --from=builder --chown=punctim:punctim /build/punctim /usr/local/bin/punctim
 
 # Copy the StreamDB foreign library (re-dlopen'd by the saved core on startup)
 COPY --from=builder /usr/local/lib/libstreamdb.so /usr/local/lib/
 RUN ldconfig
 
-# Copy config schema (the runtime config.json is created by `hydramesh init` or mounted)
-COPY --chown=hydramesh:hydramesh config.schema.json /etc/hydramesh/
+# Copy config schema (the runtime config.json is created by `punctim init` or mounted)
+COPY --chown=punctim:punctim config.schema.json /etc/punctim/
 
 # Set secure permissions
-RUN chmod 755 /usr/local/bin/hydramesh && \
-    chmod 750 /etc/hydramesh /var/lib/hydramesh /var/log/hydramesh
+RUN chmod 755 /usr/local/bin/punctim && \
+    chmod 750 /etc/punctim /var/lib/punctim /var/log/punctim
 
 # Use non-root user
-USER hydramesh:hydramesh
+USER punctim:punctim
 
 # Working directory
-WORKDIR /var/lib/hydramesh
+WORKDIR /var/lib/punctim
 
 # Environment
-ENV HYDRAMESH_CONFIG=/etc/hydramesh/config.json
-ENV HOME=/var/lib/hydramesh
+ENV PUNCTIM_CONFIG=/etc/punctim/config.json
+ENV HOME=/var/lib/punctim
 
 # Expose ports
 EXPOSE 7777/udp 50051/tcp
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD /usr/local/bin/hydramesh status || exit 1
+    CMD /usr/local/bin/punctim status || exit 1
 
-ENTRYPOINT ["/usr/local/bin/hydramesh"]
+ENTRYPOINT ["/usr/local/bin/punctim"]
 CMD ["help"]
 
 # -----------------------------------------------------------------------------
@@ -124,43 +124,43 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
-RUN groupadd -g 10001 hydramesh && \
-    useradd -u 10001 -g hydramesh -m -s /bin/bash -d /home/hydramesh hydramesh
+RUN groupadd -g 10001 punctim && \
+    useradd -u 10001 -g punctim -m -s /bin/bash -d /home/punctim punctim
 
 # Copy source
-COPY --chown=hydramesh:hydramesh src/ /home/hydramesh/src/
+COPY --chown=punctim:punctim src/ /home/punctim/src/
 
-# StreamDB foreign library for the REPL (loaded by hydramesh.lisp on load)
+# StreamDB foreign library for the REPL (loaded by punctim.lisp on load)
 COPY --from=builder /usr/local/lib/libstreamdb.so /usr/local/lib/
 RUN ldconfig
 
 # Create directories
-RUN mkdir -p /etc/hydramesh /var/lib/hydramesh /var/log/hydramesh && \
-    chown -R hydramesh:hydramesh /var/lib/hydramesh /var/log/hydramesh /home/hydramesh
+RUN mkdir -p /etc/punctim /var/lib/punctim /var/log/punctim && \
+    chown -R punctim:punctim /var/lib/punctim /var/log/punctim /home/punctim
 
 # Copy config schema (runtime config.json is created via init or mounted)
-COPY --chown=hydramesh:hydramesh config.schema.json /etc/hydramesh/
+COPY --chown=punctim:punctim config.schema.json /etc/punctim/
 
 # Pre-install dependencies as root (Roswell cache is system-wide)
 RUN ros -e '(ql:quickload (quote (:cffi :uuid :usocket :bordeaux-threads :log4cl :trivial-backtrace :flexi-streams :fiveam :ieee-floats :cl-json)) :silent t)' -e '(quit)'
 
 # Create init script for REPL
-RUN printf '#!/bin/bash\nrlwrap ros -e "(ql:quickload (quote (:cffi :uuid :usocket :bordeaux-threads :log4cl :trivial-backtrace :flexi-streams :fiveam :ieee-floats :cl-json)) :silent t)" -l /home/hydramesh/src/hydramesh.lisp -e "(in-package :d-lisp)" "$@"\n' > /usr/local/bin/hydramesh-repl && \
-    chmod +x /usr/local/bin/hydramesh-repl
+RUN printf '#!/bin/bash\nrlwrap ros -e "(ql:quickload (quote (:cffi :uuid :usocket :bordeaux-threads :log4cl :trivial-backtrace :flexi-streams :fiveam :ieee-floats :cl-json)) :silent t)" -l /home/punctim/src/punctim.lisp -e "(in-package :d-lisp)" "$@"\n' > /usr/local/bin/punctim-repl && \
+    chmod +x /usr/local/bin/punctim-repl
 
 # Use non-root user
-USER hydramesh:hydramesh
-WORKDIR /home/hydramesh
+USER punctim:punctim
+WORKDIR /home/punctim
 
 # Environment
-ENV HOME=/home/hydramesh
-ENV HYDRAMESH_CONFIG=/etc/hydramesh/config.json
+ENV HOME=/home/punctim
+ENV PUNCTIM_CONFIG=/etc/punctim/config.json
 
 # Expose ports
 EXPOSE 7777/udp 50051/tcp
 
 # Default to REPL
-CMD ["/usr/local/bin/hydramesh-repl"]
+CMD ["/usr/local/bin/punctim-repl"]
 
 # -----------------------------------------------------------------------------
 # Default target

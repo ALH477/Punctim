@@ -1,12 +1,12 @@
-;;;; HydraMesh ASDF System Definition
-;;;; DeMoD-LISP (D-LISP) / HydraMesh v2.2.0
+;;;; Punctim ASDF System Definition
+;;;; DeMoD-LISP (D-LISP) / Punctim v2.2.0
 
-(defsystem "hydramesh"
+(defsystem "punctim"
   :version "2.2.0"
   :author "DeMoD Framework"
   :license "LGPL-3.0-only"
   :description "DeMoD Communications Framework - Lisp Implementation"
-  :long-description "HydraMesh provides UDP gaming, real-time audio, 
+  :long-description "Punctim provides UDP gaming, real-time audio, 
 and binary Protocol Buffers for low-latency networked applications."
   :depends-on (:cffi
                :uuid
@@ -19,5 +19,5 @@ and binary Protocol Buffers for low-latency networked applications."
                :ieee-floats
                :cl-json)
   :serial t
-  :components ((:file "src/hydramesh")
-               (:file "src/hydramesh.core")))
+  :components ((:file "src/punctim")
+               (:file "src/punctim.core")))

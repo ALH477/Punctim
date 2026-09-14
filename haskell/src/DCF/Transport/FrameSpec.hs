@@ -24,7 +24,7 @@ Wire layout (17 bytes = 136 bits, all multi-byte fields big-endian):
 Cross-language parity:
   C        transport/dcf_frame.h  dcf_frame_encode / dcf_frame_decode
   Haskell  DCF.Transport.Frame    encodeFrame / decodeFrame  ← this file
-  Lisp     hydramesh.lisp         encode-dcf-frame / decode-dcf-frame
+  Lisp     punctim.lisp         encode-dcf-frame / decode-dcf-frame
   Rust     dcf/rust/src/frame.rs  Frame::encode / Frame::decode
   Python   wirelab_core.py        encode / decode
 

@@ -1,4 +1,4 @@
-;;;; HydraMesh Modular DSL Architecture
+;;;; Punctim Modular DSL Architecture
 ;;;; Lightweight, composable DSLs for specific use cases
 ;;;; Each DSL is independent and can be loaded separately
 
@@ -6,13 +6,13 @@
 ;;; CORE: Minimal Foundation (Always Required)
 ;;; ============================================================================
 
-(defpackage :hydramesh.core
+(defpackage :punctim.core
   (:use :cl)
   (:export #:*node* #:node #:make-node #:node-transport
            #:send-raw #:receive-raw #:with-node
            #:define-transport #:def-message-codec))
 
-(in-package :hydramesh.core)
+(in-package :punctim.core)
 
 ;;; Core node abstraction
 (defstruct node
@@ -55,12 +55,12 @@
 ;;; DSL 1: GAME-NET - Multiplayer Game Networking
 ;;; ============================================================================
 
-(defpackage :hydramesh.game-net
-  (:use :cl :hydramesh.core)
+(defpackage :punctim.game-net
+  (:use :cl :punctim.core)
   (:export #:defgame #:defplayer-message #:on-receive
            #:broadcast #:send-to #:tick))
 
-(in-package :hydramesh.game-net)
+(in-package :punctim.game-net)
 
 ;;; Game session definition DSL
 (defmacro defgame (name &body clauses)
@@ -126,12 +126,12 @@
 ;;; DSL 2: AUDIO-STREAM - Real-time Audio Streaming
 ;;; ============================================================================
 
-(defpackage :hydramesh.audio-stream
-  (:use :cl :hydramesh.core)
+(defpackage :punctim.audio-stream
+  (:use :cl :punctim.core)
   (:export #:defaudio-stream #:with-audio-input #:with-audio-output
            #:stream-audio #:set-codec #:add-filter))
 
-(in-package :hydramesh.audio-stream)
+(in-package :punctim.audio-stream)
 
 ;;; Audio stream definition DSL
 (defmacro defaudio-stream (name &body specs)
@@ -186,12 +186,12 @@
 ;;; DSL 3: SENSOR-NET - IoT Sensor Networks
 ;;; ============================================================================
 
-(defpackage :hydramesh.sensor-net
-  (:use :cl :hydramesh.core)
+(defpackage :punctim.sensor-net
+  (:use :cl :punctim.core)
   (:export #:defsensor #:defmetric #:report #:on-threshold
            #:aggregate #:time-window))
 
-(in-package :hydramesh.sensor-net)
+(in-package :punctim.sensor-net)
 
 ;;; Sensor definition DSL
 (defmacro defsensor (name &body specs)
@@ -256,11 +256,11 @@
 ;;; DSL 4: MESSAGE-PROTO - Protocol Buffer Message Definition
 ;;; ============================================================================
 
-(defpackage :hydramesh.message-proto
-  (:use :cl :hydramesh.core)
+(defpackage :punctim.message-proto
+  (:use :cl :punctim.core)
   (:export #:defmessage #:message-field #:serialize #:deserialize))
 
-(in-package :hydramesh.message-proto)
+(in-package :punctim.message-proto)
 
 ;;; Message definition DSL (inspired by protobuf)
 (defmacro defmessage (name &body fields)
@@ -331,11 +331,11 @@
 ;;; DSL 5: NET-TOPOLOGY - Network Topology Configuration
 ;;; ============================================================================
 
-(defpackage :hydramesh.net-topology
-  (:use :cl :hydramesh.core)
+(defpackage :punctim.net-topology
+  (:use :cl :punctim.core)
   (:export #:defnetwork #:peer #:group #:route #:policy))
 
-(in-package :hydramesh.net-topology)
+(in-package :punctim.net-topology)
 
 ;;; Network topology DSL
 (defmacro defnetwork (name &body topology)
@@ -381,12 +381,12 @@
 ;;; DSL 6: RELIABILITY - Reliability & Error Handling
 ;;; ============================================================================
 
-(defpackage :hydramesh.reliability
-  (:use :cl :hydramesh.core)
+(defpackage :punctim.reliability
+  (:use :cl :punctim.core)
   (:export #:with-retry #:with-timeout #:with-circuit-breaker
            #:ensure-delivery #:on-error))
 
-(in-package :hydramesh.reliability)
+(in-package :punctim.reliability)
 
 ;;; Retry logic DSL
 (defmacro with-retry ((&key (attempts 3) (delay 1) (backoff :exponential)) 
@@ -430,13 +430,13 @@
 ;;; DSL 7: METRICS - Observability & Monitoring
 ;;; ============================================================================
 
-(defpackage :hydramesh.metrics
-  (:use :cl :hydramesh.core)
+(defpackage :punctim.metrics
+  (:use :cl :punctim.core)
   (:export #:defcounter #:defgauge #:defhistogram
            #:inc #:dec #:set-gauge #:observe
            #:with-timing #:track))
 
-(in-package :hydramesh.metrics)
+(in-package :punctim.metrics)
 
 ;;; Metric definition macros
 (defmacro defcounter (name &key documentation labels)
@@ -484,9 +484,9 @@
 ;;; ============================================================================
 
 (defpackage :example.fps-game
-  (:use :cl :hydramesh.core :hydramesh.game-net 
-        :hydramesh.message-proto :hydramesh.net-topology
-        :hydramesh.metrics))
+  (:use :cl :punctim.core :punctim.game-net 
+        :punctim.message-proto :punctim.net-topology
+        :punctim.metrics))
 
 (in-package :example.fps-game)
 
@@ -559,8 +559,8 @@
 ;;; ============================================================================
 
 (defpackage :example.voip
-  (:use :cl :hydramesh.core :hydramesh.audio-stream
-        :hydramesh.reliability))
+  (:use :cl :punctim.core :punctim.audio-stream
+        :punctim.reliability))
 
 (in-package :example.voip)
 
@@ -590,7 +590,7 @@
 ;;; ============================================================================
 
 (defpackage :example.temperature-sensor
-  (:use :cl :hydramesh.core :hydramesh.sensor-net))
+  (:use :cl :punctim.core :punctim.sensor-net))
 
 (in-package :example.temperature-sensor)
 

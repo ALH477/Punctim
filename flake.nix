@@ -205,45 +205,45 @@
           };
 
           # SBCL with the SDK's Quicklisp systems pre-loaded via nixpkgs lispPackages
-          # (exposed through ASDF; src/hydramesh.lisp loads them portably).
-          hydramesh-sbcl = pkgs.sbcl.withPackages (ps: with ps; [
+          # (exposed through ASDF; src/punctim.lisp loads them portably).
+          punctim-sbcl = pkgs.sbcl.withPackages (ps: with ps; [
             cffi uuid usocket bordeaux-threads
             log4cl trivial-backtrace flexi-streams fiveam
             ieee-floats cl-json
           ]);
 
-          # Hermetic Lisp SDK executable (the `hydramesh` CLI). Builds the saved
+          # Hermetic Lisp SDK executable (the `punctim` CLI). Builds the saved
           # SBCL core via dcf-deploy, with libstreamdb.so on the loader path so the
           # foreign library resolves both at build and at runtime.
-          hydramesh-lisp = pkgs.stdenv.mkDerivation {
-            pname = "hydramesh-lisp";
+          punctim-lisp = pkgs.stdenv.mkDerivation {
+            pname = "punctim-lisp";
             version = "2.2.0";
             src = self + "/lisp";
-            nativeBuildInputs = [ hydramesh-sbcl pkgs.makeWrapper ];
+            nativeBuildInputs = [ punctim-sbcl pkgs.makeWrapper ];
             dontStrip = true; # stripping breaks SBCL executables
             buildPhase = ''
               runHook preBuild
               export LD_LIBRARY_PATH=${streamdb}/lib''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
-              ${hydramesh-sbcl}/bin/sbcl --no-userinit --non-interactive \
-                --load src/hydramesh.lisp \
+              ${punctim-sbcl}/bin/sbcl --no-userinit --non-interactive \
+                --load src/punctim.lisp \
                 --eval '(in-package :d-lisp)' \
-                --eval '(dcf-deploy "hydramesh")' \
+                --eval '(dcf-deploy "punctim")' \
                 --quit
               runHook postBuild
             '';
             installPhase = ''
               runHook preInstall
               mkdir -p $out/bin $out/libexec
-              cp hydramesh $out/libexec/hydramesh
+              cp punctim $out/libexec/punctim
               # Wrap so the saved core can dlopen libstreamdb.so at runtime; without
               # it the SDK still runs (DB disabled), but this enables the DB.
-              makeWrapper $out/libexec/hydramesh $out/bin/hydramesh \
+              makeWrapper $out/libexec/punctim $out/bin/punctim \
                 --prefix LD_LIBRARY_PATH : ${streamdb}/lib
               runHook postInstall
             '';
-            meta.description = "HydraMesh (D-LISP) SDK executable";
+            meta.description = "Punctim (D-LISP) SDK executable";
             meta.license = pkgs.lib.licenses.lgpl3Only;
-            meta.mainProgram = "hydramesh";
+            meta.mainProgram = "punctim";
           };
 
           # Python SDK. `pyproject`/`build-system` are explicit: nixpkgs dropped the
@@ -523,18 +523,18 @@
           };
 
           # Hermetic Lisp SDK node image — the Nix replacement for the traditional
-          # lisp/Dockerfile. The wrapped `hydramesh` binary already carries
+          # lisp/Dockerfile. The wrapped `punctim` binary already carries
           # libstreamdb.so on LD_LIBRARY_PATH (via makeWrapper), so the saved core
           # resolves the DB foreign library at startup.
-          docker-hydramesh = pkgs.dockerTools.buildLayeredImage {
-            name = "alh477/hydramesh";
+          docker-punctim = pkgs.dockerTools.buildLayeredImage {
+            name = "alh477/punctim";
             tag = "latest";
-            contents = [ hydramesh-lisp pkgs.bashInteractive pkgs.coreutils ];
+            contents = [ punctim-lisp pkgs.bashInteractive pkgs.coreutils ];
             config = {
-              Entrypoint = [ "${hydramesh-lisp}/bin/hydramesh" ];
+              Entrypoint = [ "${punctim-lisp}/bin/punctim" ];
               Cmd = [ "help" ];
               ExposedPorts = { "7777/udp" = {}; "50051/tcp" = {}; };
-              Labels = { "org.opencontainers.image.source" = "https://github.com/ALH477/HydraMesh"; };
+              Labels = { "org.opencontainers.image.source" = "https://github.com/ALH477/Punctim"; };
             };
           };
 
@@ -864,8 +864,8 @@
             shellHook = ''
               export LD_LIBRARY_PATH=${self.packages.${system}.streamdb}/lib''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
               echo "Lisp SDK dev shell. libstreamdb.so on LD_LIBRARY_PATH."
-              echo "  Load the SDK:  sbcl --load ${self}/lisp/src/hydramesh.lisp"
-              echo "  Run tests:     sbcl --load ${self}/lisp/src/hydramesh.lisp --eval '(d-lisp::run-tests)'"
+              echo "  Load the SDK:  sbcl --load ${self}/lisp/src/punctim.lisp"
+              echo "  Run tests:     sbcl --load ${self}/lisp/src/punctim.lisp --eval '(d-lisp::run-tests)'"
             '';
             meta.description = "Lisp SDK dev shell";
           };
