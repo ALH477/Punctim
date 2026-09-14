@@ -80,7 +80,7 @@ Notes for the JH7110 target:
   `double` only where it matters (correlator/phase state, ADAA). Do **not** pass
   `-ffast-math` blindly — it can destabilize feedback structures.
 - One U74 core comfortably runs a binary-FSK TX+RX at 48 kHz in real time,
-  leaving the other three cores for HydraMesh, FEC, and application logic.
+  leaving the other three cores for Punctim, FEC, and application logic.
 - ArchibaldOS / NixOS deployment: build the static `libhydramodem.a` and link it
   into your service; the modem has no audio-I/O dependency of its own (it
   produces/consumes float buffers — wire it to JACK/ALSA/PipeWire at the app
@@ -125,7 +125,7 @@ hydra_profile p;
 hydra_profile_default(&p);          /* or set fields yourself */
 hydra_profile_init(&p);
 
-uint8_t dcf[17] = { /* your HydraMesh DCF frame */ };
+uint8_t dcf[17] = { /* your Punctim DCF frame */ };
 float  *audio; size_t n;
 hydra_modem_tx(&p, dcf, &audio, &n);    /* -> mono float frame, you free() it  */
 

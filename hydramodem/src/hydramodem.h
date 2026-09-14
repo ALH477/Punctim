@@ -1,6 +1,6 @@
 /* hydramodem.h -- single public header for the HydraModem acoustic modem.
  *
- * HydraModem transports the 17-byte HydraMesh/DCF wire frame over sound: a
+ * HydraModem transports the 17-byte Punctim/DCF wire frame over sound: a
  * Faust-generated (or portable-C) DSP front end does the continuous per-sample
  * work (quadrature tone generation and down-conversion), and the C core does
  * everything packet-shaped -- framing, FEC, interleaving, acquisition, symbol-

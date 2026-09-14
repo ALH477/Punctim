@@ -11,7 +11,7 @@
     "dcf-mesh": {
       "command": "python3",
       "args": [
-        "/path/to/HydraMesh/matrix-bridge/mesh_mcp.py"
+        "/path/to/Punctim/matrix-bridge/mesh_mcp.py"
       ],
       "env": {
         "DCF_AGENT_NAME": "openclaw",

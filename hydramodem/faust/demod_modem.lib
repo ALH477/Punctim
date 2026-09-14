@@ -1,7 +1,7 @@
 //############################### demod_modem.lib ###############################
 // DeMoD Faust Modem Library
 // -----------------------------------------------------------------------------
-// Per-sample DSP for an acoustic M-FSK physical layer that transports HydraMesh
+// Per-sample DSP for an acoustic M-FSK physical layer that transports Punctim
 // DCF frames (17 opaque bytes) over an audio channel (44.1 / 48 kHz).
 //
 // SCOPE (deliberate): this library owns ONLY the continuous, sample-synchronous
@@ -34,7 +34,7 @@ declare name        "DeMoD Modem Library";
 declare version     "0.1.0";
 declare author      "DeMoD LLC";
 declare license     "LGPL-3.0-only";
-declare description "Acoustic M-FSK physical-layer DSP for HydraMesh / DCF transport.";
+declare description "Acoustic M-FSK physical-layer DSP for Punctim / DCF transport.";
 
 import("stdfaust.lib");
 

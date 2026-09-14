@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LGPL-3.0-only
-/* dcf-tools/dcf_loopback.c -- HydraMesh<->HydraModem interop check.
+/* dcf-tools/dcf_loopback.c -- Punctim<->HydraModem interop check.
  *
  * Proves the contract that lets HydraModem live in this monorepo: a real 17-byte
  * DeModFrame, built by the repo's reference wire codec (codec/demod_frame.h),

@@ -1,4 +1,4 @@
-# HydraMesh / DCF — top-level task runner.
+# Punctim / DCF — top-level task runner.
 # Run `make` or `make help` to list targets. This is the single discoverable entry
 # point for setup, certification, tests, docs, and the client (see README.md).
 
@@ -6,7 +6,7 @@
 .PHONY: help setup certify ci-local test docs client clean
 
 help: ## List the available tasks
-	@echo "HydraMesh / DCF — make targets:"
+	@echo "Punctim / DCF — make targets:"
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
 		| awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-10s\033[0m %s\n",$$1,$$2}'
 	@echo ""

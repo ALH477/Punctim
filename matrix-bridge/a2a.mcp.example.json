@@ -13,7 +13,7 @@
     "mcpServers": {
       "dcf-mesh": {
         "command": "python3",
-        "args": ["/home/you/HydraMesh/matrix-bridge/mesh_mcp.py"],
+        "args": ["/home/you/Punctim/matrix-bridge/mesh_mcp.py"],
         "env": {
           "DCF_AGENT_NAME": "agent-a",
           "DCF_AGENT_NODE_ID": "0x00A1",
@@ -29,7 +29,7 @@
     "mcpServers": {
       "dcf-mesh": {
         "command": "python3",
-        "args": ["/home/you/HydraMesh/matrix-bridge/mesh_mcp.py"],
+        "args": ["/home/you/Punctim/matrix-bridge/mesh_mcp.py"],
         "env": {
           "DCF_AGENT_NAME": "agent-b",
           "DCF_AGENT_NODE_ID": "0x00B2",

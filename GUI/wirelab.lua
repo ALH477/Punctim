@@ -3,7 +3,7 @@
 -- Run:  ./demod-ui wirelab.lua
 --
 -- Pure-Lua reference codec (CRC-16/CCITT-FALSE, poly 0x1021, init 0xFFFF),
--- bit-identical to wirelab_core.py / the fixed HydraMesh crc16-ccitt / the
+-- bit-identical to wirelab_core.py / the fixed Punctim crc16-ccitt / the
 -- Haskell crc16ccitt. Self-certifies on launch against the golden anchors:
 --   crc("123456789")            = 0x29B1
 --   crc(exampleFrame body)      = 0xA963

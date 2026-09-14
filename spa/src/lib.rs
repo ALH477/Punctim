@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 //!
-//! DCF-SPA — single-packet port authorization for HydraMesh.
+//! DCF-SPA — single-packet port authorization for Punctim.
 //!
 //! Authentication only: the token proves a device's identity (via HMAC-SHA256
 //! or Ed25519 over a plaintext, nonce'd, timestamped header) so the authorizer

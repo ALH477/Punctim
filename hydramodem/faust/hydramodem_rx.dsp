@@ -1,5 +1,5 @@
 //=============================== hydramodem_rx.dsp ============================
-// HydraMesh acoustic modem -- RECEIVER top level.
+// Punctim acoustic modem -- RECEIVER top level.
 //
 //   Input    0       : acoustic samples (from ADC / capture).
 //   Outputs  0..N-1  : per-tone energy (mag^2) from the non-coherent

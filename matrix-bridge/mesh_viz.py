@@ -18,7 +18,7 @@ Two roles:
 Run:
   python3 matrix-bridge/mesh_viz.py                       # hub on :7800, web on :8088
   python3 matrix-bridge/mesh_viz.py --mode monitor --port 7802
-  python3 matrix-bridge/mesh_viz.py --names 0x00a1=Hermes,0x00b2=HydraMesh \
+  python3 matrix-bridge/mesh_viz.py --names 0x00a1=Hermes,0x00b2=Punctim \
       --channels duet,agent --peers 127.0.0.1:7801,127.0.0.1:7802
 """
 import argparse
@@ -344,7 +344,7 @@ def main(argv=None):
     p.add_argument("--http", type=int, default=8088, help="web dashboard port")
     p.add_argument("--bind", default="0.0.0.0")
     p.add_argument("--names", default=os.environ.get("DCF_NAMES",
-                   "0x00a1=Hermes,0x00b2=HydraMesh"))
+                   "0x00a1=Hermes,0x00b2=Punctim"))
     p.add_argument("--channels", default=os.environ.get("DCF_CHANNELS", "duet"),
                    help="comma-separated channel names to label (crc16 mapped)")
     p.add_argument("--peers", default=os.environ.get("DCF_PEERS", ""),

@@ -2,7 +2,7 @@ blank_issues_enabled: true
 contact_links:
   - name: Read the docs first
     url: https://alh477.github.io/DeMoD-Communication-Framework/
-    about: Specs, SDK guides, and API references for HydraMesh / DCF.
+    about: Specs, SDK guides, and API references for Punctim / DCF.
   - name: Contributing guide
     url: https://github.com/ALH477/DeMoD-Communication-Framework/blob/main/CONTRIBUTING.md
     about: How to build, test, and open a PR (the certificate is the contract).

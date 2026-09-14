@@ -1,4 +1,4 @@
-/* tests/test_loopback.c -- end-to-end validation of the HydraMesh acoustic modem.
+/* tests/test_loopback.c -- end-to-end validation of the Punctim acoustic modem.
  *
  *   [1] clean loopback : TX a 17-byte DCF payload -> audio -> RX, exact match.
  *   [2] AWGN sweep     : white Gaussian noise vs frame success, for all three
@@ -170,7 +170,7 @@ int main(void)
     hydra_profile_default(&p);
     if (hydra_profile_init(&p) != 0) { printf("bad profile\n"); return 2; }
 
-    printf("HydraMesh acoustic modem -- production validation\n");
+    printf("Punctim acoustic modem -- production validation\n");
     printf("profile: %.0f Hz, %.0f baud, %d-FSK @ %.0f + k*%.0f Hz, %d samp/sym, "
            "%zu syms/frame, FEC=%s, interleave=%s\n",
            p.sample_rate, p.baud, p.n_tones, p.base_freq, p.tone_spacing,

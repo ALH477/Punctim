@@ -1,8 +1,8 @@
 cff-version: 1.2.0
-message: "If you use HydraModem or the DCF / HydraMesh framework, please cite it."
+message: "If you use HydraModem or the DCF / Punctim framework, please cite it."
 title: "HydraModem: a Faust-authored acoustic M-FSK physical layer for a certified mesh-protocol frame"
 abstract: >-
-  An acoustic physical layer that carries the 17-byte DeModFrame of the DCF / HydraMesh
+  An acoustic physical layer that carries the 17-byte DeModFrame of the DCF / Punctim
   protocol over sound. The per-sample DSP (a continuous-phase M-FSK modulator and a
   non-coherent quadrature integrate-and-dump tone-correlator demodulator bank) is authored
   in Faust and compiled to C; the packet layer (CRC-16, K=7 r=1/2 convolutional FEC with
@@ -13,7 +13,7 @@ type: software
 version: "1.0.0"
 date-released: 2026-06-27
 license: LGPL-3.0-only
-repository-code: "https://github.com/ALH477/HydraMesh"
+repository-code: "https://github.com/ALH477/Punctim"
 # DOI is assigned by Zenodo on first archive; paste it back here as `doi:` and in `identifiers`.
 # doi: 10.5281/zenodo.XXXXXXX
 authors:
@@ -31,7 +31,7 @@ keywords:
   - data over sound
   - mesh networking
   - DCF
-  - HydraMesh
+  - Punctim
 references:
   - type: conference-paper
     title: "Comparison and Implementation of Data Transmission Techniques Through Analog Audio Signals in the Context of Augmented Mobile Instruments"

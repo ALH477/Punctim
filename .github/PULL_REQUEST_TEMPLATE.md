@@ -1,4 +1,4 @@
-<!-- Thanks for contributing to HydraMesh! See CONTRIBUTING.md. -->
+<!-- Thanks for contributing to Punctim! See CONTRIBUTING.md. -->
 
 ## What & why
 

@@ -3,14 +3,14 @@
 **A dual reference/Faust DSP backend with hardware validation, and an honest novelty assessment.**
 
 *Author:* Asher LeRoy — DeMoD LLC  ⟨demodllc@gmail.com⟩  ·  ORCID [0009-0006-5842-4975](https://orcid.org/0009-0006-5842-4975)
-*Version 1.0 — 2026-06-27. Part of the DCF / HydraMesh project (LGPL-3.0).*
+*Version 1.0 — 2026-06-27. Part of the DCF / Punctim project (LGPL-3.0).*
 
 ---
 
 ## Abstract
 
 HydraModem is an acoustic physical layer (PHY) that carries the 17-byte `DeModFrame` of the
-DCF / HydraMesh protocol over sound. Its per-sample DSP — a continuous-phase M-FSK (CPFSK)
+DCF / Punctim protocol over sound. Its per-sample DSP — a continuous-phase M-FSK (CPFSK)
 modulator and a **non-coherent quadrature integrate-and-dump tone-correlator demodulator
 bank** — is authored in **Faust** and compiled to C; the variable-length, packet-shaped layer
 (framing, CRC-16, a K=7 rate-1/2 convolutional code with soft-decision Viterbi decoding, a
@@ -27,7 +27,7 @@ FEC-protected framing stack carrying a certified protocol frame, hardware-verifi
 
 ## 1. Background
 
-DCF (the DeMoD Communication Framework) / HydraMesh is a handshakeless, encryption-free mesh
+DCF (the DeMoD Communication Framework) / Punctim is a handshakeless, encryption-free mesh
 protocol whose single invariant is a 17-byte wire frame, the `DeModFrame`, pinned by a
 246-vector golden certificate and implemented byte-identically across many languages. The
 frame is `sync(0xD3) | flags | seq | src | dst | payload(4) | ts24 | crc16`, validated by the
@@ -135,7 +135,7 @@ marketing language, not a priority claim against the published record.
 
 ## 6. Reproducibility
 
-All results are reproducible from the public repository (DCF / HydraMesh) under Nix:
+All results are reproducible from the public repository (DCF / Punctim) under Nix:
 
 ```sh
 nix build .#hydramodem            # reference DSP: full suite (CRC 0x29B1, FEC, timing, fuzz)

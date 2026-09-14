@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: LGPL-3.0-only
-//! DCF Rust Server - HydraMesh Compatible
+//! DCF Rust Server - Punctim Compatible
 //! 
 //! This is the main entry point for the DCF Rust server, providing:
 //! - gRPC service for DCF protocol
 //! - UDP transport for low-latency gaming/audio
 //! - P2P peer discovery
-//! - Backward compatible with Lisp HydraMesh
+//! - Backward compatible with Lisp Punctim
 //! - Universal Shim integration for 120Hz interpolation
 
 use std::sync::{Arc, Mutex};
@@ -408,7 +408,7 @@ async fn run_server(
         }
     });
 
-    // --- INTEGRATION: Use Custom Handler for HydraMesh ---
+    // --- INTEGRATION: Use Custom Handler for Punctim ---
     // Instead of DefaultMessageHandler, use ShimMessageHandler to feed the buffer
     let udp_node = node.clone();
     let handler = Arc::new(ShimMessageHandler::new(buffer.clone())) as Arc<dyn dcf_rust_sdk::MessageHandler>;
@@ -439,7 +439,7 @@ async fn run_server(
     }
 
     log::info!("╔══════════════════════════════════════════════════════════════════════════╗");
-    log::info!("║         DCF Rust Server v2.2.0 - HydraMesh Compatible                   ║");
+    log::info!("║         DCF Rust Server v2.2.0 - Punctim Compatible                   ║");
     log::info!("╚══════════════════════════════════════════════════════════════════════════╝");
     log::info!("gRPC server listening on {}", grpc_addr);
     log::info!("UDP server listening on port {}", config.udp_port);
@@ -626,7 +626,7 @@ fn load_config(path: &str) -> std::result::Result<DcfConfig, Box<dyn std::error:
 fn print_info() {
     println!(r#"
 ╔══════════════════════════════════════════════════════════════════════════╗
-║         DCF Rust Server v2.2.0 - HydraMesh Compatible                   ║
+║         DCF Rust Server v2.2.0 - Punctim Compatible                   ║
 ╚══════════════════════════════════════════════════════════════════════════╝
 
 **Quick Start for Gaming:**

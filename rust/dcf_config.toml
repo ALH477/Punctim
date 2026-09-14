@@ -1,4 +1,4 @@
-# DCF Configuration - HydraMesh Compatible
+# DCF Configuration - Punctim Compatible
 # This configuration is compatible with both Rust and Lisp implementations
 
 # Transport protocol: UDP (for gaming), gRPC (for reliable ops)

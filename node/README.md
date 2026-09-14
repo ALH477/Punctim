@@ -1,6 +1,6 @@
 # DeMoD Community Node
 
-Contribute your bandwidth and compute power to the **DeMoD Distributed Computing Framework (DCF)** — a global, low-latency HydraMesh network for gaming, real-time applications, and distributed workloads.
+Contribute your bandwidth and compute power to the **DeMoD Distributed Computing Framework (DCF)** — a global, low-latency Punctim network for gaming, real-time applications, and distributed workloads.
 
 This is the **official open-source community node** — lightweight, secure, and easy to run on any VPS, home server, or even free-tier cloud instances.
 

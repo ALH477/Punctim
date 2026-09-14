@@ -14,7 +14,7 @@ in {
     enable = lib.mkEnableOption "DCF-SPA single-packet port authorizer";
     package = lib.mkOption {
       type = lib.types.package;
-      description = "The dcf-spa-authorizer package (e.g. inputs.hydramesh.packages.\${system}.dcf-spa-authorizer).";
+      description = "The dcf-spa-authorizer package (e.g. inputs.punctim.packages.\${system}.dcf-spa-authorizer).";
     };
     knockPort = lib.mkOption { type = lib.types.port; default = 62201; };
     meshPort = lib.mkOption { type = lib.types.port; default = 7100; };

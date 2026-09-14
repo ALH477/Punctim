@@ -207,17 +207,17 @@ The feature is exposed as flake **apps**, so a Nix user needs nothing checked
 out and nothing installed:
 
 ```sh
-nix run github:ALH477/HydraMesh#a2a-demo     # stdlib loopback smoke test -> "a2a demo: CERTIFIED"
-nix run github:ALH477/HydraMesh#a2a          # guided interactive harness (setup -> run -> PASS/FAIL)
-nix run github:ALH477/HydraMesh#mesh-agent   # the DeModFrame MCP endpoint (python `mcp` bundled in)
+nix run github:ALH477/Punctim#a2a-demo     # stdlib loopback smoke test -> "a2a demo: CERTIFIED"
+nix run github:ALH477/Punctim#a2a          # guided interactive harness (setup -> run -> PASS/FAIL)
+nix run github:ALH477/Punctim#mesh-agent   # the DeModFrame MCP endpoint (python `mcp` bundled in)
 ```
 
 **Passing arguments — the `--` separator.** Everything after `--` is handed to
 the program, not to Nix. The demo accepts `--turns` and `--channel`:
 
 ```sh
-nix run github:ALH477/HydraMesh#a2a-demo -- --turns 6              # run 6 exchanges
-nix run github:ALH477/HydraMesh#a2a-demo -- --turns 2 --channel lab
+nix run github:ALH477/Punctim#a2a-demo -- --turns 6              # run 6 exchanges
+nix run github:ALH477/Punctim#a2a-demo -- --turns 2 --channel lab
 nix run .#a2a-demo -- --turns 10 --channel duet                    # from a local checkout
 ```
 
@@ -241,7 +241,7 @@ NixOS / any PEP-668 "externally managed" Python, system pip is blocked — use a
 virtualenv (or just use the Nix apps above):
 
 ```sh
-cd /path/to/HydraMesh
+cd /path/to/Punctim
 python3 -m venv .venv
 ./.venv/bin/python -m pip install -r matrix-bridge/requirements.txt   # mcp, aiohttp, pytest
 # optional, only for the --llm runner:  ./.venv/bin/python -m pip install anthropic
@@ -251,8 +251,8 @@ Then point each agent's MCP server `command` at the venv interpreter so `mcp`
 imports (the `a2a.mcp.example.json` snippets show `python3` — swap it):
 
 ```json
-"command": "/path/to/HydraMesh/.venv/bin/python",
-"args": ["/path/to/HydraMesh/matrix-bridge/mesh_mcp.py"]
+"command": "/path/to/Punctim/.venv/bin/python",
+"args": ["/path/to/Punctim/matrix-bridge/mesh_mcp.py"]
 ```
 
 Sanity check: `./.venv/bin/python matrix-bridge/a2a_runner.py --demo` should print
@@ -370,8 +370,8 @@ stdlib — no install, no GUI toolkit.
 
 ```sh
 python3 matrix-bridge/mesh_viz.py                 # hub on udp/7800, dashboard on :8088
-nix run github:ALH477/HydraMesh#mesh-viz          # same, via Nix
-nix run github:ALH477/HydraMesh#mesh-viz -- --mode monitor --port 7802 --http 8088
+nix run github:ALH477/Punctim#mesh-viz          # same, via Nix
+nix run github:ALH477/Punctim#mesh-viz -- --mode monitor --port 7802 --http 8088
 ```
 
 Open **http://127.0.0.1:8088/**. Every frame is decoded with the certified codec
@@ -387,7 +387,7 @@ what's on the wire.
 - **`monitor`** — observe-only, no relay. Add the host as an extra peer (or tap its
   port) so it receives copies; it never forwards.
 
-Useful flags: `--names 0x00a1=Hermes,0x00b2=HydraMesh` (label nodes; defaults to the
+Useful flags: `--names 0x00a1=Hermes,0x00b2=Punctim` (label nodes; defaults to the
 agreed registry), `--channels duet,agent` (map `crc16` channel ids back to names),
 `--peers host:port,…` (hub: seed relay targets), `--http`/`--port`/`--bind`.
 

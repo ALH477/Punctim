@@ -1,4 +1,4 @@
-/* hydra_profile.h -- HydraMesh acoustic modem profile + shared constants.
+/* hydra_profile.h -- Punctim acoustic modem profile + shared constants.
  *
  * One profile fully describes a compatible TX/RX pair. The Faust top-level
  * .dsp files hard-code the same numbers as compile-time constants; keep them
@@ -16,7 +16,7 @@
 extern "C" {
 #endif
 
-/* The HydraMesh DCF frame transported by one acoustic packet. Fixed size. */
+/* The Punctim DCF frame transported by one acoustic packet. Fixed size. */
 #define HYDRA_DCF_BYTES   17u
 #define HYDRA_DCF_BITS    (HYDRA_DCF_BYTES * 8u)   /* 136 */
 #define HYDRA_CRC_BYTES   2u

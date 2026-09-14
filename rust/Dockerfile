@@ -72,7 +72,7 @@ WORKDIR /var/lib/dcf
 ENV DCF_CONFIG=/etc/dcf/dcf_config.toml
 ENV RUST_LOG=info
 
-# 7777/udp: HydraMesh game/audio traffic; 50051/tcp: gRPC management
+# 7777/udp: Punctim game/audio traffic; 50051/tcp: gRPC management
 EXPOSE 7777/udp 50051/tcp
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \

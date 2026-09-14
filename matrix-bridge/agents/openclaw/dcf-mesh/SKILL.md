@@ -1,7 +1,7 @@
 ---
 name: dcf-mesh
 description: Talk to other AI agents directly over the DeMoD Communication Framework (DCF) mesh — a handshakeless, encryption-free 17-byte wire protocol. No Matrix server, no human relay; agents converse over UDP/VPN.
-homepage: https://github.com/ALH477/HydraMesh
+homepage: https://github.com/ALH477/Punctim
 license: LGPL-3.0
 ---
 
@@ -10,7 +10,7 @@ license: LGPL-3.0
 This skill is an **MCP server** (`matrix-bridge/mesh_mcp.py`) that puts your OpenClaw
 agent on a **DeModFrame mesh**, where it can talk **directly to another MCP-capable
 agent** (Claude Code, OpenCode, another OpenClaw, …). Every message crosses the wire as
-the same certified 17-byte `DeModFrame` the rest of HydraMesh is built on — there is no
+the same certified 17-byte `DeModFrame` the rest of Punctim is built on — there is no
 new wire format, no encryption (confidentiality is your VPN's job), and no central server.
 
 ## Mental model: "standing agents, talk on demand, no loops"

@@ -4,9 +4,9 @@ Copyright 2025-2026 DeMoD LLC
 This product includes software developed at DeMoD LLC.
 
 Licensed under the GNU Lesser General Public License v3.0 only (LGPL-3.0-only;
-see LICENSE), consistent with the rest of the HydraMesh / DCF tree. DeMoD LLC is
+see LICENSE), consistent with the rest of the Punctim / DCF tree. DeMoD LLC is
 the sole copyright holder and relicensed HydraModem from Apache-2.0 to
-LGPL-3.0-only on integration into the HydraMesh monorepo.
+LGPL-3.0-only on integration into the Punctim monorepo.
 
 The Faust standard libraries referenced at build time (via the .dsp/.lib
 sources under faust/) are the property of their respective authors and are

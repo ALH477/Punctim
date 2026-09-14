@@ -1,6 +1,6 @@
 # HydraModem
 
-An acoustic **M-FSK physical layer** for transporting **HydraMesh / DCF** frames
+An acoustic **M-FSK physical layer** for transporting **Punctim / DCF** frames
 (17 opaque bytes) over sound — 44.1 / 48 kHz audio, real-time on a single
 SiFive U74 core of a StarFive JH7110.
 
@@ -10,7 +10,7 @@ directly from what Faust can and cannot express.
 
 ```
             ┌──────────────────────────────────────────────────────────┐
-            │  HydraMesh  (mesh / routing layer — your existing stack)   │
+            │  Punctim  (mesh / routing layer — your existing stack)   │
             └───────────────┬───────────────────────────┬──────────────┘
                             │  17-byte DCF frame (opaque)│
             ┌───────────────▼───────────────────────────▼──────────────┐
@@ -242,7 +242,7 @@ the profile-matching requirement; **docs/RECEIVER.md** for the receiver design.
 
 ## License
 
-LGPL-3.0-only (consistent with the HydraMesh / DCF tree; DeMoD LLC, the sole
+LGPL-3.0-only (consistent with the Punctim / DCF tree; DeMoD LLC, the sole
 copyright holder, relicensed HydraModem from Apache-2.0 on integration). See
 LICENSE and NOTICE. The Faust standard libraries used at build time are under
 their own (permissive) licenses.

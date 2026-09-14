@@ -1,6 +1,6 @@
-# DCF Rust SDK - HydraMesh Compatible
+# DCF Rust SDK - Punctim Compatible
 
-**Version 2.2.0** | Compatible with D-LISP HydraMesh v2.2.0
+**Version 2.2.0** | Compatible with D-LISP Punctim v2.2.0
 
 A production-ready Rust implementation of the DeMoD Communications Framework (DCF), optimized for gaming and real-time audio with UDP transport, binary Protobuf, unreliable/reliable channels, and network statistics.
 
@@ -13,7 +13,7 @@ A production-ready Rust implementation of the DeMoD Communications Framework (DC
 - **gRPC Support**: Backward compatible with TCP/gRPC for reliable operations
 - **Peer Management**: Dynamic peer discovery via mDNS
 - **Transaction Support**: Begin/commit/rollback for batched operations
-- **Lisp Interoperability**: Wire-compatible with HydraMesh Lisp SDK
+- **Lisp Interoperability**: Wire-compatible with Punctim Lisp SDK
 
 ## Quick Start
 
@@ -116,7 +116,7 @@ group_rtt_threshold = 50
 
 ## Wire Protocol
 
-The binary protocol is wire-compatible with the Lisp HydraMesh implementation:
+The binary protocol is wire-compatible with the Lisp Punctim implementation:
 
 ### Message Header (17 bytes minimum)
 ```
@@ -227,14 +227,14 @@ LGPL-3.0-only - Compatible with the main DCF mono repo.
 
 ## Related Projects
 
-- [D-LISP HydraMesh](../lisp/) - Lisp implementation
+- [D-LISP Punctim](../lisp/) - Lisp implementation
 - [DCF Design Spec](../docs/dcf_design_spec.md) - Full specification
 - [StreamDB](../streamdb/) - Persistent storage backend
 
 ## Changelog
 
 ### v2.2.0
-- Wire-compatible binary protocol with Lisp HydraMesh
+- Wire-compatible binary protocol with Lisp Punctim
 - UDP transport with unreliable/reliable channels
 - Network statistics (RTT, jitter, packet loss)
 - Gaming-optimized APIs (position, audio, events)

@@ -1,4 +1,4 @@
-/* examples/rx_demo.c -- decode a HydraMesh acoustic frame from a WAV file.
+/* examples/rx_demo.c -- decode a Punctim acoustic frame from a WAV file.
  *
  *   ./rx_demo in.wav [--fec]
  *

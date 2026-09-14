@@ -219,7 +219,7 @@ sysctl -w net.ipv4.tcp_wmem="4096 65536 134217728"
 
 ## Compatibility
 
-### With Lisp HydraMesh
+### With Lisp Punctim
 
 This Rust implementation is wire-compatible with the Lisp `thunderbolt-transport.lisp`:
 
@@ -280,5 +280,5 @@ LGPL-3.0 - Part of the DeMoD Communications Framework.
 ## Related
 
 - [DCF Rust SDK](../dcf_rust_sdk/) - Main framework
-- [HydraMesh Lisp](../lisp/hydramesh.lisp) - Lisp implementation
+- [Punctim Lisp](../lisp/punctim.lisp) - Lisp implementation
 - [DCF Design Spec](../docs/dcf_design_spec.md) - Full specification

@@ -38,7 +38,7 @@ jobs:
         run: PUSH=0 NICE=0 ./docker/build-and-push.sh
 
       # The script runs the identity/cross-cert matrix + live ProtoMessage/UDP,
-      # bare-frame+SuperPack, Faust modem, gRPC, hydramodem, and hydramesh checks,
+      # bare-frame+SuperPack, Faust modem, gRPC, hydramodem, and punctim checks,
       # and `exit 1`s on the first failure.
       - name: Run mesh interop matrix
         run: ./docker/mesh-interop-test.sh

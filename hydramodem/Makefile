@@ -1,4 +1,4 @@
-# HydraModem -- acoustic modem for the 17-byte HydraMesh/DCF wire frame.
+# HydraModem -- acoustic modem for the 17-byte Punctim/DCF wire frame.
 # =============================================================================
 # Default build uses the portable C reference DSP (zero external dependencies):
 #     make                 # static + shared lib, examples, test binaries
@@ -147,7 +147,7 @@ $(BUILD)/hydramodem.pc: | $(BUILD)
 	@printf 'libdir=%s\n' "$(LIBDIR)"                              >> $@
 	@printf 'includedir=%s\n\n' "$(INCLUDEDIR)"                    >> $@
 	@printf 'Name: hydramodem\n'                                   >> $@
-	@printf 'Description: Acoustic modem for the 17-byte HydraMesh/DCF frame\n' >> $@
+	@printf 'Description: Acoustic modem for the 17-byte Punctim/DCF frame\n' >> $@
 	@printf 'Version: %s\n' "$(VERSION)"                           >> $@
 	@printf 'Libs: -L$${libdir} -lhydramodem\n'                    >> $@
 	@printf 'Libs.private: -lm\n'                                  >> $@

@@ -1,13 +1,13 @@
 # Copyright (C) 2025 DeMoD LLC
 #
-# This file is part of the HydraMesh LLM Interface System.
+# This file is part of the Punctim LLM Interface System.
 #
-# The HydraMesh LLM Interface System is free software: you can redistribute it and/or
+# The Punctim LLM Interface System is free software: you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or (at your option)
 # any later version.
 #
-# The HydraMesh LLM Interface System is distributed in the hope that it will be useful,
+# The Punctim LLM Interface System is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
 # FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
 # details.
@@ -16,7 +16,7 @@
 # this program. If not, see <https://www.gnu.org/licenses/>.
 
 {
-  description = "Reproducible environment for LLM-HydraMesh interface";
+  description = "Reproducible environment for LLM-Punctim interface";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
@@ -73,7 +73,7 @@
             export PYTHONPATH=${pythonEnv}/lib/python3.12/site-packages:$PYTHONPATH
           '';
           meta = {
-            description = "LLM interface with HydraMesh";
+            description = "LLM interface with Punctim";
             mainProgram = "llm_hydra_interface.py";
           };
         };

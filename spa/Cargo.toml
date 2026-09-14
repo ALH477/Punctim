@@ -3,7 +3,7 @@ name = "dcf-spa-authorizer"
 version = "0.1.0"
 edition = "2021"
 authors = ["DeMoD LLC <alh477@demod.ltd>"]
-description = "DCF-SPA: single-packet port authorization for HydraMesh (authentication-only, EAR99)"
+description = "DCF-SPA: single-packet port authorization for Punctim (authentication-only, EAR99)"
 license = "LGPL-3.0-only"
 
 [[bin]]

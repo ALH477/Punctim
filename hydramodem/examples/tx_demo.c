@@ -1,4 +1,4 @@
-/* examples/tx_demo.c -- encode a message as one HydraMesh acoustic frame.
+/* examples/tx_demo.c -- encode a message as one Punctim acoustic frame.
  *
  *   ./tx_demo "up to 17 bytes" out.wav
  *

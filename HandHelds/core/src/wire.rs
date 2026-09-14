@@ -6,7 +6,7 @@
 //!
 //! This is **byte-identical** to the reference codecs in `codec/frame.rs` and
 //! `codec/src/superpack.rs`, so handheld traffic is on-air compatible with the
-//! rest of the HydraMesh mesh and satisfies the same 246-vector wire certificate.
+//! rest of the Punctim mesh and satisfies the same 246-vector wire certificate.
 //! Anchors pinned by [`selftest`]:
 //!   * `crc16_ccitt("123456789") == 0x29B1`
 //!   * `crc16_ccitt([0u8; 15])  == 0x4EC3`

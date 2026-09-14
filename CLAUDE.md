@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A polyglot monorepo for **DCF / HydraMesh** (DeMoD Communication Framework) — a
+A polyglot monorepo for **DCF / Punctim** (DeMoD Communication Framework) — a
 handshakeless, encryption-free, export-control-compliant mesh protocol. The same
 protocol is implemented as bindings/SDKs across C, C++, Rust, Go, Python, Perl,
 Java/Kotlin, Swift, Node.js, Haskell, and Common Lisp, each in its own top-level
@@ -58,7 +58,7 @@ Reference codecs (must stay byte-identical):
 | Python | `python/MCP/wirelab_core.py` | `encode`/`decode`/`crc16_ccitt`/`syndrome` |
 | Lua | `GUI/wirelab.lua` | `encode`/`decode`/`crc16` (self-certs on load) |
 | Haskell | `haskell/src/DCF/Transport/FrameSpec.hs` | `encodeFrame`/`decodeFrame` |
-| Lisp | `lisp/src/hydramesh.lisp`, `lisp/src/wire.lisp` | `encode-dcf-frame` |
+| Lisp | `lisp/src/punctim.lisp`, `lisp/src/wire.lisp` | `encode-dcf-frame` |
 
 ### Certification is the contract
 
@@ -366,7 +366,7 @@ cd python && python3 -m unittest tests.test_pipe -v            # loopback/lossy/
 
 ## HydraPack (universal serialization above DeModFrame + Pipe)
 
-The single serialization layer that sits above both HydraMesh data planes. An
+The single serialization layer that sits above both Punctim data planes. An
 application value goes in; either a sequence of 4-byte quanta (for the wire
 quantum / adapter path) or a contiguous byte buffer (for the DCF-Pipe data plane)
 comes out. The choice is driven by size and schema policy. HydraPack never
@@ -726,11 +726,11 @@ byte-identical to the 246-vector wire certificate + adapter vectors.
 | `python/` | `pip install -r python/requirements.txt` | `pytest python/tests/` |
 | `python/modem/` (FSK acoustic modem) | — | `python3 main.py --help` (uses `faust_jit.py`) |
 | `go/` | `go build ./...` | `go test ./...` |
-| `lisp/` | load `lisp/src/hydramesh.lisp` in SBCL (self-certifies on load) | `sbcl --non-interactive --load lisp/src/wire.lisp` |
+| `lisp/` | load `lisp/src/punctim.lisp` in SBCL (self-certifies on load) | `sbcl --non-interactive --load lisp/src/wire.lisp` |
 | `Documentation/` (Sphinx) | `cd Documentation && pip install -r requirements.txt && make html` | — |
 
-Lisp: `hydramesh.lisp` self-certifies the wire codec on load — all fixes F1–F9 are
-folded into source (`hydramesh-hotfix.lisp` is now a thin shim), and `:cl-json-schema`
+Lisp: `punctim.lisp` self-certifies the wire codec on load — all fixes F1–F9 are
+folded into source (`punctim-hotfix.lisp` is now a thin shim), and `:cl-json-schema`
 (not in Quicklisp) is already gone. `lisp/src/wire.lisp` is the dependency-free codec
 the `certify-lisp` CI loads. StreamDB (`lisp/streamdb/`, a small C lib via CFFI, built by
 the `streamdb` Nix package → `libstreamdb.so`) is Lisp-SDK-only.
@@ -749,10 +749,10 @@ gRPC/GNS nodes) and **`docker-hydramodem`** — the acoustic-modem toolbox
 (`frame_tx`/`frame_rx`/`tx_campaign`/`rx_campaign`/`dcf_loopback`/`sense_node`/
 `sstv_send`/`sstv_recv`/`snake_loopback` on PATH; a WAV/file PHY, default cmd = the
 interop self-test). `snake_source`/`snake_mixer` need `snake_ipc.h` from the separate
-DeMoD audio-stack repo (`$DEMOD_IPC_INCLUDE`) and are skipped in hermetic builds and **`docker-hydramesh`** — the
-Common Lisp SDK CLI node (`hydramesh` + StreamDB; versioned `2.2.0`, default cmd = its
-FiveAM self-test). The hermetic `docker-hydramesh` is now canonical for the
-`alh477/hydramesh` image; the traditional `lisp/Dockerfile` remains as a fallback.
+DeMoD audio-stack repo (`$DEMOD_IPC_INCLUDE`) and are skipped in hermetic builds and **`docker-punctim`** — the
+Common Lisp SDK CLI node (`punctim` + StreamDB; versioned `2.2.0`, default cmd = its
+FiveAM self-test). The hermetic `docker-punctim` is now canonical for the
+`alh477/punctim` image; the traditional `lisp/Dockerfile` remains as a fallback.
 **`docker/docker-compose.yml`**
 brings the backends up together (`docker compose -f docker/docker-compose.yml up`);
 `--profile demo` adds a hydramodem acoustic file-link demo (one container modulates a

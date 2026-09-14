@@ -1,4 +1,4 @@
-/* hydra_modem.h -- end-to-end acoustic transport for HydraMesh DCF frames.
+/* hydra_modem.h -- end-to-end acoustic transport for Punctim DCF frames.
  *
  * TX  : 17-byte DCF payload -> mono float audio (one-shot).
  * RX  : audio -> 17-byte payload, via an I/Q matched-filter (integrate-and-dump)

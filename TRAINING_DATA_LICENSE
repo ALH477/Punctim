@@ -202,11 +202,11 @@
 
 TRAINING DATA USAGE NOTICE
 
-The JSONL files in this repository (hydramesh_wire.jsonl, hydramesh_adapter.jsonl,
-hydramesh_certify.jsonl) are provided under the Apache License 2.0 specifically
+The JSONL files in this repository (punctim_wire.jsonl, punctim_adapter.jsonl,
+punctim_certify.jsonl) are provided under the Apache License 2.0 specifically
 for machine learning model training purposes.
 
-These files contain structured training examples derived from the HydraMesh
+These files contain structured training examples derived from the Punctim
 codebase, formatted as instruction-response pairs for fine-tuning language models
 on DCF (DeMoD Communication Framework) wire protocol implementation, adapter
 patterns, and cross-language certification.

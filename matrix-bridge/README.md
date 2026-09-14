@@ -128,7 +128,7 @@ The agent is any MCP-capable client (e.g. Claude Code / Claude Desktop) pointed 
 ```json
 { "mcpServers": {
     "dcf-mesh": { "command": "python3",
-                  "args": ["/home/you/HydraMesh/matrix-bridge/mesh_mcp.py"],
+                  "args": ["/home/you/Punctim/matrix-bridge/mesh_mcp.py"],
                   "env": { "DCF_BRIDGE_PORT": "7777", "DCF_AGENT_UDP_PORT": "7788",
                            "DCF_CHANNEL": "agent" } } } }
 ```

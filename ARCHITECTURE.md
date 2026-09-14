@@ -1,11 +1,11 @@
-# HydraMesh / DCF — Architecture Map
+# Punctim / DCF — Architecture Map
 
 A one-page orientation for newcomers. For frank, module-by-module status (what's
 solid vs. drifted), read [`Documentation/DCF_CODE_REVIEW.md`](Documentation/DCF_CODE_REVIEW.md).
 
 ## The shape of the repo
 
-HydraMesh is a polyglot monorepo. Its center of gravity is **narrow**: one wire
+Punctim is a polyglot monorepo. Its center of gravity is **narrow**: one wire
 format, certified identical across languages, with everything richer layered on top
 as adapters.
 

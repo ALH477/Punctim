@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LGPL-3.0-only
-//! DCF Rust SDK - HydraMesh Compatible
+//! DCF Rust SDK - Punctim Compatible
 //! Version 2.2.1 | Production Grade with Enhanced Shim Visibility
 //! 
 //! This SDK provides a production-ready Rust implementation for DCF,
@@ -75,7 +75,7 @@ pub use proto::{
 };
 
 // ============================================================================
-// Constants - Compatible with Lisp HydraMesh
+// Constants - Compatible with Lisp Punctim
 // ============================================================================
 
 /// Message types matching Lisp implementation
@@ -140,7 +140,7 @@ pub enum DcfError {
 pub type Result<T> = std::result::Result<T, DcfError>;
 
 // ============================================================================
-// Binary Protocol - Compatible with Lisp HydraMesh
+// Binary Protocol - Compatible with Lisp Punctim
 // ============================================================================
 
 /// Protocol message header (17 bytes minimum)
@@ -730,7 +730,7 @@ impl DcfNode {
     }
 
     // ========================================================================
-    // Gaming API - Matching Lisp HydraMesh
+    // Gaming API - Matching Lisp Punctim
     // ========================================================================
 
     /// Send position update (unreliable, high frequency)

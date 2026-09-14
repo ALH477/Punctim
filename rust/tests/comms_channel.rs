@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 // Copyright (c) 2026 DeMoD LLC.
 //
-// Headless proof of the HydraMesh comms client's core path: two SDK nodes exchange a
+// Headless proof of the Punctim comms client's core path: two SDK nodes exchange a
 // text message and DCF-Audio over a shared frequency CHANNEL, while a third node tuned
 // to a different channel receives neither. Uses only the public dcf-rust-sdk API (no
 // Tauri, no cpal, no libopus) — the same calls the `client/` Rust core makes.

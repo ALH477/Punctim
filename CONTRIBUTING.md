@@ -1,4 +1,4 @@
-# Contributing to HydraMesh / DCF
+# Contributing to Punctim / DCF
 
 Thanks for helping build the DeMoD Communication Framework. This is the **human**
 companion to [`CLAUDE.md`](CLAUDE.md); read [`ARCHITECTURE.md`](ARCHITECTURE.md)
@@ -7,7 +7,7 @@ for frank, module-by-module status before trusting any module's surface area.
 
 ## The one rule: the certificate is the contract
 
-HydraMesh has a single wire invariant — the **17-byte `DeModFrame` quantum** — and
+Punctim has a single wire invariant — the **17-byte `DeModFrame` quantum** — and
 everything else (audio, game, transports) is an **adapter** over it. The reference
 implementations across C, Rust, Python, Lua, Haskell, and Lisp are kept **byte-identical**
 by finite golden-vector certificates:
@@ -35,7 +35,7 @@ Pick one toolchain path (all are documented in the [README](README.md#quick-star
 ```sh
 nix develop          # all toolchains in one shell (recommended)
 ./install_deps.sh    # distro-aware native install (Debian/Arch/Fedora)
-docker build -t hydramesh .
+docker build -t punctim .
 make help            # list every task: setup / certify / test / docs / client
 ```
 

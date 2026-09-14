@@ -1076,7 +1076,7 @@ impl<N: Network, S: Storage + Clone, G: Gui> DcfFramework<N, S, G> {
     /// Serialise `data` into certified `DeModFrame` `DATA` frames and put them on
     /// the wire, packing each adjacent pair into one 32-byte SuperPack (one
     /// datagram instead of two) for the lower-latency paired send. This is the
-    /// on-air format shared with the rest of the HydraMesh mesh.
+    /// on-air format shared with the rest of the Punctim mesh.
     fn send_framed(&self, data: &[u8], packet_id: u16) {
         let len = core::cmp::min(data.len(), wire::MAX_PAYLOAD);
         let mut frames = [[0u8; wire::FRAME_SIZE]; wire::MAX_FRAMES];

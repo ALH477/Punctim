@@ -204,13 +204,13 @@ Network traffic uses the certified DCF **wire quantum** ([`core/src/wire.rs`](co
 each game/chat message is fragmented into ordinary `DATA` frames (DCF-Game L2
 framing), and adjacent frames are packed into one **SuperPack** datagram for a
 lower-latency paired send, so handheld traffic is on-air compatible with the rest of
-the HydraMesh mesh. See `Documentation/WIRE_QUANTUM_SPEC.md` and
+the Punctim mesh. See `Documentation/WIRE_QUANTUM_SPEC.md` and
 `Documentation/SUPERPACK_SPEC.md`.
 
 ## License
 
 This project is licensed under the **GNU Lesser General Public License v3.0
-(LGPL-3.0-only)**, matching the DCF / HydraMesh mono-repo. See the repository
+(LGPL-3.0-only)**, matching the DCF / Punctim mono-repo. See the repository
 `LICENSE` / `LICENSING.md` for details.
 
 ## Acknowledgments

@@ -21,7 +21,7 @@ DeMoD excels in trustless, low-overhead signaling. Below: prioritized by practic
 | **Multiplayer Alerts/Signaling** | Notify players: "Raid incoming" via header + payload. | Player joins → TX header → command decoder → /title. | Cross-dimension (nether portals). No chat spam. | SMP servers (100+ players). |
 | **Adventure/Puzzle Maps** | "Hack the signal" puzzles: Players craft valid header items. | Custom fill barrels → auth puzzle. | Immersive tech-puzzles; exportable worlds. | Custom maps (speedruns). |
 | **Performance Monitoring** | Heartbeat (sig1) pings server status. | Repeating TX → auth → /tellraw uptime. | Server admins: Detect lag/jitter visually. | Any multiplayer. |
-| **HydraMesh Sim** | Full P2P demo: Multiple TX/RX nodes. | OR-bus merge; buffer per node. | Visualizes your OSS framework. Viral X/YouTube. | Educational/demos. |
+| **Punctim Sim** | Full P2P demo: Multiple TX/RX nodes. | OR-bus merge; buffer per node. | Visualizes your OSS framework. Viral X/YouTube. | Educational/demos. |
 
 **Implementation Tip**: Start with Use Case 1 (comms)—duplicate build 2x, link via long repeater lines/nether.
 

@@ -1,5 +1,5 @@
 //=============================== hydramodem_tx.dsp ============================
-// HydraMesh acoustic modem -- TRANSMITTER top level.
+// Punctim acoustic modem -- TRANSMITTER top level.
 //
 //   Input  0 : instantaneous frequency (Hz), driven sample-by-sample by the C
 //              layer (one tone frequency held per symbol period).
