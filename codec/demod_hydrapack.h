@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 /*
- * demod_hydrapack.h — HydraPack: universal serialization for HydraMesh (C)
+ * demod_hydrapack.h — HydraPack: universal serialization for Punctim (C)
  * DeMoD LLC | LGPL-3.0
  *
  * HydraPack is the single point at which an abstract value becomes either a

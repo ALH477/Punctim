@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LGPL-3.0-only
-//! HydraPack — universal serialization layer for HydraMesh.
+//! HydraPack — universal serialization layer for Punctim.
 //!
 //! HydraPack is the single point at which an abstract value becomes either a
 //! short burst of 4-byte quanta (for the quantum / adapter path) or a contiguous
