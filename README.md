@@ -12,6 +12,8 @@
 
 ![gpl](https://www.gnu.org/graphics/lgplv3-with-text-154x68.png)
 
+**Languages:** [English](README.md) · [Español](README.es-ES.md) · [日本語](README.ja-JP.md) · [Français](README.fr-FR.md) · [Italiano](README.it-IT.md)
+
 > **Status, honestly.** HydraMesh is **pre-1.0**. The project does not yet ship
 > "11 production-ready language bindings." What is real today is the **wire
 > quantum** and its cross-language **certificate**, green in CI for a small set of
@@ -27,7 +29,7 @@ HydraMesh is a free and open-source software (FOSS) framework evolved from the D
 
 The one invariant that is real and certified today is the **wire quantum**: the 17-byte `DeModFrame`. Everything else — audio, game state, transports — is an *adapter* over it, and the cross-language **certificate** (`Documentation/golden_vectors.json`) is the contract that keeps the implementations byte-identical. The linkable library is **LGPL-3.0**; GPL-3.0 is scoped to the bundled DOOM example only.
 
-The framework is intended to be hardware- and language-agnostic across embedded devices (e.g., Raspberry Pi), cloud servers, and mobile platforms. The breadth of that intent is not the breadth of what ships today — see the status tiers immediately below for the truthful, per-language state. Higher-level features (CLI, TUI, AUTO mode, master-node role assignment, Dijkstra routing, AI-driven topology) are **planned**, not present in the current release (see [`Documentation/DCF_CODE_REVIEW.md`](Documentation/DCF_CODE_REVIEW.md), item D1).
+The framework is intended to be hardware- and language-agnostic across embedded devices (e.g., Raspberry Pi), cloud servers, and mobile platforms. The breadth of that intent is not the breadth of what ships today — see the status tiers immediately below for the truthful, per-language state. Higher-level framework features (CLI, TUI, AI-driven topology optimization) are **planned**, not present in the current release (see [`Documentation/DCF_CODE_REVIEW.md`](Documentation/DCF_CODE_REVIEW.md), item D1). The mesh *control* layer is a different story, and this section of the README was stale about it: peer-health tracking, RTT grouping, RTT-weighted Dijkstra route selection, master election and failover **ship today** as **DCF-Mesh**, an opt-in adapter that a node runs in `auto`/`master` mode — see [Adapters over the quantum](#adapters-over-the-quantum).
 
 <img width="3888" height="2208" alt="image" src="https://github.com/user-attachments/assets/1294e4e6-906c-42ef-af0d-c192056803ea" />
 
@@ -77,6 +79,7 @@ make certify                 # see `make help` for setup / test / docs / client
 - [`Documentation/WIRE_QUANTUM_SPEC.md`](Documentation/WIRE_QUANTUM_SPEC.md) — the 17-byte frame format.
 - [`Documentation/DCF_AUDIO_SPEC.md`](Documentation/DCF_AUDIO_SPEC.md) — collaborative audio as an adapter over it.
 - [`Documentation/DCF_SNAKE_SPEC.md`](Documentation/DCF_SNAKE_SPEC.md) — synchronized studio audio snake over cat5e (quanta record + PCM cue planes to a mixer).
+- [Adapters over the quantum](#adapters-over-the-quantum) — the full adapter family (audio, game, text, SSTV, snake, QKD) with each `seq` split, plus the Pipe / HydraPack / Mesh / SPA / Steam / WASM layers.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — the map of the repo (what ships, what's experimental).
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — how to build, test, and open a PR (the certificate is the contract).
 
@@ -91,8 +94,8 @@ The name **HydraMesh** expresses the **design goals**: a self-healing, decentral
 |--------|---------|---------|-------------|--------|
 | **H** | **Highly** | Performance | Low overhead handshakeless wire quantum, aimed at gaming and real-time apps. | wire codec certified |
 | **Y** | **Yielding** | Adaptive Routing | AI-driven topology optimization using Dijkstra and RTT-based grouping. | **planned** |
-| **D** | **Decentralized** | P2P Mesh | No single point of failure; AUTO mode for dynamic role switching. | P2P present; AUTO mode **planned** |
-| **R** | **Resilient** | Self-Healing | Automatic failover and redundancy. | **planned** |
+| **D** | **Decentralized** | P2P Mesh | No single point of failure; AUTO mode for dynamic role switching. | P2P + `auto`/`master` role switching ship via **DCF-Mesh** (opt-in) |
+| **R** | **Resilient** | Self-Healing | Automatic failover and redundancy. | peer-health FSM, election + failover ship via **DCF-Mesh**; AI-driven routing **planned** |
 | **A** | **Adaptive** | Proxy Middleware | Plugin system and transport switching (e.g., gRPC, LoRaWAN) for flexible data relay. | partial / in progress |
 
 > **Important**: HydraMesh complies with U.S. export regulations (EAR and ITAR). It avoids encryption to remain export-control-free. Users must ensure custom extensions comply; consult legal experts for specific use cases. DeMoD LLC disclaims liability for non-compliant modifications.
@@ -101,7 +104,7 @@ The name **HydraMesh** expresses the **design goals**: a self-healing, decentral
 
 Present today (certified or shipping):
 - **Certified wire quantum**: the 17-byte `DeModFrame`, byte-identical across the [Certified-tier languages](#language-status) and pinned by a 246-vector golden certificate that CI diffs on every push.
-- **Adapters over the quantum**: DCF-Audio (collaborative audio) and DCF-Game (game state/events), both fragmented over ordinary frames. For audio, **only the L2 framing, the PCM-diag codec bytes, and the PM parameter layout are byte-certified — Opus output and PM synthesis audio are NOT byte-certified.**
+- **Adapters over the quantum**: seven payload adapters — DCF-Audio (collaborative audio), DCF-Game (game state/events), DCF-Text (chat / agent-to-agent), DCF-SSTV (still images), DCF-Snake record + DCF-Cue (studio audio snake), and DCF-QKD (key-ID beacon) — each fragmented over ordinary frames, each with its L2 framing byte-certified across languages. Plus the layers that sit above, below and beside the quantum: DCF-Pipe / Pipe-Multi, HydraPack, DCF-Mesh, DCF-SPA, DCF-Steam, DCF-WASM. Full table, including the `seq` split that separates them, in [Adapters over the quantum](#adapters-over-the-quantum). For audio specifically, **only the L2 framing, the PCM-diag codec bytes, and the PM parameter layout are byte-certified — Opus output and PM synthesis audio are NOT byte-certified.**
 - **SuperPack (opt-in, lower-latency for paired sends)**: a container that packs **two** 17-byte frames into **one 32-byte** message under a single joint CRC (`34 → 32` bytes, stronger integrity). When you are already sending frames in pairs it ships them as **one datagram instead of two** — one IP/UDP header, one syscall, one packet — so paired traffic crosses the network with strictly lower per-pair overhead and latency than two separate frames. `unpack` rebuilds both frames bit-exact, so the wire certificate is untouched; **certified byte-for-byte in every wire-codec language**. See [`Documentation/SUPERPACK_SPEC.md`](Documentation/SUPERPACK_SPEC.md).
 - **Mesh nodes in six languages**: Go, Rust, and **C** speak a common **ProtoMessage/UDP** envelope (they mesh with each other); Python and Node.js share a **bare-frame + SuperPack/UDP** dialect; and **C++** is a **gRPC** node (bidirectional `MeshStream` of frames + SuperPacks + adapters, health + reflection). All ship as hermetic Nix-built Docker images (`alh477/dcf-{go,rs,c,cpp,python,nodejs}`) and are exercised together by `docker/mesh-interop-test.sh`.
 - **DCF Modem (C, "modulations across quanta mediums")**: the C node also carries frames over a **Faust-DSP modem** — FSK / OOK / PSK / QAM — across a physical medium (loopback/file now, live audio behind `DCF_MODEM_AUDIO`). The byte↔symbol mapping is **certified across Python/Rust/C**; the waveform is loopback-tested (same policy as DCF-Audio synthesis). See [`Documentation/DCF_MODEM_SPEC.md`](Documentation/DCF_MODEM_SPEC.md).
@@ -110,6 +113,7 @@ Present today (certified or shipping):
 - **Sensor telemetry over a wire (DCF-Sense)**: a configurable layer for many sensor nodes → one gateway over a wired audio-band HydraModem link (greenhouses, etc.). One reading = one bare frame (`src_id`=node, 4-byte scaled payload); a configurable **MAC** (`tdma`/`dedicated`/`csma`/`fdma`) handles the shared medium since a PHY has none. An adapter over the quantum (certificate untouched). Runs over real HydraModem (subprocess or in-process ctypes transport), FDMA multiplies capacity, mesh relays via the bridge, and a portable C node decodes in the Python gateway — all at PER 0% on the bench (`python/dcf/sense/`). See [`Documentation/DCF_SENSE_SPEC.md`](Documentation/DCF_SENSE_SPEC.md).
 - **Interoperates with JANUS (NATO STANAG 4748)**: a `janus:` transport carries the 17-byte frame as JANUS **cargo** over the ratified underwater-acoustic standard (FH-BFSK + conv FEC), so a DCF mesh can exchange frames with real JANUS gear. It shells out to the **GPL-3.0** janus-c reference as a *separate process* (never linked), keeping the LGPL library clean; an optional `nix build .#janus-c` dependency that CI skips when absent. A transport beneath the quantum (frame opaque, certificate untouched) — verified byte-exact round-trip via the standard encoder/decoder. See [`Documentation/DCF_JANUS_SPEC.md`](Documentation/DCF_JANUS_SPEC.md).
 - **Runs over UDP _or_ radio (DCF-SDR + FEC)**: a complex-baseband IQ modem (GFSK / QPSK / 16-QAM / OOK·AM / AFSK-over-FM) carries frames to a **SoapySDR** device (HackRF / RTL-SDR / Pluto / LimeSDR) or a hardware-agnostic `.cf32` file, made reliable by a **systematic Reed-Solomon + interleaver FEC** that _corrects_ the bit errors a lossy RF/acoustic link injects (not just CRC-detects them). The **RS-FEC bytes are certified byte-for-byte in all 13 wire-codec languages**; the IQ waveform is loopback-tested. See [`Documentation/DCF_SDR_SPEC.md`](Documentation/DCF_SDR_SPEC.md) and [`Documentation/DCF_FEC_SPEC.md`](Documentation/DCF_FEC_SPEC.md).
+- **Self-healing mesh (DCF-Mesh — shipped)**: peer-liveness FSM, RTT-based grouping, RTT-weighted Dijkstra route selection, master election, and decentralized failover — the algorithm layer and the REPORT/ROLE control adapter certified across C/Rust/Python/Go, with live runtimes in the **Go, C, Rust and Python** nodes. Opt-in: a node runs it in `auto`/`master` mode, and plain `p2p` nodes are unaffected. (This was listed as "planned" in earlier revisions; it ships. What remains planned is the *AI-driven* layer on top of it.) See [Adapters over the quantum](#adapters-over-the-quantum).
 - **Handshakeless, encryption-free design**: low-overhead framing for real-time use; encryption-free by design for EAR/ITAR export compliance.
 - **LangGraph multi-agent system (`langgraph_agents/`)**: LLM-powered agents that communicate over the DCF mesh via MCP tools. Pluggable backends (echo, Grok, GLM-5p2 via Fireworks), coordinator-based routing to specialist subgraphs, UTF-8-safe streaming bridge for DCF-Text chunking, and a Rich-powered CLI + Textual TUI with Sierpinski greeting banner. Encryption-free for export control purposes — agents communicate over the same plaintext DCF transport, not a separate encrypted channel.
 - **Open Source**: LGPL-3.0 (library) ensures transparency and community contributions.
@@ -117,10 +121,63 @@ Present today (certified or shipping):
 Planned / in progress (design goals, not the current release):
 - **Modularity & plugins**: standardized APIs and a plugin system for custom extensions — *partial / in progress*.
 - **Transport flexibility**: a compatibility layer for UDP, TCP, WebSocket, gRPC, and custom transports — *in progress*; full cross-language interoperability tracks the [language tiers](#language-status).
-- **Dynamic Role Assignment**: AUTO mode and master-node control with AI-driven network optimization — **planned**.
+- **AI-driven topology optimization**: using the DCF-Mesh metrics (peer status, RTT groups, route weights) to drive topology decisions automatically — **planned**. The metrics themselves, and the routing/role-assignment algorithms beneath them, ship today (see the shipped list above).
 - **Usability**: CLI for automation and TUI for monitoring — **planned**.
-- **Self-Healing P2P**: redundant paths, failure detection, RTT-based grouping, and Dijkstra routing with RTT weights — **planned** (see `Documentation/DCF_CODE_REVIEW.md`, item D1).
 - **Persistence**: **StreamDB** is **Lisp-SDK-only and experimental** (a Rust embedded key-value store via CFFI); extensions to other SDKs are aspirational, not shipping.
+
+## Adapters over the quantum
+
+The 17-byte `DeModFrame` is the only wire format. Everything else — audio, game
+state, text, images, sensor readings, a key-ID beacon — is an **adapter**: an
+application payload fragmented across ordinary frames, with the L2 framing
+byte-certified across languages exactly the way the quantum is. **Not one of them
+touches the 246-vector wire certificate.**
+
+**Seven adapters fragment a payload across frames, and each one splits the 16-bit
+`seq` field differently.** Audio and the two snake planes ride `CTRL(3)`; text,
+game and SSTV ride `DATA(0)`. There is **no in-band tag** telling two `DATA`
+adapters apart, so a node routes a channel's frames to the one reassembler it runs
+there — **never multiplex Text, SSTV and Game on the same `dst`.**
+
+| Adapter | Plane | `seq` (id : frag) | Cap | L2 framing certified in | Spec |
+|---------|-------|-------------------|-----|--------------------------|------|
+| **DCF-Audio** | `CTRL(3)` | 11 : 5 | ≤124 B / 20 ms block | C, Rust, Python, Lua | [`DCF_AUDIO_SPEC.md`](Documentation/DCF_AUDIO_SPEC.md) |
+| **DCF-Game** | `DATA(0)` | 11 : 5 | ≤124 B / message | C, Rust, Python | [`DCF_GAME_SPEC.md`](Documentation/DCF_GAME_SPEC.md) |
+| **DCF-Text** | `DATA(0)` | 6 : 10 | ≤4092 B / message (1023 frags) | C, Rust, Python, Go (+ Node port) | [`DCF_TEXT_SPEC.md`](Documentation/DCF_TEXT_SPEC.md) |
+| **DCF-SSTV** | `DATA(0)` | 5 : 11 | ≤8188 B / image (2047 frags) | C, Rust, Python, Go, Node | [`DCF_SSTV_SPEC.md`](Documentation/DCF_SSTV_SPEC.md) |
+| **DCF-Snake** (record) | `CTRL(3)` | 5 : 11 | ≤8188 B / message | C, Rust, Python | [`DCF_SNAKE_SPEC.md`](Documentation/DCF_SNAKE_SPEC.md) |
+| **DCF-Cue** (monitor) | `CTRL(3)` | 9 : 7 | ≤508 B / PCM block | C, Rust, Python | [`DCF_SNAKE_SPEC.md`](Documentation/DCF_SNAKE_SPEC.md) |
+| **DCF-QKD** | `CTRL(3)` | 14 : 2 | 16 B, 4 fixed frags, **no descriptor** | C, Rust, Python | [`DCF_QKD_SPEC.md`](Documentation/DCF_QKD_SPEC.md) |
+
+The certified/uncertified line is drawn the same way every time: **the framing bytes
+are certified; analog or float DSP output is not.** So for audio, only the L2
+framing, the PCM-diag codec bytes and the PM parameter layout are byte-certified —
+Opus output and PM synthesis audio are not. The same carve-out covers quanta QSS
+audio in DCF-Snake, the mixer ASRC/PLC/cue-mix, the DCF-SDR IQ waveform, and the
+HydraModem/PM synthesis audio.
+
+> **DCF-QKD holds key material in memory**, so it carries a different export posture
+> from the rest of the tree even though it implements no cryptographic algorithm.
+> The normative rule: **key material MUST NOT be placed in a `DeModFrame` payload.**
+> The wire carries the `key_ID` — a non-secret 128-bit identifier minted by external
+> KME hardware — and nothing else. Never wire a delivered key into a cipher at the
+> DCF layer; that collapses the whole project's export posture, not just this
+> module's. [`DCF_QKD_SPEC.md`](Documentation/DCF_QKD_SPEC.md)
+
+**Not frame-fragmenters.** These sit above, below, or beside the quantum — none of
+them changes it:
+
+- **DCF-Pipe — lossless bulk transfer.** The wire quantum as the *control plane*: a small certified vocabulary (OPEN / CREDIT / SACK / NACK / DONE / ABORT) steers a dumb, fast, stateless datagram lane beneath it. Its invariant is a single scalar — **Φ = N − |R|**, the deficit — which is simultaneously the safety property and the termination variant: `DONE ⟺ Φ = 0 ⟺ object byte-exact`. Loss heals in two tiers: in-budget corruption forward via DCF-FEC (no round trip), a wholly dropped chunk NACKed and retransmitted, with "in flight" vs "dropped" decided by *round, not position*. Certified C/Rust/Python; `pipe_vectors.json` untouched. [`DCF_PIPE_SPEC.md`](Documentation/DCF_PIPE_SPEC.md)
+- **DCF-Pipe Multi-Control.** Up to **3** steady-state Pipe commands packed into **one 4-byte** payload (`byte0 = 0xC0 | (count<<4) | flags`), so one quantum steers three concurrent pipes on bandwidth-scarce links. OPEN, large NACK/SACK, DONE and ABORT still ride the original single-session formats. Certified C/Rust/Python. [`DCF_PIPE_MULTI_SPEC.md`](Documentation/DCF_PIPE_MULTI_SPEC.md)
+- **HydraPack — universal serialization.** The one layer above *both* planes: an application value goes in, and either a sequence of 4-byte quanta (at or below a size threshold) or a contiguous byte buffer (above it) comes out, driven by size and schema policy. Declarative schema model, plane-aware emission, no new wire format. Certified C/Rust/Python. [`HYDRAPACK_SPEC.md`](Documentation/HYDRAPACK_SPEC.md)
+- **DCF-Mesh — self-healing.** A `MsgMesh = 11` control adapter: REPORT (node→master) and ROLE (master→node), plus the certified algorithm layer (peer-liveness FSM, RTT grouping, RTT-weighted Dijkstra, route selection, master election). The runtime drives those from live PING/PONG and runs in the **Go, C, Rust and Python** nodes; failover is decentralized (a master going Unreachable triggers local re-election of the lowest-id healthy node). Certified C/Rust/Python/Go. [`DCF_MESH_SPEC.md`](Documentation/DCF_MESH_SPEC.md)
+- **DCF-SPA — single-packet port authorization.** A secondary-channel authenticator that opens mesh data ports for devices on a shared network. It **authenticates and gates; it does not encrypt, and provides no confidentiality** — that boundary is deliberate, and is what keeps it outside ECCN 5A002 and inside the encryption-free posture. [`DCF_SPA_SPEC.md`](Documentation/DCF_SPA_SPEC.md)
+- **DCF-Steam — Steam-compatible transport.** Valve's `ISteamNetworkingSockets` beneath the wire: Steam **P2P** for clients, **dedicated-server hubs** from the Docker images. One API, two backends — open **GNS** (default, hermetic, CI-tested) and proprietary **Steamworks** (opt-in, adds SDR relay/lobbies) — sharing the send/recv/hub path. Transport crypto sits *beneath* the codec; the DCF payload stays plaintext. [`DCF_STEAM_SPEC.md`](Documentation/DCF_STEAM_SPEC.md)
+- **DCF-Control / DCF-Telemetry (draft).** The DeMoD engine's split-link pair — GUI→engine control ops (load an effect, set a parameter, trigger a note) serialised as **DCF-Text**, and the engine→GUI readback (per-slot meters, transport state, optional scope) reusing **DCF-Audio's `CTRL` L2 framing**, lossy by design (latest-wins, no retransmit). They add no new framing of their own. [`DCF_CONTROL_SPEC.md`](Documentation/DCF_CONTROL_SPEC.md) · [`DCF_TELEMETRY_SPEC.md`](Documentation/DCF_TELEMETRY_SPEC.md)
+- **DCF-WASM — browser client.** The certified codec compiled to `wasm32` drives the same comms UI in the browser, shipped as one self-contained `index.html` and reaching the mesh through a stateless WS↔UDP relay (browsers can't open UDP). The codec runs in the browser, not the bridge. [`DCF_WASM_SPEC.md`](Documentation/DCF_WASM_SPEC.md)
+
+Sensor telemetry (**DCF-Sense**) and JANUS are covered in the feature list above;
+both are likewise adapters/transports over the quantum.
 
 ## Architecture
 ```mermaid
@@ -635,7 +692,8 @@ Per-language unit tests (where they exist):
 - **Perl**: `cd perl && prove -l t/` (or `perl Makefile.PL && make test`) — certifies all 246 vectors.
 - **C++**: `g++ -std=c++17 -I cpp/include cpp/tests/certify.cpp -o cert && ./cert` (or `cmake . && ctest`) — certifies all 246 vectors.
 - **Swift**: `cd swift && swift test` — certifies all 246 vectors + SuperPack + FEC (CI job `certify-swift`; the Nix Swift-on-Linux wrapper lacks `swift-test`, so the hosted runner is authoritative locally).
-- **Integration** (RTT grouping, failover, AUTO-mode role assignment, StreamDB persistence): **planned**, not implemented in the current release.
+- **Mesh**: `cd go && go test ./mesh/` (Go), `cd codec && cargo test --test certify_mesh` (Rust), `gcc -std=c11 -I codec C_SDK/tests/test_mesh_certify.c -lm -o /tmp/mc && /tmp/mc` (C), `python3 python/MCP/gen_mesh_vectors.py /tmp/mv.json` (regen + verify laws) — certifies the mesh algorithm layer plus the REPORT/ROLE control bytes. The runtime's *timing* is integration-tested, not vectored.
+- **Integration**: RTT grouping, failover and AUTO/master role assignment are **implemented and integration-tested** in the Go/C/Rust/Python mesh nodes, with the algorithms and control bytes certified (see **Mesh** above). **StreamDB persistence** remains **planned**.
 
 ### Enhanced Benefits of StreamDB Integration in HydraMesh-Lisp
 

@@ -14,10 +14,12 @@
 
 ![gpl](https://www.gnu.org/graphics/lgplv3-with-text-154x68.png)
 
+**Idiomas:** [English](README.md) · [Español](README.es-ES.md) · [日本語](README.ja-JP.md) · [Français](README.fr-FR.md) · [Italiano](README.it-IT.md)
+
 > **Estado, con honestidad.** HydraMesh es **pre-1.0**. El proyecto aún no incluye
 > "11 bindings de idiomas listos para producción". Lo que existe hoy es el **cuántum
 > de red** y su **certificado multilingüe**, que pasa verde en CI para un pequeño conjunto de
-> implementaciones. Consulte los [niveles de estado por idioma](#language-status) a continuación para
+> implementaciones. Consulte los [niveles de estado por idioma](#estado-por-idioma) a continuación para
 > ver exactamente qué está certificado, qué tiene el diseño finalizado y qué sigue siendo un
 > prototipo experimental. La versión 1.0.0 se reserva para cuando el conjunto anunciado esté
 > verde en CI.
@@ -29,7 +31,7 @@ HydraMesh es un framework de software libre y de código abierto (FOSS) evolucio
 
 El único invariante real y certificado hoy es el **cuántum de red**: el `DeModFrame` de 17 bytes. Todo lo demás — audio, estado de juego, transportes — es un *adaptador* sobre él, y el **certificado multilingüe** (`Documentation/golden_vectors.json`) es el contrato que mantiene las implementaciones idénticas a nivel de byte. La biblioteca enlazable es **LGPL-3.0**; GPL-3.0 se aplica únicamente al ejemplo incluido de DOOM.
 
-El framework está diseñado para ser independiente del hardware y del idioma en dispositivos integrados (p. ej., Raspberry Pi), servidores en la nube y plataformas móviles. La amplitud de esa intención no coincide con la amplitud de lo que se entrega hoy: consulte los niveles de estado inmediatamente a continuación para conocer el estado real, idioma por idioma. Las funciones de mayor nivel (CLI, TUI, modo AUTO, asignación de roles de nodo maestro, enrutamiento Dijkstra, topología impulsada por IA) están **planificadas**, no están presentes en la versión actual (consulte [`Documentation/DCF_CODE_REVIEW.md`](Documentation/DCF_CODE_REVIEW.md), elemento D1).
+El framework está diseñado para ser independiente del hardware y del idioma en dispositivos integrados (p. ej., Raspberry Pi), servidores en la nube y plataformas móviles. La amplitud de esa intención no coincide con la amplitud de lo que se entrega hoy: consulte los niveles de estado inmediatamente a continuación para conocer el estado real, idioma por idioma. Las funciones de mayor nivel del framework (CLI, TUI, optimización de topología impulsada por IA) están **planificadas**, no están presentes en la versión actual (consulte [`Documentation/DCF_CODE_REVIEW.md`](Documentation/DCF_CODE_REVIEW.md), elemento D1). La capa de *control* de malla es otra historia, y esta sección del README estaba desactualizada al respecto: el seguimiento de salud de pares, la agrupación por RTT, la selección de rutas Dijkstra ponderada por RTT, la elección de maestro y el failover **ya se entregan hoy** como **DCF-Mesh**, un adaptador opt-in que un nodo ejecuta en modo `auto`/`master` — consulte [Adaptadores sobre el cuántum](#adaptadores-sobre-el-cuántum).
 
 <img width="3888" height="2208" alt="image" src="https://github.com/user-attachments/assets/1294e4e6-906c-42ef-af0d-c192056803ea" />
 
@@ -79,6 +81,7 @@ make certify                 # consulte `make help` para setup / test / docs / c
 - [`Documentation/WIRE_QUANTUM_SPEC.md`](Documentation/WIRE_QUANTUM_SPEC.md) — el formato de trama de 17 bytes.
 - [`Documentation/DCF_AUDIO_SPEC.md`](Documentation/DCF_AUDIO_SPEC.md) — audio colaborativo como un adaptador sobre él.
 - [`Documentation/DCF_SNAKE_SPEC.md`](Documentation/DCF_SNAKE_SPEC.md) — cadena de audio de estudio sincronizada sobre cat5e (registro de cuanta + planos de pista PCM a una mezcladora).
+- [Adaptadores sobre el cuántum](#adaptadores-sobre-el-cuántum) — la familia completa de adaptadores (audio, juego, texto, SSTV, snake, QKD) con el reparto de `seq` de cada uno, más las capas Pipe / HydraPack / Mesh / SPA / Steam / WASM.
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — el mapa del repositorio (qué se entrega, qué es experimental).
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — cómo compilar, probar y abrir un PR (el certificado es el contrato).
 
@@ -93,8 +96,8 @@ El nombre **HydraMesh** expresa los **objetivos de diseño**: una malla descentr
 |--------|---------|---------|-------------|--------|
 | **H** | **Highly** | Rendimiento | Cuántum de red de bajo overhead sin handshake, orientado a juegos y apps en tiempo real. | códec de red certificado |
 | **Y** | **Yielding** | Enrutamiento Adaptativo | Optimización de topología impulsada por IA usando Dijkstra y agrupación basada en RTT. | **planificado** |
-| **D** | **Decentralized** | Malla P2P | Sin punto único de fallo; modo AUTO para conmutación dinámica de roles. | P2P presente; modo AUTO **planificado** |
-| **R** | **Resilient** | Autorrecuperación | Fallover y redundancia automáticos. | **planificado** |
+| **D** | **Decentralized** | Malla P2P | Sin punto único de fallo; modo AUTO para conmutación dinámica de roles. | P2P + conmutación de roles `auto`/`master` se entregan vía **DCF-Mesh** (opt-in) |
+| **R** | **Resilient** | Autorrecuperación | Fallover y redundancia automáticos. | FSM de salud de pares, elección + failover vía **DCF-Mesh**; enrutamiento por IA **planificado** |
 | **A** | **Adaptive** | Middleware Proxy | Sistema de plugins y conmutación de transporte (p. ej., gRPC, LoRaWAN) para retransmisión flexible de datos. | parcial / en progreso |
 
 > **Importante**: HydraMesh cumple con las regulaciones de exportación de EE. UU. (EAR e ITAR). Evita la encriptación para permanecer libre de controles de exportación. Los usuarios deben asegurarse de que las extensiones personalizadas cumplan con la normativa; consulte a expertos legales para casos de uso específicos. DeMoD LLC declina responsabilidad por modificaciones no conformes.
@@ -102,8 +105,8 @@ El nombre **HydraMesh** expresa los **objetivos de diseño**: una malla descentr
 ## Características
 
 Presentes hoy (certificadas o entregadas):
-- **Cuántum de red certificado**: el `DeModFrame` de 17 bytes, idéntico a nivel de byte entre los [idiomas de nivel Certificado](#language-status) y fijado por un certificado dorado de 246 vectores que CI diff en cada push.
-- **Adaptadores sobre el cuántum**: DCF-Audio (audio colaborativo) y DCF-Game (estado/eventos de juego), ambos fragmentados sobre tramas ordinarias. Para audio, **solo el encuadramiento L2, los bytes del códec PCM-diag y la disposición del parámetro PM están certificados a nivel de byte — la salida de Opus y el audio de síntesis PM NO están certificados a nivel de byte.**
+- **Cuántum de red certificado**: el `DeModFrame` de 17 bytes, idéntico a nivel de byte entre los [idiomas de nivel Certificado](#estado-por-idioma) y fijado por un certificado dorado de 246 vectores que CI diff en cada push.
+- **Adaptadores sobre el cuántum**: siete adaptadores de carga útil — DCF-Audio (audio colaborativo), DCF-Game (estado/eventos de juego), DCF-Text (chat / agente a agente), DCF-SSTV (imágenes fijas), DCF-Snake registro + DCF-Cue (cadena de audio de estudio), y DCF-QKD (baliza de key-ID) — cada uno fragmentado sobre tramas ordinarias, cada uno con su encuadramiento L2 certificado a nivel de byte entre idiomas. Además, las capas que se sitúan por encima, por debajo y junto al cuántum: DCF-Pipe / Pipe-Multi, HydraPack, DCF-Mesh, DCF-SPA, DCF-Steam, DCF-WASM. Tabla completa, con el reparto de `seq` que los separa, en [Adaptadores sobre el cuántum](#adaptadores-sobre-el-cuántum). Para audio específicamente, **solo el encuadramiento L2, los bytes del códec PCM-diag y la disposición del parámetro PM están certificados a nivel de byte — la salida de Opus y el audio de síntesis PM NO están certificados a nivel de byte.**
 - **SuperPack (opt-in, menor latencia para envíos emparejados)**: un contenedor que empaqueta **dos** tramas de 17 bytes en **un mensaje de 32 bytes** bajo un único CRC conjunto (`34 → 32` bytes, integridad más fuerte). Cuando ya está enviando tramas en pares, las envía como **un datagrama en lugar de dos** — un encabezado IP/UDP, una syscall, un paquete — por lo que el tráfico emparejado cruza la red con un overhead y latencia estrictamente menores por par que dos tramas separadas. `unpack` reconstruye ambas tramas bit a bit, por lo que el certificado de red permanece intacto; **certificado byte por byte en cada idioma de códec de red**. Consulte [`Documentation/SUPERPACK_SPEC.md`](Documentation/SUPERPACK_SPEC.md).
 - **Nodos de malla en seis idiomas**: Go, Rust y **C** hablan un sobre común **ProtoMessage/UDP** (se conectan entre sí); Python y Node.js comparten un dialecto **trama desnuda + SuperPack/UDP**; y **C++** es un nodo **gRPC** (`MeshStream` bidireccional de tramas + SuperPacks + adaptadores, salud + reflexión). Todos se entregan como imágenes Docker construidas herméticamente con Nix (`alh477/dcf-{go,rs,c,cpp,python,nodejs}`) y se prueban juntas mediante `docker/mesh-interop-test.sh`.
 - **Módem DCF (C, "modulaciones sobre medios cuánticos")**: el nodo C también transporta tramas a través de un **módem Faust-DSP** — FSK / OOK / PSK / QAM — sobre un medio físico (loopback/archivo ahora, audio en vivo detrás de `DCF_MODEM_AUDIO`). El mapeo byte↔símbolo está **certificado en Python/Rust/C**; la forma de onda se prueba en loopback (misma política que la síntesis DCF-Audio). Consulte [`Documentation/DCF_MODEM_SPEC.md`](Documentation/DCF_MODEM_SPEC.md).
@@ -112,17 +115,75 @@ Presentes hoy (certificadas o entregadas):
 - **Telemetría de sensores sobre cable (DCF-Sense)**: una capa configurable para muchos nodos de sensores → una pasarela sobre un enlace HydraModem de banda de audio cableado (invernaderos, etc.). Una lectura = una trama desnuda (`src_id`=nodo, carga útil escalada de 4 bytes); un **MAC** configurable (`tdma`/`dedicated`/`csma`/`fdma`) maneja el medio compartido ya que un PHY no tiene. Un adaptador sobre el cuántum (certificado intacto). Ejecutado sobre HydraModem real (transporte ctypes subprocess o in-proceso), FDMA multiplica la capacidad, retransmisión de malla vía puente, y un nodo C portátil decodifica en la pasarela Python — todo con PER 0% en el banco (`python/dcf/sense/`). Consulte [`Documentation/DCF_SENSE_SPEC.md`](Documentation/DCF_SENSE_SPEC.md).
 - **Interoperable con JANUS (STANAG 4748 de la OTAN)**: un transporte `janus:` lleva la trama de 17 bytes como **carga** JANUS sobre el estándar acústico subacuático ratificado (FH-BFSK + FEC conv), por lo que una malla DCF puede intercambiar tramas con equipo JANUS real. Se ejecuta como **GPL-3.0** janus-c de referencia como *proceso separado* (nunca enlazado), manteniendo la biblioteca LGPL limpia; una dependencia opcional `nix build .#janus-c` que CI salta cuando está ausente. Un transporte debajo del cuántum (trama opaca, certificado intacto) — verificado ida y vuelta exacta a nivel de byte mediante el codificador/decodificador estándar. Consulte [`Documentation/DCF_JANUS_SPEC.md`](Documentation/DCF_JANUS_SPEC.md).
 - **Ejecutado sobre UDP _o_ radio (DCF-SDR + FEC)**: un módem IQ de banda base compleja (GFSK / QPSK / 16-QAM / OOK·AM / AFSK-over-FM) transporta tramas a un dispositivo **SoapySDR** (HackRF / RTL-SDR / Pluto / LimeSDR) o a un archivo `.cf32` independiente del hardware, hecho fiable por un **FEC sistemático Reed-Solomon + entrelazador** que _corrige_ los errores de bit que un enlace RF/acústico lossy inyecta (no solo los detecta con CRC). Los **bytes RS-FEC están certificados byte por byte en los 13 idiomas de códec de red**; la forma de onda IQ se prueba en loopback. Consulte [`Documentation/DCF_SDR_SPEC.md`](Documentation/DCF_SDR_SPEC.md) y [`Documentation/DCF_FEC_SPEC.md`](Documentation/DCF_FEC_SPEC.md).
+- **Malla autorrecuperable (DCF-Mesh — entregada)**: FSM de vitalidad de pares, agrupación por RTT, selección de rutas Dijkstra ponderada por RTT, elección de maestro y failover descentralizado — la capa de algoritmos y el adaptador de control REPORT/ROLE certificados en C/Rust/Python/Go, con runtimes vivos en los nodos **Go, C, Rust y Python**. Opt-in: un nodo lo ejecuta en modo `auto`/`master`, y los nodos `p2p` simples no se ven afectados. (En revisiones anteriores figuraba como "planificado"; sí se entrega. Lo que sigue planificado es la capa *impulsada por IA* por encima de él.) Consulte [Adaptadores sobre el cuántum](#adaptadores-sobre-el-cuántum).
 - **Diseño sin handshake, libre de encriptación**: encuadramiento de bajo overhead para uso en tiempo real; libre de encriptación por diseño para cumplimiento de exportación EAR/ITAR.
 - **Sistema multiagente LangGraph (`langgraph_agents/`)**: agentes impulsados por LLM que se comunican sobre la malla DCF mediante herramientas MCP. Backends plugueables (echo, Grok, GLM-5p2 vía Fireworks), enrutamiento basado en coordinador a subgrafos especializados, puente de flujo seguro UTF-8 para fragmentación DCF-Text, y CLI + TUI Rich/Textual con banner de bienvenida Sierpinski. Libre de encriptación para control de exportación — los agentes se comunican sobre el mismo transporte DCF en texto plano, no un canal encriptado separado.
 - **Código Abierto**: LGPL-3.0 (biblioteca) asegura transparencia y contribuciones comunitarias.
 
 Planificadas / en progreso (objetivos de diseño, no la versión actual):
 - **Modularidad y plugins**: APIs estandarizadas y un sistema de plugins para extensiones personalizadas — *parcial / en progreso*.
-- **Flexibilidad de transporte**: una capa de compatibilidad para UDP, TCP, WebSocket, gRPC y transportes personalizados — *en progreso*; la interoperabilidad completa entre idiomas sigue los [niveles de idioma](#language-status).
-- **Asignación Dinámica de Roles**: modo AUTO y control de nodo maestro con optimización de red impulsada por IA — **planificado**.
+- **Flexibilidad de transporte**: una capa de compatibilidad para UDP, TCP, WebSocket, gRPC y transportes personalizados — *en progreso*; la interoperabilidad completa entre idiomas sigue los [niveles de idioma](#estado-por-idioma).
+- **Optimización de topología impulsada por IA**: usar las métricas de DCF-Mesh (estado de pares, grupos RTT, pesos de ruta) para impulsar decisiones de topología automáticamente — **planificado**. Las métricas mismas, y los algoritmos de enrutamiento/asignación de roles por debajo, ya se entregan hoy (véase la lista de entregados arriba).
 - **Usabilidad**: CLI para automatización y TUI para monitoreo — **planificado**.
-- **P2P Autorrecuperable**: rutas redundantes, detección de fallos, agrupación basada en RTT y enrutamiento Dijkstra con pesos RTT — **planificado** (consulte `Documentation/DCF_CODE_REVIEW.md`, elemento D1).
 - **Persistencia**: **StreamDB** es **solo para SDK Lisp y experimental** (un almacén de clave-valor incrustado de Rust vía CFFI); extensiones a otros SDK son aspiracionales, no entregadas.
+
+## Adaptadores sobre el cuántum
+
+El `DeModFrame` de 17 bytes es el único formato de red. Todo lo demás — audio, estado
+de juego, texto, imágenes, lecturas de sensores, una baliza de key-ID — es un
+**adaptador**: una carga útil de aplicación fragmentada sobre tramas ordinarias, con
+el encuadramiento L2 certificado a nivel de byte entre idiomas exactamente igual que
+el cuántum. **Ninguno de ellos toca el certificado de red de 246 vectores.**
+
+**Siete adaptadores fragmentan una carga útil sobre tramas, y cada uno reparte de
+forma distinta el campo `seq` de 16 bits.** El audio y los dos planos de la cadena
+viajan sobre `CTRL(3)`; texto, juego y SSTV viajan sobre `DATA(0)`. **No hay ninguna
+etiqueta en banda** que distinga dos adaptadores `DATA`, así que un nodo enruta las
+tramas de un canal al único reensamblador que ejecuta allí — **nunca multiplexe
+Text, SSTV y Game en el mismo `dst`.**
+
+| Adaptador | Plano | `seq` (id : frag) | Tope | Encuadramiento L2 certificado en | Especificación |
+|---------|-------|-------------------|-----|--------------------------|------|
+| **DCF-Audio** | `CTRL(3)` | 11 : 5 | ≤124 B / bloque de 20 ms | C, Rust, Python, Lua | [`DCF_AUDIO_SPEC.md`](Documentation/DCF_AUDIO_SPEC.md) |
+| **DCF-Game** | `DATA(0)` | 11 : 5 | ≤124 B / mensaje | C, Rust, Python | [`DCF_GAME_SPEC.md`](Documentation/DCF_GAME_SPEC.md) |
+| **DCF-Text** | `DATA(0)` | 6 : 10 | ≤4092 B / mensaje (1023 fragmentos) | C, Rust, Python, Go (+ port a Node) | [`DCF_TEXT_SPEC.md`](Documentation/DCF_TEXT_SPEC.md) |
+| **DCF-SSTV** | `DATA(0)` | 5 : 11 | ≤8188 B / imagen (2047 fragmentos) | C, Rust, Python, Go, Node | [`DCF_SSTV_SPEC.md`](Documentation/DCF_SSTV_SPEC.md) |
+| **DCF-Snake** (registro) | `CTRL(3)` | 5 : 11 | ≤8188 B / mensaje | C, Rust, Python | [`DCF_SNAKE_SPEC.md`](Documentation/DCF_SNAKE_SPEC.md) |
+| **DCF-Cue** (monitor) | `CTRL(3)` | 9 : 7 | ≤508 B / bloque PCM | C, Rust, Python | [`DCF_SNAKE_SPEC.md`](Documentation/DCF_SNAKE_SPEC.md) |
+| **DCF-QKD** | `CTRL(3)` | 14 : 2 | 16 B, 4 fragmentos fijos, **sin descriptor** | C, Rust, Python | [`DCF_QKD_SPEC.md`](Documentation/DCF_QKD_SPEC.md) |
+
+La línea entre certificado y no certificado se traza siempre igual: **los bytes de
+encuadramiento están certificados; la salida DSP analógica o de coma flotante no lo
+está.** Así, para audio, solo el encuadramiento L2, los bytes del códec PCM-diag y la
+disposición del parámetro PM están certificados a nivel de byte — la salida de Opus y
+el audio de síntesis PM no lo están. La misma salvedad cubre el audio cuanta QSS en
+DCF-Snake, el ASRC/PLC/mezcla de pista de la mezcladora, la forma de onda IQ de
+DCF-SDR y el audio de síntesis de HydraModem/PM.
+
+> **DCF-QKD mantiene material de clave en memoria**, por lo que tiene una postura de
+> exportación distinta a la del resto del árbol aunque no implemente ningún algoritmo
+> criptográfico. La regla normativa: **el material de clave NO DEBE colocarse en una
+> carga útil de `DeModFrame`.** La red transporta el `key_ID` — un identificador de
+> 128 bits no secreto acuñado por hardware KME externo — y nada más. Nunca conecte
+> una clave entregada a un cifrador en la capa DCF; eso colapsa la postura de
+> exportación de todo el proyecto, no solo la de este módulo.
+> [`DCF_QKD_SPEC.md`](Documentation/DCF_QKD_SPEC.md)
+
+**No son fragmentadores de tramas.** Estos se sitúan por encima, por debajo o junto al
+cuántum — ninguno de ellos lo modifica:
+
+- **DCF-Pipe — transferencia masiva sin pérdidas.** El cuántum de red como *plano de control*: un vocabulario certificado y pequeño (OPEN / CREDIT / SACK / NACK / DONE / ABORT) dirige un carril de datagramas simple, rápido y sin estado por debajo. Su invariante es un único escalar — **Φ = N − |R|**, el déficit — que es a la vez la propiedad de seguridad y la variante de terminación: `DONE ⟺ Φ = 0 ⟺ objeto exacto a nivel de byte`. La pérdida se cura en dos niveles: corrupción dentro del presupuesto hacia adelante vía DCF-FEC (sin ida y vuelta), y un fragmento totalmente perdido se NACKea y retransmite, con "en vuelo" vs "perdido" decidido por *ronda, no por posición*. Certificado en C/Rust/Python; `pipe_vectors.json` intacto. [`DCF_PIPE_SPEC.md`](Documentation/DCF_PIPE_SPEC.md)
+- **DCF-Pipe Multi-Control.** Hasta **3** comandos Pipe en estado estacionario empaquetados en **una carga útil de 4 bytes** (`byte0 = 0xC0 | (count<<4) | flags`), de modo que un cuántum dirige tres pipes concurrentes en enlaces con escasez de ancho de banda. OPEN, NACK/SACK grandes, DONE y ABORT siguen viajando en los formatos originales de sesión única. Certificado en C/Rust/Python. [`DCF_PIPE_MULTI_SPEC.md`](Documentation/DCF_PIPE_MULTI_SPEC.md)
+- **HydraPack — serialización universal.** La única capa por encima de *ambos* planos: entra un valor de aplicación y sale o bien una secuencia de cuanta de 4 bytes (en o por debajo de un umbral de tamaño) o bien un búfer de bytes contiguo (por encima), según el tamaño y la política de esquema. Modelo de esquema declarativo, emisión consciente del plano, sin nuevo formato de red. Certificado en C/Rust/Python. [`HYDRAPACK_SPEC.md`](Documentation/HYDRAPACK_SPEC.md)
+- **DCF-Mesh — autorrecuperación.** Un adaptador de control `MsgMesh = 11`: REPORT (nodo→maestro) y ROLE (maestro→nodo), más la capa de algoritmos certificada (FSM de vitalidad de pares, agrupación por RTT, Dijkstra ponderada por RTT, selección de rutas, elección de maestro). El runtime los impulsa desde PING/PONG en vivo y se ejecuta en los nodos **Go, C, Rust y Python**; el failover es descentralizado (que un maestro quede Inalcanzable dispara una reelección local del nodo sano de id más bajo). Certificado en C/Rust/Python/Go. [`DCF_MESH_SPEC.md`](Documentation/DCF_MESH_SPEC.md)
+- **DCF-SPA — autorización de puerto en un solo paquete.** Un autenticador de canal secundario que abre puertos de datos de la malla para dispositivos en una red compartida. **Autentica y controla el acceso; no cifra y no ofrece confidencialidad** — esa frontera es deliberada, y es lo que lo mantiene fuera de ECCN 5A002 y dentro de la postura sin cifrado. [`DCF_SPA_SPEC.md`](Documentation/DCF_SPA_SPEC.md)
+- **DCF-Steam — transporte compatible con Steam.** La API `ISteamNetworkingSockets` de Valve por debajo de la red: **P2P** de Steam para clientes y **hubs de servidor dedicado** desde las imágenes Docker. Una API, dos backends — **GNS** abierto (predeterminado, hermético, probado en CI) y **Steamworks** propietario (opt-in, añade relé SDR/lobbies) — que comparten la ruta de envío/recepción/hub. La criptografía de transporte queda *por debajo* del códec; la carga útil DCF permanece en texto plano. [`DCF_STEAM_SPEC.md`](Documentation/DCF_STEAM_SPEC.md)
+- **DCF-Control / DCF-Telemetry (borrador).** El par de enlace dividido del motor DeMoD — operaciones de control GUI→motor (cargar un efecto, fijar un parámetro, disparar una nota) serializadas como **DCF-Text**, y la lectura de vuelta motor→GUI (medidores por ranura, estado de transporte, osciloscopio opcional) reutilizando el **encuadramiento L2 `CTRL` de DCF-Audio**, con pérdida por diseño (latest-wins, sin retransmisión). No añaden encuadramiento propio. [`DCF_CONTROL_SPEC.md`](Documentation/DCF_CONTROL_SPEC.md) · [`DCF_TELEMETRY_SPEC.md`](Documentation/DCF_TELEMETRY_SPEC.md)
+- **DCF-WASM — cliente de navegador.** El códec certificado compilado a `wasm32` ejecuta la misma interfaz de comunicaciones en el navegador, entregada como un único `index.html` autocontenido y llegando a la malla a través de un relé WS↔UDP sin estado (los navegadores no pueden abrir UDP). El códec se ejecuta en el navegador, no en el puente. [`DCF_WASM_SPEC.md`](Documentation/DCF_WASM_SPEC.md)
+
+La telemetría de sensores (**DCF-Sense**) y JANUS se tratan en la lista de
+características de arriba; ambos son igualmente adaptadores/transportes sobre el
+cuántum.
 
 ## Arquitectura
 ```mermaid
@@ -308,7 +369,7 @@ Use `protoc` para generar bindings para cada idioma:
 > **Estos fragmentos ilustran la superficie de API gRPC *intendida*, no la realidad
 > certificada.** En todos los idiomas, los bindings
 > gRPC son bosquejos y dependen de código generado que no se entrega hoy;
-> trátelos como intención de diseño. Solo los puntos de entrada del códec de red de la [capa Certificada](#language-status)
+> trátelos como intención de diseño. Solo los puntos de entrada del códec de red de la [capa Certificada](#estado-por-idioma)
 > están garantizados. El ejemplo C a continuación se corrigió para usar
 > los módulos que realmente se compilan.
 
@@ -635,7 +696,8 @@ Pruebas unitarias por idioma (donde existen):
 - **Perl**: `cd perl && prove -l t/` (o `perl Makefile.PL && make test`) — certifica los 246 vectores.
 - **C++**: `g++ -std=c++17 -I cpp/include cpp/tests/certify.cpp -o cert && ./cert` (o `cmake . && ctest`) — certifica los 246 vectores.
 - **Swift**: `cd swift && swift test` — certifica los 246 vectores + SuperPack + FEC (trabajo CI `certify-swift`; el envoltorio Nix Swift-on-Linux carece de `swift-test`, por lo que el ejecutor alojado es la autoridad localmente).
-- **Integración** (agrupación RTT, failover, asignación de roles modo AUTO, persistencia StreamDB): **planificado**, no implementado en la versión actual.
+- **Malla**: `cd go && go test ./mesh/` (Go), `cd codec && cargo test --test certify_mesh` (Rust), `gcc -std=c11 -I codec C_SDK/tests/test_mesh_certify.c -lm -o /tmp/mc && /tmp/mc` (C), `python3 python/MCP/gen_mesh_vectors.py /tmp/mv.json` (regenerar + verificar leyes) — certifica la capa de algoritmos de malla más los bytes de control REPORT/ROLE. La *temporización* del runtime se prueba por integración, no por vectores.
+- **Integración**: la agrupación por RTT, el failover y la asignación de roles AUTO/master están **implementados y probados por integración** en los nodos de malla Go/C/Rust/Python, con los algoritmos y los bytes de control certificados (véase **Malla** arriba). La **persistencia StreamDB** sigue **planificada**.
 
 ### Beneficios Mejorados de la Integración de StreamDB en HydraMesh-Lisp
 
