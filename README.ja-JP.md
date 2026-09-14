@@ -1,6 +1,6 @@
 # Punctim
 
-![logo](hydramesh.svg)
+![logo](punctim.svg)
 
 
 **0.x — プレリリース、活発に開発中**
@@ -70,7 +70,7 @@ cd DeMoD-Communication-Framework
 # 1. ツールチェーンを入手 — どれか 1 つを選ぶ:
 nix develop                  # すべてのツールチェーンを 1 つのシェルに（推奨）; または
 ./install_deps.sh            # ディストリビューション対応のネイティブインストール（Debian/Arch/Fedora）; または
-docker build -t hydramesh .  # すべてをコンテナ内に
+docker build -t punctim .  # すべてをコンテナ内に
 
 # 2. 最初の成功体験 — Python + Rust + C にまたがってワイヤコーデックを認証する:
 make certify                 # セットアップ / テスト / ドキュメント / クライアントは `make help` を参照
@@ -230,7 +230,7 @@ graph TD
     
     A --> AM[SDKs]
     AM --> AN[C SDK]
-    AM --> AO[HydraMesh-Lisp SDK]
+    AM --> AO[Punctim-Lisp SDK]
     AM --> AP[Future SDKs: Python, Perl, etc.]
     
     A --> AQ[Persistence Layer]
@@ -315,7 +315,7 @@ cd DeMoD-Communication-Framework
 - **Rust**: `tonic`、`prost`（gRPC/Protobuf 用）。
 - **Java/Kotlin (Android)**: `io.grpc:grpc-okhttp`、`com.google.protobuf:protobuf-java`。
 - **Swift (iOS)**: `GRPC-Swift`、`SwiftProtobuf`。
-- **Lisp**: Quicklisp 入りの SBCL。依存: `cl-protobufs`、`cl-grpc`、`cffi` など（`lisp/src/hydramesh.lisp` を参照）。
+- **Lisp**: Quicklisp 入りの SBCL。依存: `cl-protobufs`、`cl-grpc`、`cffi` など（`lisp/src/punctim.lisp` を参照）。
 - **StreamDB**: Punctim-Lisp SDK での永続化のために、Cargo を使って `streamdb/` から `libstreamdb.so` をビルドします。
 
 ### Protobuf/gRPC の生成
@@ -334,7 +334,7 @@ cd DeMoD-Communication-Framework
 - **C SDK**: `cd c_sdk && mkdir build && cd build && cmake .. && make`
 - **Perl**: `cpanm --installdeps .`
 - **Python**: `pip install -r python/requirements.txt`
-- **Lisp**: SBCL 経由でロード: `(load "lisp/src/hydramesh.lisp")`
+- **Lisp**: SBCL 経由でロード: `(load "lisp/src/punctim.lisp")`
 - **その他**: 言語固有のビルドツールに従ってください（例: Rust なら `cargo build`）。
 
 
@@ -349,32 +349,32 @@ cd DeMoD-Communication-Framework
 
 ### Perl（gRPC クライアント、例示 / 実験的）
 ```perl
-# perl/hydramesh.pl
+# perl/punctim.pl
 use Grpc::XS;
-use HydraMesh::Messages qw(HydraMeshMessage);
+use Punctim::Messages qw(PunctimMessage);
 my $client = Grpc::XS::channel('localhost:50051');
-my $stub = $client->service('HydraMeshService');
-my $request = HydraMeshMessage->new(data => 'Hello');
+my $stub = $client->service('PunctimService');
+my $request = PunctimMessage->new(data => 'Hello');
 my $response = $stub->SendMessage($request);
 print $response->{data}, "\n";
 ```
 
 ### Python（gRPC クライアント）
 ```python
-# python/hydramesh.py
+# python/punctim.py
 import grpc
-from hydramesh.services_pb2_grpc import HydraMeshServiceStub
-from hydramesh.messages_pb2 import HydraMeshMessage
+from punctim.services_pb2_grpc import PunctimServiceStub
+from punctim.messages_pb2 import PunctimMessage
 channel = grpc.insecure_channel('localhost:50051')
-stub = HydraMeshServiceStub(channel)
-request = HydraMeshMessage(data='Hello')
+stub = PunctimServiceStub(channel)
+request = PunctimMessage(data='Hello')
 response = stub.SendMessage(request)
 print(response.data)
 ```
 
 ### C SDK（出荷されるモジュール）
 
-> 高レベルのクライアント API（`hydramesh_client_*` / `dcf_client_*`）は
+> 高レベルのクライアント API（`punctim_client_*` / `dcf_client_*`）は
 > `C_SDK/include/experimental/` にあり、**コンパイルも出荷もされません**。今日
 > ビルドできる C SDK は 4 モジュールの背骨（`dcf_platform`、`dcf_error`、
 > `dcf_ringbuf`、`dcf_connpool`）です。下記の例は出荷されるシンボルのみを使っています。
@@ -402,11 +402,11 @@ dcf_connpool_destroy(pool, true);
 
 ### C++（gRPC サーバー）
 ```cpp
-// cpp/src/hydramesh.cpp
+// cpp/src/punctim.cpp
 #include <grpcpp/grpcpp.h>
 #include "services.grpc.pb.h"
-class ServerImpl final : public HydraMeshService::Service {
-    grpc::Status SendMessage(grpc::ServerContext* context, const HydraMeshMessage* request, HydraMeshMessage* response) override {
+class ServerImpl final : public PunctimService::Service {
+    grpc::Status SendMessage(grpc::ServerContext* context, const PunctimMessage* request, PunctimMessage* response) override {
         response->set_data("Echo: " + request->data());
         return grpc::Status::OK;
     }
@@ -424,12 +424,12 @@ int main() {
 
 ### Node.js（gRPC クライアント）
 ```javascript
-// nodejs/src/hydramesh.js
+// nodejs/src/punctim.js
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 const packageDefinition = protoLoader.loadSync(['messages.proto', 'services.proto']);
-const hydrameshProto = grpc.loadPackageDefinition(packageDefinition).hydramesh;
-const client = new hydrameshProto.HydraMeshService('localhost:50051', grpc.credentials.createInsecure());
+const punctimProto = grpc.loadPackageDefinition(packageDefinition).punctim;
+const client = new punctimProto.PunctimService('localhost:50051', grpc.credentials.createInsecure());
 const request = { data: 'Hello', recipient: 'peer1' };
 client.sendMessage(request, (err, response) => {
   if (err) console.error(err);
@@ -449,8 +449,8 @@ import (
     "net"
     "time"
 
-    "github.com/ALH477/HydraMesh/go/node"
-    "github.com/ALH477/HydraMesh/go/text"
+    "github.com/ALH477/Punctim/go/node"
+    "github.com/ALH477/Punctim/go/text"
 )
 
 // Embed DefaultMessageHandler; override only the arms you care about.
@@ -488,14 +488,14 @@ func main() {
 ```rust
 // rust/src/main.rs
 use tonic::{transport::Server, Request, Response, Status};
-use services::hydramesh_service_server::{HydraMeshService, HydraMeshServiceServer};
-use services::{HydraMeshMessage};
+use services::punctim_service_server::{PunctimService, PunctimServiceServer};
+use services::{PunctimMessage};
 #[derive(Default)]
 pub struct Networking {}
 #[tonic::async_trait]
-impl HydraMeshService for Networking {
-    async fn send_message(&self, request: Request<HydraMeshMessage>) -> Result<Response<HydraMeshMessage>, Status> {
-        let reply = HydraMeshMessage { data: format!("Echo: {}", request.into_inner().data) };
+impl PunctimService for Networking {
+    async fn send_message(&self, request: Request<PunctimMessage>) -> Result<Response<PunctimMessage>, Status> {
+        let reply = PunctimMessage { data: format!("Echo: {}", request.into_inner().data) };
         Ok(Response::new(reply))
     }
 }
@@ -503,34 +503,34 @@ impl HydraMeshService for Networking {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:50051".parse()?;
     let net = Networking::default();
-    Server::builder().add_service(HydraMeshServiceServer::new(net)).serve(addr).await?;
+    Server::builder().add_service(PunctimServiceServer::new(net)).serve(addr).await?;
     Ok(())
 }
 ```
 
 ### Lisp（StreamDB 付き gRPC クライアント）
 ```lisp
-;; lisp/src/hydramesh.lisp (excerpt)
-(in-package :hydramesh)
-(hydramesh-init "config.json" :restore-state t)
-(hydramesh-start)
-(hydramesh-quick-send "Hello from Lisp!" "localhost:50052")
-(hydramesh-db-insert "/test/key" "test data")  ; Store in StreamDB
-(print (hydramesh-db-query "/test/key"))  ; Query from StreamDB
-(hydramesh-stop)
+;; lisp/src/punctim.lisp (excerpt)
+(in-package :punctim)
+(punctim-init "config.json" :restore-state t)
+(punctim-start)
+(punctim-quick-send "Hello from Lisp!" "localhost:50052")
+(punctim-db-insert "/test/key" "test data")  ; Store in StreamDB
+(print (punctim-db-query "/test/key"))  ; Query from StreamDB
+(punctim-stop)
 ```
 
 ### Android（Kotlin クライアント）
 ```kotlin
-// android/app/src/main/kotlin/com/example/hydramesh/HydraMeshClient.kt
+// android/app/src/main/kotlin/com/example/punctim/PunctimClient.kt
 import io.grpc.ManagedChannelBuilder
-import com.example.hydramesh.services.HydraMeshServiceGrpc
-import com.example.hydramesh.messages.HydraMeshMessage
-class HydraMeshClient(host: String, port: Int) {
+import com.example.punctim.services.PunctimServiceGrpc
+import com.example.punctim.messages.PunctimMessage
+class PunctimClient(host: String, port: Int) {
     private val channel = ManagedChannelBuilder.forAddress(host, port).usePlaintext().build()
-    private val stub = HydraMeshServiceGrpc.newBlockingStub(channel)
+    private val stub = PunctimServiceGrpc.newBlockingStub(channel)
     fun sendMessage(data: String, recipient: String): String {
-        val request = HydraMeshMessage.newBuilder().setData(data).setRecipient(recipient).build()
+        val request = PunctimMessage.newBuilder().setData(data).setRecipient(recipient).build()
         return stub.sendMessage(request).data
     }
 }
@@ -538,20 +538,20 @@ class HydraMeshClient(host: String, port: Int) {
 
 ### iOS（Swift クライアント）
 ```swift
-// ios/HydraMeshClient.swift
+// ios/PunctimClient.swift
 import GRPC
 import NIO
 import SwiftProtobuf
-class HydraMeshClient {
+class PunctimClient {
     private let connection: ClientConnection
-    private let client: HydraMeshServiceClient
+    private let client: PunctimServiceClient
     init(host: String, port: Int) {
         let group = PlatformSupport.makeEventLoopGroup(loopCount: 1)
         connection = ClientConnection.insecure(group: group).connect(host: host, port: port)
-        client = HydraMeshServiceClient(channel: connection)
+        client = PunctimServiceClient(channel: connection)
     }
     func sendMessage(data: String, recipient: String) -> String? {
-        var request = HydraMeshMessage()
+        var request = PunctimMessage()
         request.data = data
         request.recipient = recipient
         do {
@@ -565,7 +565,7 @@ class HydraMeshClient {
 ### プラグインの例（C SDK 用の C トランスポート）
 ```c
 // c_sdk/plugins/custom_transport.c
-#include <hydramesh_sdk/hydramesh_plugin_manager.h>
+#include <punctim_sdk/punctim_plugin_manager.h>
 typedef struct { /* Private data */ } CustomTransport;
 bool setup(void* self, const char* host, int port) { return true; }
 bool send(void* self, const uint8_t* data, size_t size, const char* target) { return true; }
@@ -582,7 +582,7 @@ const char* get_plugin_version() { return "1.0"; }
 - **高最適化（パフォーマンス重視）**: 最小限のオーバーヘッドで速度を優先します — 軽量なトランスポート（例: UDP）、StreamDB のクイックモード（CRC チェックをスキップして読み取りを約 10 倍高速化）、ログの削減を使用します。データ完全性を外部で管理する、ゲームのような高スループット・低レイテンシのアプリケーションに適しています。
   ```json
   {
-    "framework": "hydramesh",
+    "framework": "punctim",
     "transport": "udp",
     "host": "localhost",
     "port": 50051,
@@ -599,7 +599,7 @@ const char* get_plugin_version() { return "1.0"; }
 - **バランス最適化（既定）**: 信頼性とパフォーマンスを組み合わせます — 確実な配信のための gRPC、標準の StreamDB モード（CRC チェックあり）、info レベルのログを使用します。分散コンピューティングのような汎用的なアプリケーションに最適です。
   ```json
   {
-    "framework": "hydramesh",
+    "framework": "punctim",
     "transport": "gRPC",
     "host": "localhost",
     "port": 50051,
@@ -616,7 +616,7 @@ const char* get_plugin_version() { return "1.0"; }
 - **低最適化（信頼性重視）**: データ完全性とデバッグを重視します — 信頼性の高いトランスポート（例: SCTP）を使用し、StreamDB のクイックモードを無効化して完全な CRC チェックを行い、デバッグログを有効にします。開発や、断続的な接続を持つ IoT のような重要なシステムに最適です。
   ```json
   {
-    "framework": "hydramesh",
+    "framework": "punctim",
     "transport": "sctp",
     "host": "localhost",
     "port": 50051,
@@ -633,7 +633,7 @@ const char* get_plugin_version() { return "1.0"; }
 マスターノード用:
 ```json
 {
-  "framework": "hydramesh",
+  "framework": "punctim",
   "transport": "gRPC",
   "host": "localhost",
   "port": 50051,
@@ -661,7 +661,7 @@ gcc -std=c11 -Wall -Wextra -I codec C_SDK/tests/test_wire_certify.c -lm -o /tmp/
 言語ごとのユニットテスト（存在する場合）:
 - **C SDK**: `cd C_SDK && mkdir build && cd build && cmake .. && make && ctest`（ワイヤ認証は `C_SDK/tests/test_wire_certify.c`。`tests/legacy/` は隔離されておりビルドされません）。
 - **Python**: `pytest python/tests/`。
-- **Lisp**: `sbcl --non-interactive --load lisp/src/wire.lisp --load lisp/src/fec.lisp` が 246 個すべてのワイヤベクター + FEC ベクター一式を `Documentation/{golden,fec}_vectors.json` に対して認証します（依存なし、Quicklisp 不要。CI ジョブ `certify-lisp`）。完全な SDK（`lisp/src/hydramesh.lisp`）はロード時に自己認証します。
+- **Lisp**: `sbcl --non-interactive --load lisp/src/wire.lisp --load lisp/src/fec.lisp` が 246 個すべてのワイヤベクター + FEC ベクター一式を `Documentation/{golden,fec}_vectors.json` に対して認証します（依存なし、Quicklisp 不要。CI ジョブ `certify-lisp`）。完全な SDK（`lisp/src/punctim.lisp`）はロード時に自己認証します。
 - **Go**: `cd go && go test ./...` — ワイヤコーデック（246 ゴールデンベクター）に加えて
   ゲーム/オーディオ/テキストのアダプタを認証し、stdlib のみの UDP `DcfNode` SDK
   （ProtoMessage トランスポート、ピア RTT、信頼性 ARQ）を 2 ノードのループバック統合テストで検証します。
@@ -685,17 +685,17 @@ Punctim モノレポ（https://github.com/ALH477/DeMoD-Communication-Framework�
 
 #### 1. **耐障害分散システムのための優れた永続化**
    - **反復**: 基本的な状態回復を超えて、StreamDB のページングストレージ（4KB ページ、最大 256MB のドキュメントのためのチェーン付き）と逆トライインデックスにより、階層データ（例: `/state/peers/node1/rtt`）に対する効率的なプレフィックスベースのクエリが可能になります。Punctim-Lisp では、ノードがピアグループやメッセージログのような複雑な構造をアトミックに永続化でき、断片化を減らし、最大 8TB のデータベースをサポートします — Punctim ネットワークの拡張に理想的です。
-   - **Punctim-Lisp 固有**: DSL のマクロ（例: `def-hydramesh-plugin`）により、StreamDB 操作をシームレスにラップでき、永続化がネイティブに感じられます（例: `hydramesh-db-insert "/metrics/sends" count`）。この簡潔さ（約 50 行に統合）は、動的なロール切り替えが StreamDB からの素早い状態再ロードに依存する AUTO モードにおいて、障害耐性を高めます。
+   - **Punctim-Lisp 固有**: DSL のマクロ（例: `def-punctim-plugin`）により、StreamDB 操作をシームレスにラップでき、永続化がネイティブに感じられます（例: `punctim-db-insert "/metrics/sends" count`）。この簡潔さ（約 50 行に統合）は、動的なロール切り替えが StreamDB からの素早い状態再ロードに依存する AUTO モードにおいて、障害耐性を高めます。
    - **民主化の観点**: DeMoD の GPLv3 完全版は、自動チェーン修復のような高度な機能へのオープンなアクセスを保証し、開発者がプロプライエタリな依存なしに耐障害性のあるシステムを構築できるようにします。
 
 #### 2. **リアルタイムワークロードのための超低レイテンシのデータアクセス**
    - **反復**: StreamDB の QuickAndDirtyMode（CRC をスキップして読み取りを約 10 倍高速化、最大 100MB/s）と LRU キャッシュが Punctim-Lisp のサブミリ秒メッセージングを補完し、キャッシュされた状態へのほぼ即時のアクセスを可能にします。新機能: エッジのシナリオでは、StreamDB の no-mmap フォールバックが制約のあるハードウェアでも一貫したパフォーマンスを保証し、ピアグルーピング中の RTT メトリクスの検索が 1ms 未満になります。
-   - **Punctim-Lisp 固有**: `hydramesh-node` に直接統合され（`streamdb` スロット経由）、`hydramesh-get-metrics` や `hydramesh-group-peers` の結果をキャッシュし、高頻度ループでの I/O を削減します。Lisp の動的型付けは StreamDB のバイナリストリームサポートと組み合わさり、柔軟なデータ処理（例: シリアライズされた CLOS メッセージの保存）を可能にします。
+   - **Punctim-Lisp 固有**: `punctim-node` に直接統合され（`streamdb` スロット経由）、`punctim-get-metrics` や `punctim-group-peers` の結果をキャッシュし、高頻度ループでの I/O を削減します。Lisp の動的型付けは StreamDB のバイナリストリームサポートと組み合わさり、柔軟なデータ処理（例: シリアライズされた CLOS メッセージの保存）を可能にします。
    - **民主化の観点**: 完全な GPLv3 実装をオープンソース化することで、DeMoD は高速な組み込みデータベースを誰もが利用できるようにし、Redis のようなプロプライエタリなソリューションに対してインディー開発者の土俵を平らにします。
 
 #### 3. **モジュール式の拡張性とプラグインの相乗効果**
    - **反復**: StreamDB の `DatabaseBackend` トレイトによりカスタムバックエンド（例: テスト用のインメモリ）が可能になり、Punctim-Lisp のプラグインシステムを拡張します。新機能: ミドルウェアが StreamDB 操作にフックでき（例: 挿入前にデータを JSON/CBOR としてシリアライズ）、トランスポートとストレージの統一された拡張ポイントを作ります。
-   - **Punctim-Lisp 固有**: コアバックエンドとして（密結合のためプラグインではなく）モジュール性を高めます — 例: `save-state` は `/state/config` のような StreamDB パスを使い、`hydramesh-db-search "/state/"` でクエリできます。これはトランスポート（例: 組み込み向けの Serial）と統合され、IoT データを同期前にローカルに保存します。
+   - **Punctim-Lisp 固有**: コアバックエンドとして（密結合のためプラグインではなく）モジュール性を高めます — 例: `save-state` は `/state/config` のような StreamDB パスを使い、`punctim-db-search "/state/"` でクエリできます。これはトランスポート（例: 組み込み向けの Serial）と統合され、IoT データを同期前にローカルに保存します。
    - **民主化の観点**: DeMoD の GPLv3 版はプラグ可能なバックエンドを含み、コミュニティの拡張（例: S3 統合）を促し、Punctim のエコシステムにおけるイノベーションを育みます。
 
 #### 4. **リソース制約のあるデプロイメント向けに最適化**
@@ -705,17 +705,17 @@ Punctim モノレポ（https://github.com/ALH477/DeMoD-Communication-Framework�
 
 #### 5. **シームレスな言語横断の相互運用性**
    - **反復**: StreamDB のファイルベースのストレージと FFI（`libstreamdb.so` 経由）により、Punctim SDK 間での共有アクセスが可能になります。新機能: Punctim-Lisp ノードは JSON シリアライズされたメトリクスを StreamDB に保存でき、ハイブリッドネットワークのために C SDK から読めます。
-   - **Punctim-Lisp 固有**: `hydramesh.lisp` の CFFI バインディングが StreamDB を DSL 関数として公開します（例: `hydramesh-db-insert`）。これにより、Lisp の動的な機能（例: マクロ）が複雑さなしに相互運用性を高めます。
+   - **Punctim-Lisp 固有**: `punctim.lisp` の CFFI バインディングが StreamDB を DSL 関数として公開します（例: `punctim-db-insert`）。これにより、Lisp の動的な機能（例: マクロ）が複雑さなしに相互運用性を高めます。
    - **民主化の観点**: 唯一の完全な GPLv3 版として（Iain Ballard の不完全な C# リポジトリから開発）、DeMoD の Rust 実装は FFI 対応の高度なデータベースへのオープンなアクセスを促進します。
 
 #### 6. **堅牢なエラー処理と自動復旧**
-   - **反復**: StreamDB の CRC32 チェック、バージョンの単調性、復旧（例: インデックス再構築）が Punctim-Lisp の `hydramesh-error` 処理を強化します。新機能: フェイルオーバー（`hydramesh-heal`）と統合し、クラッシュ後に StreamDB から状態を復旧します。
-   - **Punctim-Lisp 固有**: StreamDB からのエラーは `hydramesh-error` でラップされ、`log4cl` でログされ、FiveAM（例: `streamdb-integration-test`）でテストされ、P2P メッシュでの耐障害性を保証します。
+   - **反復**: StreamDB の CRC32 チェック、バージョンの単調性、復旧（例: インデックス再構築）が Punctim-Lisp の `punctim-error` 処理を強化します。新機能: フェイルオーバー（`punctim-heal`）と統合し、クラッシュ後に StreamDB から状態を復旧します。
+   - **Punctim-Lisp 固有**: StreamDB からのエラーは `punctim-error` でラップされ、`log4cl` でログされ、FiveAM（例: `streamdb-integration-test`）でテストされ、P2P メッシュでの耐障害性を保証します。
    - **民主化の観点**: GPLv3 は復旧に対するコミュニティ主導の改善を保証し、信頼性の高いストレージをすべての人に利用可能にします。
 
 #### 7. **高度な監視と分析**
-   - **反復**: StreamDB は履歴メトリクス（例: `/metrics/sends`）を保存し、トレンド分析を可能にします。新機能: プレフィックス検索（`hydramesh-db-search "/metrics/"`）がマスターモードでの AI 最適化を支えます。
-   - **Punctim-Lisp 固有**: StreamDB をクエリすることで `hydramesh-get-metrics` を強化し、TUI や Graphviz で可視化します。
+   - **反復**: StreamDB は履歴メトリクス（例: `/metrics/sends`）を保存し、トレンド分析を可能にします。新機能: プレフィックス検索（`punctim-db-search "/metrics/"`）がマスターモードでの AI 最適化を支えます。
+   - **Punctim-Lisp 固有**: StreamDB をクエリすることで `punctim-get-metrics` を強化し、TUI や Graphviz で可視化します。
    - **民主化の観点**: DeMoD のオープンな実装は、エッジ AI のための分析対応ストレージを民主化します。
 
 #### 8. **合理化されたテストと検証**
@@ -724,7 +724,7 @@ Punctim モノレポ（https://github.com/ALH477/DeMoD-Communication-Framework�
    - **民主化の観点**: GPLv3 は信頼性の高い Punctim デプロイのための共有テストツールを育みます。
 
 ### StreamDB の Punctim-Lisp への専用性（現時点では）
-StreamDB は現在 Punctim-Lisp SDK にのみ統合され、Lisp の動的環境（例: StreamDB ラッパー用のマクロ）でその利点を試作しています。これにより、他の SDK へ移植する前に永続化機能（例: `hydramesh-send` でのメッセージログ）を素早く反復できます。今後の計画には C SDK 向けの CFFI バインディングと Python ラッパーが含まれ、StreamDB をモノレポ全体に広げます。
+StreamDB は現在 Punctim-Lisp SDK にのみ統合され、Lisp の動的環境（例: StreamDB ラッパー用のマクロ）でその利点を試作しています。これにより、他の SDK へ移植する前に永続化機能（例: `punctim-send` でのメッセージログ）を素早く反復できます。今後の計画には C SDK 向けの CFFI バインディングと Python ラッパーが含まれ、StreamDB をモノレポ全体に広げます。
 
 ### DeMoD の GPLv3 完全版 StreamDB: 最先端技術の民主化
 DeMoD LLC は、Iain Ballard の不完全な C# リポジトリから、唯一の完全な GPLv3 版の StreamDB を開発し、安全性と性能のために Rust で再実装しました。これにより、最先端の機能（例: トライインデックス、MVCC ライクなバージョニング）が自由に利用可能になり、組み込みストレージにおけるオープンなイノベーションを促進し、Punctim の FOSS 精神と一致します。GPLv3 の下でオープンソース化することで、DeMoD は通常プロプライエタリなシステムに囲い込まれる技術を民主化し、開発者が高度でコストのかからないソリューションを構築できるようにします。
@@ -763,7 +763,7 @@ Punctim フレームワークに関する包括的なドキュメント（詳細
 - **主要セクション**:
   - [設計仕様](https://alh477.github.io/DeMoD-Communication-Framework/specs/dcf_design_spec.html): プロトコル設計、AUTO モード、マスターノード、プラグイン、SDK ガイドラインを網羅。
   - [SDK ガイド](https://alh477.github.io/DeMoD-Communication-Framework/guides/sdk-development.html): SDK の開発と統合のチュートリアル（例: RTT グルーピング付きの C SDK、StreamDB 永続化付きの Punctim-Lisp）。
-  - [API リファレンス](https://alh477.github.io/DeMoD-Communication-Framework/api/index.html): 各言語のコードコメント/docstring から自動生成（例: C の `hydramesh_client_send_message`、Lisp の `hydramesh-quick-send`）。
+  - [API リファレンス](https://alh477.github.io/DeMoD-Communication-Framework/api/index.html): 各言語のコードコメント/docstring から自動生成（例: C の `punctim_client_send_message`、Lisp の `punctim-quick-send`）。
   - [コントリビューションガイドライン](https://alh477.github.io/DeMoD-Communication-Framework/process/CONTRIBUTING.html): 新しい SDK やプラグインの追加方法。
 
 ドキュメントは複数フォーマットの出力（HTML、ePub）をサポートし、Protobuf スキーマのカスタムレンダリングを含みます。ソースについてはリポジトリの `Documentation/` ディレクトリを参照してください。ドキュメント改善への貢献を歓迎します — `Documentation/dcf_design_spec.markdown` のスタイルに従ってください。

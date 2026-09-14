@@ -1,6 +1,6 @@
 # Punctim
 
-![logo](hydramesh.svg)
+![logo](punctim.svg)
 
 
 **0.x — versión preliminar, en desarrollo activo**  
@@ -68,7 +68,7 @@ cd DeMoD-Communication-Framework
 # 1. Obtenga una cadena de herramientas — elija UNA:
 nix develop                  # todas las cadenas de herramientas en una shell (recomendado); o
 ./install_deps.sh            # instalación nativa según distribución (Debian/Arch/Fedora); o
-docker build -t hydramesh .  # todo en un contenedor
+docker build -t punctim .  # todo en un contenedor
 
 # 2. Primer éxito — certifique el códec de red en Python + Rust + C:
 make certify                 # consulte `make help` para setup / test / docs / client
@@ -231,7 +231,7 @@ graph TD
     
     A --> AM[SDKs]
     AM --> AN[C SDK]
-    AM --> AO[HydraMesh-Lisp SDK]
+    AM --> AO[Punctim-Lisp SDK]
     AM --> AP[Future SDKs: Python, Perl, etc.]
     
     A --> AQ[Persistence Layer]
@@ -339,7 +339,7 @@ cd DeMoD-Communication-Framework
 - **Rust**: `tonic`, `prost` (para gRPC/Protobuf).
 - **Java/Kotlin (Android)**: `io.grpc:grpc-okhttp`, `com.google.protobuf:protobuf-java`.
 - **Swift (iOS)**: `GRPC-Swift`, `SwiftProtobuf`.
-- **Lisp**: SBCL con Quicklisp; dependencias: `cl-protobufs`, `cl-grpc`, `cffi`, etc. (consulte `lisp/src/hydramesh.lisp`).
+- **Lisp**: SBCL con Quicklisp; dependencias: `cl-protobufs`, `cl-grpc`, `cffi`, etc. (consulte `lisp/src/punctim.lisp`).
 - **StreamDB**: Compile `libstreamdb.so` desde `streamdb/` usando Cargo para persistencia en el SDK Punctim-Lisp.
 
 ### Generando Protobuf/gRPC
@@ -358,7 +358,7 @@ Use `protoc` para generar bindings para cada idioma:
 - **C SDK**: `cd c_sdk && mkdir build && cd build && cmake .. && make`
 - **Perl**: `cpanm --installdeps .`
 - **Python**: `pip install -r python/requirements.txt`
-- **Lisp**: Cargue vía SBCL: `(load "lisp/src/hydramesh.lisp")`
+- **Lisp**: Cargue vía SBCL: `(load "lisp/src/punctim.lisp")`
 - **Otros**: Siga las herramientas de compilación específicas del idioma (p. ej., `cargo build` para Rust).
 
 
@@ -373,32 +373,32 @@ Use `protoc` para generar bindings para cada idioma:
 
 ### Perl (Cliente gRPC, ilustrativo / experimental)
 ```perl
-# perl/hydramesh.pl
+# perl/punctim.pl
 use Grpc::XS;
-use HydraMesh::Messages qw(HydraMeshMessage);
+use Punctim::Messages qw(PunctimMessage);
 my $client = Grpc::XS::channel('localhost:50051');
-my $stub = $client->service('HydraMeshService');
-my $request = HydraMeshMessage->new(data => 'Hola');
+my $stub = $client->service('PunctimService');
+my $request = PunctimMessage->new(data => 'Hola');
 my $response = $stub->SendMessage($request);
 print $response->{data}, "\n";
 ```
 
 ### Python (Cliente gRPC)
 ```python
-# python/hydramesh.py
+# python/punctim.py
 import grpc
-from hydramesh.services_pb2_grpc import HydraMeshServiceStub
-from hydramesh.messages_pb2 import HydraMeshMessage
+from punctim.services_pb2_grpc import PunctimServiceStub
+from punctim.messages_pb2 import PunctimMessage
 channel = grpc.insecure_channel('localhost:50051')
-stub = HydraMeshServiceStub(channel)
-request = HydraMeshMessage(data='Hola')
+stub = PunctimServiceStub(channel)
+request = PunctimMessage(data='Hola')
 response = stub.SendMessage(request)
 print(response.data)
 ```
 
 ### C SDK (módulos entregados)
 
-> La API de cliente de alto nivel (`hydramesh_client_*` / `dcf_client_*`) vive bajo
+> La API de cliente de alto nivel (`punctim_client_*` / `dcf_client_*`) vive bajo
 > `C_SDK/include/experimental/` y **no se compila ni se entrega**. El SDK C que
 > se compila hoy es el núcleo de cuatro módulos (`dcf_platform`, `dcf_error`,
 > `dcf_ringbuf`, `dcf_connpool`). El ejemplo a continuación usa solo símbolos entregados;
@@ -426,11 +426,11 @@ dcf_connpool_destroy(pool, true);
 
 ### C++ (Servidor gRPC)
 ```cpp
-// cpp/src/hydramesh.cpp
+// cpp/src/punctim.cpp
 #include <grpcpp/grpcpp.h>
 #include "services.grpc.pb.h"
-class ServerImpl final : public HydraMeshService::Service {
-    grpc::Status SendMessage(grpc::ServerContext* context, const HydraMeshMessage* request, HydraMeshMessage* response) override {
+class ServerImpl final : public PunctimService::Service {
+    grpc::Status SendMessage(grpc::ServerContext* context, const PunctimMessage* request, PunctimMessage* response) override {
         response->set_data("Echo: " + request->data());
         return grpc::Status::OK;
     }
@@ -448,12 +448,12 @@ int main() {
 
 ### Node.js (Cliente gRPC)
 ```javascript
-// nodejs/src/hydramesh.js
+// nodejs/src/punctim.js
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 const packageDefinition = protoLoader.loadSync(['messages.proto', 'services.proto']);
-const hydrameshProto = grpc.loadPackageDefinition(packageDefinition).hydramesh;
-const client = new hydrameshProto.HydraMeshService('localhost:50051', grpc.credentials.createInsecure());
+const punctimProto = grpc.loadPackageDefinition(packageDefinition).punctim;
+const client = new punctimProto.PunctimService('localhost:50051', grpc.credentials.createInsecure());
 const request = { data: 'Hola', recipient: 'peer1' };
 client.sendMessage(request, (err, response) => {
   if (err) console.error(err);
@@ -473,8 +473,8 @@ import (
     "net"
     "time"
 
-    "github.com/ALH477/HydraMesh/go/node"
-    "github.com/ALH477/HydraMesh/go/text"
+    "github.com/ALH477/Punctim/go/node"
+    "github.com/ALH477/Punctim/go/text"
 )
 
 // Incrustar DefaultMessageHandler; sobrescribir solo los brazos que le importen.
@@ -512,14 +512,14 @@ func main() {
 ```rust
 // rust/src/main.rs
 use tonic::{transport::Server, Request, Response, Status};
-use services::hydramesh_service_server::{HydraMeshService, HydraMeshServiceServer};
-use services::{HydraMeshMessage};
+use services::punctim_service_server::{PunctimService, PunctimServiceServer};
+use services::{PunctimMessage};
 #[derive(Default)]
 pub struct Networking {}
 #[tonic::async_trait]
-impl HydraMeshService for Networking {
-    async fn send_message(&self, request: Request<HydraMeshMessage>) -> Result<Response<HydraMeshMessage>, Status> {
-        let reply = HydraMeshMessage { data: format!("Echo: {}", request.into_inner().data) };
+impl PunctimService for Networking {
+    async fn send_message(&self, request: Request<PunctimMessage>) -> Result<Response<PunctimMessage>, Status> {
+        let reply = PunctimMessage { data: format!("Echo: {}", request.into_inner().data) };
         Ok(Response::new(reply))
     }
 }
@@ -527,34 +527,34 @@ impl HydraMeshService for Networking {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr = "[::1]:50051".parse()?;
     let net = Networking::default();
-    Server::builder().add_service(HydraMeshServiceServer::new(net)).serve(addr).await?;
+    Server::builder().add_service(PunctimServiceServer::new(net)).serve(addr).await?;
     Ok(())
 }
 ```
 
 ### Lisp (Cliente gRPC con StreamDB)
 ```lisp
-;; lisp/src/hydramesh.lisp (extracto)
-(in-package :hydramesh)
-(hydramesh-init "config.json" :restore-state t)
-(hydramesh-start)
-(hydramesh-quick-send "¡Hola desde Lisp!" "localhost:50052")
-(hydramesh-db-insert "/test/key" "test data")  ; Almacenar en StreamDB
-(print (hydramesh-db-query "/test/key"))  ; Consultar desde StreamDB
-(hydramesh-stop)
+;; lisp/src/punctim.lisp (extracto)
+(in-package :punctim)
+(punctim-init "config.json" :restore-state t)
+(punctim-start)
+(punctim-quick-send "¡Hola desde Lisp!" "localhost:50052")
+(punctim-db-insert "/test/key" "test data")  ; Almacenar en StreamDB
+(print (punctim-db-query "/test/key"))  ; Consultar desde StreamDB
+(punctim-stop)
 ```
 
 ### Android (Cliente Kotlin)
 ```kotlin
-// android/app/src/main/kotlin/com/example/hydramesh/HydraMeshClient.kt
+// android/app/src/main/kotlin/com/example/punctim/PunctimClient.kt
 import io.grpc.ManagedChannelBuilder
-import com.example.hydramesh.services.HydraMeshServiceGrpc
-import com.example.hydramesh.messages.HydraMeshMessage
-class HydraMeshClient(host: String, port: Int) {
+import com.example.punctim.services.PunctimServiceGrpc
+import com.example.punctim.messages.PunctimMessage
+class PunctimClient(host: String, port: Int) {
     private val channel = ManagedChannelBuilder.forAddress(host, port).usePlaintext().build()
-    private val stub = HydraMeshServiceGrpc.newBlockingStub(channel)
+    private val stub = PunctimServiceGrpc.newBlockingStub(channel)
     fun sendMessage(data: String, recipient: String): String {
-        val request = HydraMeshMessage.newBuilder().setData(data).setRecipient(recipient).build()
+        val request = PunctimMessage.newBuilder().setData(data).setRecipient(recipient).build()
         return stub.sendMessage(request).data
     }
 }
@@ -562,20 +562,20 @@ class HydraMeshClient(host: String, port: Int) {
 
 ### iOS (Cliente Swift)
 ```swift
-// ios/HydraMeshClient.swift
+// ios/PunctimClient.swift
 import GRPC
 import NIO
 import SwiftProtobuf
-class HydraMeshClient {
+class PunctimClient {
     private let connection: ClientConnection
-    private let client: HydraMeshServiceClient
+    private let client: PunctimServiceClient
     init(host: String, port: Int) {
         let group = PlatformSupport.makeEventLoopGroup(loopCount: 1)
         connection = ClientConnection.insecure(group: group).connect(host: host, port: port)
-        client = HydraMeshServiceClient(channel: connection)
+        client = PunctimServiceClient(channel: connection)
     }
     func sendMessage(data: String, recipient: String) -> String? {
-        var request = HydraMeshMessage()
+        var request = PunctimMessage()
         request.data = data
         request.recipient = recipient
         do {
@@ -589,7 +589,7 @@ class HydraMeshClient {
 ### Ejemplo de Plugin (Transporte C para C SDK)
 ```c
 // c_sdk/plugins/custom_transport.c
-#include <hydramesh_sdk/hydramesh_plugin_manager.h>
+#include <punctim_sdk/punctim_plugin_manager.h>
 typedef struct { /* Datos privados */ } CustomTransport;
 bool setup(void* self, const char* host, int port) { return true; }
 bool send(void* self, const uint8_t* data, size_t size, const char* target) { return true; }
@@ -606,7 +606,7 @@ Cree `config.json` basado en `config.json.example`. Punctim admite varios nivele
 - **Optimización Alta (Enfocada en Rendimiento)**: Prioriza la velocidad con mínimo overhead — usa transportes ligeros (p. ej., UDP), modo rápido en StreamDB (saltando verificaciones CRC para lecturas ~10x más rápidas) y registro reducido. Adecuado para aplicaciones de alto throughput y baja latencia como juegos, donde la integridad de datos se gestiona externamente.
   ```json
   {
-    "framework": "hydramesh",
+    "framework": "punctim",
     "transport": "udp",
     "host": "localhost",
     "port": 50051,
@@ -623,7 +623,7 @@ Cree `config.json` basado en `config.json.example`. Punctim admite varios nivele
 - **Optimización Equilibrada (Predeterminada)**: Combina fiabilidad y rendimiento — usa gRPC para entrega fiable, modo estándar de StreamDB (con verificaciones CRC) y registro de nivel info. Ideal para aplicaciones de propósito general como computación distribuida.
   ```json
   {
-    "framework": "hydramesh",
+    "framework": "punctim",
     "transport": "gRPC",
     "host": "localhost",
     "port": 50051,
@@ -640,7 +640,7 @@ Cree `config.json` basado en `config.json.example`. Punctim admite varios nivele
 - **Optimización Baja (Enfocada en Fiabilidad)**: Enfatiza la integridad de datos y depuración — usa transportes fiables (p. ej., SCTP), desactiva el modo rápido en StreamDB para verificaciones CRC completas y habilita registro de depuración. Mejor para desarrollo o sistemas críticos como IoT con conectividad intermitente.
   ```json
   {
-    "framework": "hydramesh",
+    "framework": "punctim",
     "transport": "sctp",
     "host": "localhost",
     "port": 50051,
@@ -657,7 +657,7 @@ Cree `config.json` basado en `config.json.example`. Punctim admite varios nivele
 Para nodo maestro:
 ```json
 {
-  "framework": "hydramesh",
+  "framework": "punctim",
   "transport": "gRPC",
   "host": "localhost",
   "port": 50051,
@@ -685,7 +685,7 @@ gcc -std=c11 -Wall -Wextra -I codec C_SDK/tests/test_wire_certify.c -lm -o /tmp/
 Pruebas unitarias por idioma (donde existen):
 - **C SDK**: `cd C_SDK && mkdir build && cd build && cmake .. && make && ctest` (el certificado de red es `C_SDK/tests/test_wire_certify.c`; `tests/legacy/` está en cuarentena y no se compila).
 - **Python**: `pytest python/tests/`.
-- **Lisp**: `sbcl --non-interactive --load lisp/src/wire.lisp --load lisp/src/fec.lisp` certifica los 246 vectores de red + el conjunto de vectores FEC contra `Documentation/{golden,fec}_vectors.json` (sin dependencias, sin Quicklisp; trabajo CI `certify-lisp`); el SDK completo (`lisp/src/hydramesh.lisp`) se aut_certifica al cargar.
+- **Lisp**: `sbcl --non-interactive --load lisp/src/wire.lisp --load lisp/src/fec.lisp` certifica los 246 vectores de red + el conjunto de vectores FEC contra `Documentation/{golden,fec}_vectors.json` (sin dependencias, sin Quicklisp; trabajo CI `certify-lisp`); el SDK completo (`lisp/src/punctim.lisp`) se aut_certifica al cargar.
 - **Go**: `cd go && go test ./...` — certifica el códec de red (246 vectores dorados) más los
   adaptadores de juego/audio/texto, y prueba el SDK UDP stdlib-only `DcfNode` (transporte ProtoMessage, RTT par, ARQ fiable) mediante una prueba de integración loopback de dos nodos.
 - **Java**: `javac -d /tmp/jout java/com/demod/dcf/Frame.java java/com/demod/dcf/Certify.java && java -cp /tmp/jout com.demod.dcf.Certify` — certifica los 246 vectores.
@@ -708,17 +708,17 @@ A medida que continuamos construyendo los SDKs en el monorepo Punctim (https://g
 
 #### 1. **Persistencia Superior para Sistemas Distribuidos Tolerantes a Fallos**
    - **Iteración**: Más allá de la recuperación básica de estado, el almacenamiento paginado de StreamDB (páginas de 4KB con encadenamiento para documentos de hasta 256MB) y el índice trie inverso permiten consultas eficientes basadas en prefijos para datos jerárquicos (p. ej., `/state/peers/node1/rtt`). En Punctim-Lisp, esto significa que los nodos pueden persistir estructuras complejas como grupos de pares o registros de mensajes de forma atómica, reduciendo la fragmentación y soportando bases de datos de hasta 8TB — ideal para escalar redes Punctim.
-   - **Específico de Punctim-Lisp**: Las macros de la DSL (p. ej., `def-hydramesh-plugin`) permiten envolver sin esfuerzo operaciones de StreamDB, haciendo que la persistencia parezca nativa (p. ej., `hydramesh-db-insert "/metrics/sends" count`). Esta compactez (integrada en ~50 líneas) mejora la tolerancia a fallos en modo AUTO, donde los cambios de roles dinámicos dependen de recargas de estado rápidas desde StreamDB.
+   - **Específico de Punctim-Lisp**: Las macros de la DSL (p. ej., `def-punctim-plugin`) permiten envolver sin esfuerzo operaciones de StreamDB, haciendo que la persistencia parezca nativa (p. ej., `punctim-db-insert "/metrics/sends" count`). Esta compactez (integrada en ~50 líneas) mejora la tolerancia a fallos en modo AUTO, donde los cambios de roles dinámicos dependen de recargas de estado rápidas desde StreamDB.
    - **Ángulo de Democratización**: La versión completa GPLv3 de DeMoD asegura acceso abierto a características avanzadas como reparación automática de cadenas, empoderando a los desarrolladores para construir sistemas resilientes sin dependencias propietarias.
 
 #### 2. **Acceso a Datos de Latencia Ultra Baja para Cargas de Trabajo en Tiempo Real**
    - **Iteración**: QuickAndDirtyMode de StreamDB (saltando CRC para lecturas ~10x más rápidas, hasta 100MB/s) y caché LRU complementan la mensajería submilisegundo de Punctim-Lisp, permitiendo acceso casi instantáneo a estados en caché. Nuevo: En escenarios edge, la opción sin mmap de StreamDB asegura rendimiento consistente en hardware restringido, con búsquedas <1ms para métricas RTT durante agrupación de pares.
-   - **Específico de Punctim-Lisp**: Integrado directamente en `hydramesh-node` (vía slot `streamdb`), cachea resultados de `hydramesh-get-metrics` o `hydramesh-group-peers`, reduciendo E/S en bucles de alta frecuencia. La tipificación dinámica de Lisp se combina con el soporte de flujo binario de StreamDB para manejo flexible de datos (p. ej., almacenar mensajes CLOS serializados).
+   - **Específico de Punctim-Lisp**: Integrado directamente en `punctim-node` (vía slot `streamdb`), cachea resultados de `punctim-get-metrics` o `punctim-group-peers`, reduciendo E/S en bucles de alta frecuencia. La tipificación dinámica de Lisp se combina con el soporte de flujo binario de StreamDB para manejo flexible de datos (p. ej., almacenar mensajes CLOS serializados).
    - **Ángulo de Democratización**: Al open-sourcear la implementación completa GPLv3, DeMoD hace accesibles bases de datos incrustadas de alta velocidad, nivelando el terreno para desarrolladores independientes frente a soluciones propietarias como Redis.
 
 #### 3. **Extensibilidad Modular y Sinergia de Plugins**
    - **Iteración**: El trait `DatabaseBackend` de StreamDB permite backends personalizados (p. ej., en memoria para pruebas), extendiendo el sistema de plugins de Punctim-Lisp. Nuevo: Middleware puede engancharse en operaciones de StreamDB (p. ej., serializar datos como JSON/CBOR antes de insertar), creando un punto de extensión unificado para transportes y almacenamiento.
-   - **Específico de Punctim-Lisp**: Como backend principal (no un plugin, para acoplamiento estrecho), mejora la modularidad — p. ej., `save-state` usa rutas de StreamDB como `/state/config`, consultables vía `hydramesh-db-search "/state/"`. Se integra con transportes (p. ej., Serial para embedded), almacenando datos de IoT localmente antes de sincronizar.
+   - **Específico de Punctim-Lisp**: Como backend principal (no un plugin, para acoplamiento estrecho), mejora la modularidad — p. ej., `save-state` usa rutas de StreamDB como `/state/config`, consultables vía `punctim-db-search "/state/"`. Se integra con transportes (p. ej., Serial para embedded), almacenando datos de IoT localmente antes de sincronizar.
    - **Ángulo de Democratización**: La versión GPLv3 de DeMoD incluye backends plugueables, fomentando extensiones comunitarias (p. ej., integración S3), promoviendo la innovación en el ecosistema Punctim.
 
 #### 4. **Optimizado para Despliegues con Recursos Restringidos**
@@ -728,17 +728,17 @@ A medida que continuamos construyendo los SDKs en el monorepo Punctim (https://g
 
 #### 5. **Interoperabilidad Translingüe Sin Esfuerzo**
    - **Iteración**: El almacenamiento basado en archivos y FFI de StreamDB (vía `libstreamdb.so`) permite acceso compartido entre SDKs Punctim. Nuevo: Nodos Punctim-Lisp pueden almacenar métricas JSON-serializadas en StreamDB, legibles por SDKs C para redes híbridas.
-   - **Específico de Punctim-Lisp**: Los bindings CFFI en `hydramesh.lisp` exponen StreamDB como funciones DSL (p. ej., `hydramesh-db-insert`), asegurando que las características dinámicas de Lisp (p. ej., macros) mejoren la interoperabilidad sin complejidad.
+   - **Específico de Punctim-Lisp**: Los bindings CFFI en `punctim.lisp` exponen StreamDB como funciones DSL (p. ej., `punctim-db-insert`), asegurando que las características dinámicas de Lisp (p. ej., macros) mejoren la interoperabilidad sin complejidad.
    - **Ángulo de Democratización**: Como la única versión completa GPLv3 (desarrollada desde el repo C# incompleto de Iain Ballard), la impl Rust de DeMoD promueve acceso abierto a bases de datos avanzadas con capacidad FFI.
 
 #### 6. **Manejo de Errores Robusto y Recuperación Automatizada**
-   - **Iteración**: Las verificaciones CRC32, monotonicidad de versión y recuperación de StreamDB (p. ej., reconstrucción de índice) fortalecen el manejo de `hydramesh-error` de Punctim-Lisp. Nuevo: Se integra con failover (`hydramesh-heal`), recuperando estados desde StreamDB tras fallos.
-   - **Específico de Punctim-Lisp**: Los errores de StreamDB se envuelven en `hydramesh-error`, se registran vía `log4cl` y se prueban en FiveAM (p. ej., `streamdb-integration-test`), asegurando resiliencia en mallas P2P.
+   - **Iteración**: Las verificaciones CRC32, monotonicidad de versión y recuperación de StreamDB (p. ej., reconstrucción de índice) fortalecen el manejo de `punctim-error` de Punctim-Lisp. Nuevo: Se integra con failover (`punctim-heal`), recuperando estados desde StreamDB tras fallos.
+   - **Específico de Punctim-Lisp**: Los errores de StreamDB se envuelven en `punctim-error`, se registran vía `log4cl` y se prueban en FiveAM (p. ej., `streamdb-integration-test`), asegurando resiliencia en mallas P2P.
    - **Ángulo de Democratización**: GPLv3 asegura mejoras impulsadas por la comunidad en recuperación, haciendo almacenamiento fiable accesible para todos.
 
 #### 7. **Monitoreo y Análisis Avanzado**
-   - **Iteración**: StreamDB almacena métricas históricas (p. ej., `/metrics/sends`), permitiendo análisis de tendencias. Nuevo: Búsquedas por prefijo (`hydramesh-db-search "/metrics/"`) soportan optimización IA en modo Master.
-   - **Específico de Punctim-Lisp**: Mejora `hydramesh-get-metrics` consultando StreamDB, visualizado en TUI o Graphviz.
+   - **Iteración**: StreamDB almacena métricas históricas (p. ej., `/metrics/sends`), permitiendo análisis de tendencias. Nuevo: Búsquedas por prefijo (`punctim-db-search "/metrics/"`) soportan optimización IA en modo Master.
+   - **Específico de Punctim-Lisp**: Mejora `punctim-get-metrics` consultando StreamDB, visualizado en TUI o Graphviz.
    - **Ángulo de Democratización**: La impl abierta de DeMoD democratiza almacenamiento listo para análisis para IA edge.
 
 #### 8. **Pruebas y Validación Simplificadas**
@@ -747,7 +747,7 @@ A medida que continuamos construyendo los SDKs en el monorepo Punctim (https://g
    - **Ángulo de Democratización**: GPLv3 fomenta herramientas de pruebas compartidas para despliegues fiables de Punctim.
 
 ### Exclusividad de StreamDB en Punctim-Lisp (Por Ahora)
-StreamDB está integrado actualmente solo en el SDK Punctim-Lisp para prototipar sus beneficios en el entorno dinámico de Lisp (p. ej., macros para wrappers de StreamDB). Esto permite iteración rápida en características de persistencia (p. ej., registro de mensajes en `hydramesh-send`) antes de portar a otros SDKs. Planes futuros incluyen bindings CFFI para SDK C y wrappers Python, expandiendo StreamDB en todo el monorepo.
+StreamDB está integrado actualmente solo en el SDK Punctim-Lisp para prototipar sus beneficios en el entorno dinámico de Lisp (p. ej., macros para wrappers de StreamDB). Esto permite iteración rápida en características de persistencia (p. ej., registro de mensajes en `punctim-send`) antes de portar a otros SDKs. Planes futuros incluyen bindings CFFI para SDK C y wrappers Python, expandiendo StreamDB en todo el monorepo.
 
 ### StreamDB Completo GPLv3 de DeMoD: Democratizando Tecnología de Vanguardia
 DeMoD LLC desarrolló la única versión completa GPLv3 de StreamDB desde el repo C# incompleto de Iain Ballard, reimplementándolo en Rust para seguridad y rendimiento. Esto asegura que características de vanguardia (p. ej., indexación trie, versioning tipo MVCC) estén disponibles libremente, promoviendo innovación abierta en almacenamiento incrustado y alineándose con la filosofía FOSS de Punctim. Al open-sourcear bajo GPLv3, DeMoD democratiza tecnología típicamente bloqueada en sistemas propietarios, permitiendo a desarrolladores construir soluciones avanzadas y sin costo.
@@ -785,7 +785,7 @@ Para documentación comprensiva sobre el Framework Punctim, incluyendo guías de
 - **Secciones Clave**:
   - [Especificaciones de Diseño](https://alh477.github.io/DeMoD-Communication-Framework/specs/dcf_design_spec.html): Cubre diseño de protocolo, modo AUTO, nodo maestro, plugins y guías de SDK.
   - [Guías de SDK](https://alh477.github.io/DeMoD-Communication-Framework/guides/sdk-development.html): Tutoriales para desarrollar e integrar SDKs (p. ej., C SDK con agrupación RTT, Punctim-Lisp con persistencia StreamDB).
-  - [Referencias de API](https://alh477.github.io/DeMoD-Communication-Framework/api/index.html): Auto-generadas desde comentarios/docstrings en código entre idiomas (p. ej., `hydramesh_client_send_message` en C, `hydramesh-quick-send` en Lisp).
+  - [Referencias de API](https://alh477.github.io/DeMoD-Communication-Framework/api/index.html): Auto-generadas desde comentarios/docstrings en código entre idiomas (p. ej., `punctim_client_send_message` en C, `punctim-quick-send` en Lisp).
   - [Guías de Contribución](https://alh477.github.io/DeMoD-Communication-Framework/process/CONTRIBUTING.html): Cómo agregar nuevos SDKs o plugins.
 
 La documentación soporta salidas multi-formato (HTML, ePub) e incluye renderizado personalizado para esquemas Protobuf. Para el código fuente, consulte el directorio `Documentation/` en el repo. Las contribuciones para mejorar la documentación son bienvenidas — siga el estilo en `Documentation/dcf_design_spec.markdown`.
