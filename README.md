@@ -1,4 +1,4 @@
-# HydraMesh
+# Punctim
 
 ![logo](hydramesh.svg)
 
@@ -7,14 +7,14 @@
 **Developed by DeMoD LLC**  
 **Contact:** alh477@demod.ltd 
 
-[![Wire certification](https://github.com/ALH477/HydraMesh/actions/workflows/wire-certify.yml/badge.svg)](https://github.com/ALH477/HydraMesh/actions/workflows/wire-certify.yml)
+[![Wire certification](https://github.com/ALH477/Punctim/actions/workflows/wire-certify.yml/badge.svg)](https://github.com/ALH477/Punctim/actions/workflows/wire-certify.yml)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPLv3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 
 ![gpl](https://www.gnu.org/graphics/lgplv3-with-text-154x68.png)
 
 **Languages:** [English](README.md) · [Español](README.es-ES.md) · [日本語](README.ja-JP.md) · [Français](README.fr-FR.md) · [Italiano](README.it-IT.md)
 
-> **Status, honestly.** HydraMesh is **pre-1.0**. The project does not yet ship
+> **Status, honestly.** Punctim is **pre-1.0**. The project does not yet ship
 > "11 production-ready language bindings." What is real today is the **wire
 > quantum** and its cross-language **certificate**, green in CI for a small set of
 > implementations. See the [language status tiers](#language-status) below for
@@ -25,7 +25,7 @@
 https://github.com/user-attachments/assets/4f167206-7c25-4f70-b277-4f23d707cb7f
 
 ## Overview
-HydraMesh is a free and open-source software (FOSS) framework evolved from the DeMoD Secure Protocol, designed for low-latency, modular, and interoperable data exchange. It targets applications like IoT messaging, real-time gaming synchronization, distributed computing, and edge networking. HydraMesh features a handshakeless design and a compatibility layer for UDP, TCP, WebSocket, and gRPC transports, aiming at peer-to-peer (P2P) networking with self-healing redundancy.
+Punctim is a free and open-source software (FOSS) framework evolved from the DeMoD Secure Protocol, designed for low-latency, modular, and interoperable data exchange. It targets applications like IoT messaging, real-time gaming synchronization, distributed computing, and edge networking. Punctim features a handshakeless design and a compatibility layer for UDP, TCP, WebSocket, and gRPC transports, aiming at peer-to-peer (P2P) networking with self-healing redundancy.
 
 The one invariant that is real and certified today is the **wire quantum**: the 17-byte `DeModFrame`. Everything else — audio, game state, transports — is an *adapter* over it, and the cross-language **certificate** (`Documentation/golden_vectors.json`) is the contract that keeps the implementations byte-identical. The linkable library is **LGPL-3.0**; GPL-3.0 is scoped to the bundled DOOM example only.
 
@@ -35,7 +35,7 @@ The framework is intended to be hardware- and language-agnostic across embedded 
 
 ## Language status
 
-HydraMesh is implemented across many languages, but they are at very different
+Punctim is implemented across many languages, but they are at very different
 levels of maturity. A language is only an **advertisable binding** once its
 wire codec is golden-vector-verified in CI. Each language **graduates to
 "Certified" when its `certify-<lang>` CI job goes green** ([`wire-certify.yml`](.github/workflows/wire-certify.yml)).
@@ -57,7 +57,7 @@ wire codec is golden-vector-verified in CI. Each language **graduates to
 
 ## Quick start
 
-**New here?** HydraMesh has one invariant — the 17-byte `DeModFrame` wire quantum —
+**New here?** Punctim has one invariant — the 17-byte `DeModFrame` wire quantum —
 and everything else (audio, game, transports) is an *adapter* over it, kept honest
 by a cross-language **certificate**. The fastest "it works" is a green cert run:
 
@@ -88,7 +88,7 @@ bootstrap your environment. See **Installation** below for per-language prerequi
 
 
 ### HYDRA Acronym
-The name **HydraMesh** expresses the **design goals**: a self-healing, decentralized mesh with proxy-like adaptability. The acronym **HYDRA** stands for the target architecture — several rows below are **planned**, not present in the current release (see [`Documentation/DCF_CODE_REVIEW.md`](Documentation/DCF_CODE_REVIEW.md), item D1):
+The name **Punctim** expresses the **design goals**: a self-healing, decentralized mesh with proxy-like adaptability. The acronym **HYDRA** stands for the target architecture — several rows below are **planned**, not present in the current release (see [`Documentation/DCF_CODE_REVIEW.md`](Documentation/DCF_CODE_REVIEW.md), item D1):
 
 | Letter | Meaning | Feature | Description | Status |
 |--------|---------|---------|-------------|--------|
@@ -98,7 +98,7 @@ The name **HydraMesh** expresses the **design goals**: a self-healing, decentral
 | **R** | **Resilient** | Self-Healing | Automatic failover and redundancy. | peer-health FSM, election + failover ship via **DCF-Mesh**; AI-driven routing **planned** |
 | **A** | **Adaptive** | Proxy Middleware | Plugin system and transport switching (e.g., gRPC, LoRaWAN) for flexible data relay. | partial / in progress |
 
-> **Important**: HydraMesh complies with U.S. export regulations (EAR and ITAR). It avoids encryption to remain export-control-free. Users must ensure custom extensions comply; consult legal experts for specific use cases. DeMoD LLC disclaims liability for non-compliant modifications.
+> **Important**: Punctim complies with U.S. export regulations (EAR and ITAR). It avoids encryption to remain export-control-free. Users must ensure custom extensions comply; consult legal experts for specific use cases. DeMoD LLC disclaims liability for non-compliant modifications.
 
 ## Features
 
@@ -182,7 +182,7 @@ both are likewise adapters/transports over the quantum.
 ## Architecture
 ```mermaid
 graph TD
-    A[HydraMesh Framework] --> B[CLI]
+    A[Punctim Framework] --> B[CLI]
     A --> C[TUI]
     A --> D[Networking Layer]
     
@@ -236,7 +236,7 @@ graph TD
 
 ## Collaborative Audio (DCF-Audio)
 
-HydraMesh carries real-time, collaborative audio (jamming, talkback) over the mesh
+Punctim carries real-time, collaborative audio (jamming, talkback) over the mesh
 **without a new wire format**: a 20 ms codec block is an adapter over the 17-byte
 `DeModFrame`, serialised into a short burst of ordinary `CTRL` frames. The framing
 layer (L2) is codec-agnostic and **byte-certified across C, Rust, and Python** — the
@@ -274,7 +274,7 @@ gcc -std=c11 -I codec C_SDK/tests/test_audio_certify.c -lm -o /tmp/ac && /tmp/ac
 
 *(regenerate with `nix run nixpkgs#vhs -- Documentation/media/dcf-sdr-demo.tape` from `nix develop .#sdr`.)*
 
-HydraMesh isn't tied to IP. The **same 17-byte `DeModFrame`** that meshes over UDP can
+Punctim isn't tied to IP. The **same 17-byte `DeModFrame`** that meshes over UDP can
 cross **real radio** — two laptops + two ~$25 RTL-SDRs, no internet — because two
 adapters sit under the socket:
 
@@ -337,7 +337,7 @@ cd DeMoD-Communication-Framework
 - **Java/Kotlin (Android)**: `io.grpc:grpc-okhttp`, `com.google.protobuf:protobuf-java`.
 - **Swift (iOS)**: `GRPC-Swift`, `SwiftProtobuf`.
 - **Lisp**: SBCL with Quicklisp; dependencies: `cl-protobufs`, `cl-grpc`, `cffi`, etc. (see `lisp/src/hydramesh.lisp`).
-- **StreamDB**: Build `libstreamdb.so` from `streamdb/` using Cargo for persistence in HydraMesh-Lisp SDK.
+- **StreamDB**: Build `libstreamdb.so` from `streamdb/` using Cargo for persistence in Punctim-Lisp SDK.
 
 ### Generating Protobuf/gRPC
 Use `protoc` to generate bindings for each language:
@@ -598,7 +598,7 @@ const char* get_plugin_version() { return "1.0"; }
 ```
 
 ## Configuration
-Create `config.json` based on `config.json.example`. HydraMesh supports various optimization levels to balance performance, reliability, and resource usage:
+Create `config.json` based on `config.json.example`. Punctim supports various optimization levels to balance performance, reliability, and resource usage:
 
 - **High Optimization (Performance-Focused)**: Prioritizes speed with minimal overhead—uses lightweight transports (e.g., UDP), quick mode in StreamDB (skipping CRC checks for ~10x faster reads), and reduced logging. Suitable for high-throughput, low-latency applications like gaming, where data integrity is managed externally.
   ```json
@@ -695,60 +695,60 @@ Per-language unit tests (where they exist):
 - **Mesh**: `cd go && go test ./mesh/` (Go), `cd codec && cargo test --test certify_mesh` (Rust), `gcc -std=c11 -I codec C_SDK/tests/test_mesh_certify.c -lm -o /tmp/mc && /tmp/mc` (C), `python3 python/MCP/gen_mesh_vectors.py /tmp/mv.json` (regen + verify laws) — certifies the mesh algorithm layer plus the REPORT/ROLE control bytes. The runtime's *timing* is integration-tested, not vectored.
 - **Integration**: RTT grouping, failover and AUTO/master role assignment are **implemented and integration-tested** in the Go/C/Rust/Python mesh nodes, with the algorithms and control bytes certified (see **Mesh** above). **StreamDB persistence** remains **planned**.
 
-### Enhanced Benefits of StreamDB Integration in HydraMesh-Lisp
+### Enhanced Benefits of StreamDB Integration in Punctim-Lisp
 
 > **Status:** StreamDB is **Lisp-SDK-only and experimental**. It is not
 > battle-tested, not shipping in any other SDK, and not part of the certified
 > wire path. The sections below describe its *intended* benefits and design, not
 > a production guarantee.
 
-As we continue building out the SDKs in the HydraMesh mono repository (https://github.com/ALH477/DeMoD-Communication-Framework), the integration of StreamDB into the HydraMesh-Lisp SDK is an experimental step toward persistent, embedded storage. StreamDB, a lightweight, embedded key-value database implemented in Rust, is currently exclusive to the HydraMesh-Lisp SDK, serving as a proof-of-concept for how HydraMesh can incorporate storage. This exclusivity lets us iterate in Lisp's expressive environment before any expansion to other SDKs (e.g., C, Python). Below, we iterate on StreamDB's design goals and benefits, with notes on its synergy with HydraMesh-Lisp's DSL features, while emphasizing DeMoD LLC's role in developing the only complete GPLv3 version to democratize bleeding-edge technology.
+As we continue building out the SDKs in the Punctim mono repository (https://github.com/ALH477/DeMoD-Communication-Framework), the integration of StreamDB into the Punctim-Lisp SDK is an experimental step toward persistent, embedded storage. StreamDB, a lightweight, embedded key-value database implemented in Rust, is currently exclusive to the Punctim-Lisp SDK, serving as a proof-of-concept for how Punctim can incorporate storage. This exclusivity lets us iterate in Lisp's expressive environment before any expansion to other SDKs (e.g., C, Python). Below, we iterate on StreamDB's design goals and benefits, with notes on its synergy with Punctim-Lisp's DSL features, while emphasizing DeMoD LLC's role in developing the only complete GPLv3 version to democratize bleeding-edge technology.
 
 #### 1. **Superior Persistence for Fault-Tolerant Distributed Systems**
-   - **Iteration**: Beyond basic state recovery, StreamDB's paged storage (4KB pages with chaining for up to 256MB documents) and reverse trie indexing enable efficient, prefix-based queries for hierarchical data (e.g., `/state/peers/node1/rtt`). In HydraMesh-Lisp, this means nodes can persist complex structures like peer groups or message logs atomically, reducing fragmentation and supporting up to 8TB databases—ideal for scaling HydraMesh networks.
-   - **HydraMesh-Lisp Specific**: The DSL's macros (e.g., `def-hydramesh-plugin`) allow seamless wrapping of StreamDB operations, making persistence feel native (e.g., `hydramesh-db-insert "/metrics/sends" count`). This compactness (integrated in ~50 lines) enhances fault tolerance in AUTO mode, where dynamic role switches rely on quick state reloads from StreamDB.
+   - **Iteration**: Beyond basic state recovery, StreamDB's paged storage (4KB pages with chaining for up to 256MB documents) and reverse trie indexing enable efficient, prefix-based queries for hierarchical data (e.g., `/state/peers/node1/rtt`). In Punctim-Lisp, this means nodes can persist complex structures like peer groups or message logs atomically, reducing fragmentation and supporting up to 8TB databases—ideal for scaling Punctim networks.
+   - **Punctim-Lisp Specific**: The DSL's macros (e.g., `def-hydramesh-plugin`) allow seamless wrapping of StreamDB operations, making persistence feel native (e.g., `hydramesh-db-insert "/metrics/sends" count`). This compactness (integrated in ~50 lines) enhances fault tolerance in AUTO mode, where dynamic role switches rely on quick state reloads from StreamDB.
    - **Democratization Angle**: DeMoD's GPLv3-complete version ensures open access to advanced features like automatic chain repair, empowering developers to build resilient systems without proprietary dependencies.
 
 #### 2. **Ultra-Low-Latency Data Access for Real-Time Workloads**
-   - **Iteration**: StreamDB's QuickAndDirtyMode (skipping CRC for ~10x faster reads, up to 100MB/s) and LRU caching complement HydraMesh-Lisp's sub-millisecond messaging, enabling near-instant access to cached states. New: In edge scenarios, StreamDB's no-mmap fallback ensures consistent performance on constrained hardware, with <1ms lookups for RTT metrics during peer grouping.
-   - **HydraMesh-Lisp Specific**: Integrated directly into `hydramesh-node` (via `streamdb` slot), it caches results from `hydramesh-get-metrics` or `hydramesh-group-peers`, reducing I/O in high-frequency loops. Lisp's dynamic typing pairs with StreamDB's binary stream support for flexible data handling (e.g., storing serialized CLOS messages).
+   - **Iteration**: StreamDB's QuickAndDirtyMode (skipping CRC for ~10x faster reads, up to 100MB/s) and LRU caching complement Punctim-Lisp's sub-millisecond messaging, enabling near-instant access to cached states. New: In edge scenarios, StreamDB's no-mmap fallback ensures consistent performance on constrained hardware, with <1ms lookups for RTT metrics during peer grouping.
+   - **Punctim-Lisp Specific**: Integrated directly into `hydramesh-node` (via `streamdb` slot), it caches results from `hydramesh-get-metrics` or `hydramesh-group-peers`, reducing I/O in high-frequency loops. Lisp's dynamic typing pairs with StreamDB's binary stream support for flexible data handling (e.g., storing serialized CLOS messages).
    - **Democratization Angle**: By open-sourcing the full GPLv3 implementation, DeMoD makes high-speed, embedded databases accessible, leveling the playing field for indie developers against proprietary solutions like Redis.
 
 #### 3. **Modular Extensibility and Plugin Synergy**
-   - **Iteration**: StreamDB's `DatabaseBackend` trait allows custom backends (e.g., in-memory for testing), extending HydraMesh-Lisp's plugin system. New: Middleware can hook into StreamDB operations (e.g., serialize data as JSON/CBOR before insert), creating a unified extension point for transports and storage.
-   - **HydraMesh-Lisp Specific**: As a core backend (not a plugin, for tight coupling), it enhances modularity—e.g., `save-state` uses StreamDB paths like `/state/config`, queryable via `hydramesh-db-search "/state/"`. This integrates with transports (e.g., Serial for embedded), storing IoT data locally before syncing.
-   - **Democratization Angle**: DeMoD's GPLv3 version includes pluggable backends, encouraging community extensions (e.g., S3 integration), fostering innovation in HydraMesh's ecosystem.
+   - **Iteration**: StreamDB's `DatabaseBackend` trait allows custom backends (e.g., in-memory for testing), extending Punctim-Lisp's plugin system. New: Middleware can hook into StreamDB operations (e.g., serialize data as JSON/CBOR before insert), creating a unified extension point for transports and storage.
+   - **Punctim-Lisp Specific**: As a core backend (not a plugin, for tight coupling), it enhances modularity—e.g., `save-state` uses StreamDB paths like `/state/config`, queryable via `hydramesh-db-search "/state/"`. This integrates with transports (e.g., Serial for embedded), storing IoT data locally before syncing.
+   - **Democratization Angle**: DeMoD's GPLv3 version includes pluggable backends, encouraging community extensions (e.g., S3 integration), fostering innovation in Punctim's ecosystem.
 
 #### 4. **Optimized for Resource-Constrained Deployments**
-   - **Iteration**: StreamDB's tunable parameters (e.g., page size, cache limits) and minimal dependencies make it perfect for HydraMesh-Lisp on devices like Raspberry Pi. New: Free page management (first-fit LIFO with consolidation) minimizes fragmentation, supporting long-running edge nodes with limited storage.
-   - **HydraMesh-Lisp Specific**: The DSL's ~700-line efficiency pairs with StreamDB's lightweight footprint, enabling deployments on ARM-based IoT hardware. For example, persist sensor logs in StreamDB during offline periods, syncing via LoRaWAN when connected.
+   - **Iteration**: StreamDB's tunable parameters (e.g., page size, cache limits) and minimal dependencies make it perfect for Punctim-Lisp on devices like Raspberry Pi. New: Free page management (first-fit LIFO with consolidation) minimizes fragmentation, supporting long-running edge nodes with limited storage.
+   - **Punctim-Lisp Specific**: The DSL's ~700-line efficiency pairs with StreamDB's lightweight footprint, enabling deployments on ARM-based IoT hardware. For example, persist sensor logs in StreamDB during offline periods, syncing via LoRaWAN when connected.
    - **Democratization Angle**: DeMoD's complete GPLv3 impl democratizes embedded databases, providing features like orphan collection without costly licenses, ideal for open hardware projects.
 
 #### 5. **Seamless Cross-Language Interoperability**
-   - **Iteration**: StreamDB's file-based storage and FFI (via `libstreamdb.so`) enable shared access across HydraMesh SDKs. New: HydraMesh-Lisp nodes can store JSON-serialized metrics in StreamDB, readable by C SDKs for hybrid networks.
-   - **HydraMesh-Lisp Specific**: CFFI bindings in `hydramesh.lisp` expose StreamDB as DSL functions (e.g., `hydramesh-db-insert`), ensuring Lisp's dynamic features (e.g., macros) enhance interoperability without complexity.
+   - **Iteration**: StreamDB's file-based storage and FFI (via `libstreamdb.so`) enable shared access across Punctim SDKs. New: Punctim-Lisp nodes can store JSON-serialized metrics in StreamDB, readable by C SDKs for hybrid networks.
+   - **Punctim-Lisp Specific**: CFFI bindings in `hydramesh.lisp` expose StreamDB as DSL functions (e.g., `hydramesh-db-insert`), ensuring Lisp's dynamic features (e.g., macros) enhance interoperability without complexity.
    - **Democratization Angle**: As the only complete GPLv3 version (developed from Iain Ballard's incomplete C# repo), DeMoD's Rust impl promotes open access to advanced FFI-capable databases.
 
 #### 6. **Robust Error Handling and Automated Recovery**
-   - **Iteration**: StreamDB's CRC32 checks, version monotonicity, and recovery (e.g., index rebuild) bolster HydraMesh-Lisp's `hydramesh-error` handling. New: Integrates with failover (`hydramesh-heal`), recovering states from StreamDB after crashes.
-   - **HydraMesh-Lisp Specific**: Errors from StreamDB are wrapped in `hydramesh-error`, logged via `log4cl`, and tested in FiveAM (e.g., `streamdb-integration-test`), ensuring resilience in P2P meshes.
+   - **Iteration**: StreamDB's CRC32 checks, version monotonicity, and recovery (e.g., index rebuild) bolster Punctim-Lisp's `hydramesh-error` handling. New: Integrates with failover (`hydramesh-heal`), recovering states from StreamDB after crashes.
+   - **Punctim-Lisp Specific**: Errors from StreamDB are wrapped in `hydramesh-error`, logged via `log4cl`, and tested in FiveAM (e.g., `streamdb-integration-test`), ensuring resilience in P2P meshes.
    - **Democratization Angle**: GPLv3 ensures community-driven improvements to recovery, making reliable storage accessible for all.
 
 #### 7. **Advanced Monitoring and Analytics**
    - **Iteration**: StreamDB stores historical metrics (e.g., `/metrics/sends`), enabling trend analysis. New: Prefix searches (`hydramesh-db-search "/metrics/"`) support AI optimization in Master mode.
-   - **HydraMesh-Lisp Specific**: Enhances `hydramesh-get-metrics` by querying StreamDB, visualized in TUI or Graphviz.
+   - **Punctim-Lisp Specific**: Enhances `hydramesh-get-metrics` by querying StreamDB, visualized in TUI or Graphviz.
    - **Democratization Angle**: DeMoD's open impl democratizes analytics-ready storage for edge AI.
 
 #### 8. **Streamlined Testing and Validation**
    - **Iteration**: StreamDB's tests integrate with FiveAM, verifying persistence in network scenarios. New: Ensures data survives restarts, critical for AUTO mode.
-   - **HydraMesh-Lisp Specific**: `streamdb-integration-test` validates CRUD and recovery, extending HydraMesh's testing.
-   - **Democratization Angle**: GPLv3 fosters shared testing tools for reliable HydraMesh deployments.
+   - **Punctim-Lisp Specific**: `streamdb-integration-test` validates CRUD and recovery, extending Punctim's testing.
+   - **Democratization Angle**: GPLv3 fosters shared testing tools for reliable Punctim deployments.
 
-### StreamDB's Exclusivity to HydraMesh-Lisp (For Now)
-StreamDB is currently integrated only into the HydraMesh-Lisp SDK to prototype its benefits in Lisp's dynamic environment (e.g., macros for StreamDB wrappers). This allows rapid iteration on persistence features (e.g., message logging in `hydramesh-send`) before porting to other SDKs. Future plans include CFFI bindings for C SDK and Python wrappers, expanding StreamDB across the mono repo.
+### StreamDB's Exclusivity to Punctim-Lisp (For Now)
+StreamDB is currently integrated only into the Punctim-Lisp SDK to prototype its benefits in Lisp's dynamic environment (e.g., macros for StreamDB wrappers). This allows rapid iteration on persistence features (e.g., message logging in `hydramesh-send`) before porting to other SDKs. Future plans include CFFI bindings for C SDK and Python wrappers, expanding StreamDB across the mono repo.
 
 ### DeMoD's GPLv3-Complete StreamDB: Democratizing Bleeding-Edge Tech
-DeMoD LLC developed the only complete GPLv3 version of StreamDB from Iain Ballard's incomplete C# repo, reimplementing it in Rust for safety and performance. This ensures bleeding-edge features (e.g., trie indexing, MVCC-like versioning) are freely available, promoting open innovation in embedded storage and aligning with HydraMesh's FOSS ethos. By open-sourcing under GPLv3, DeMoD democratizes tech typically locked in proprietary systems, enabling developers to build advanced, cost-free solutions.
+DeMoD LLC developed the only complete GPLv3 version of StreamDB from Iain Ballard's incomplete C# repo, reimplementing it in Rust for safety and performance. This ensures bleeding-edge features (e.g., trie indexing, MVCC-like versioning) are freely available, promoting open innovation in embedded storage and aligning with Punctim's FOSS ethos. By open-sourcing under GPLv3, DeMoD democratizes tech typically locked in proprietary systems, enabling developers to build advanced, cost-free solutions.
 
 ## LangGraph Multi-Agent System (`langgraph_agents/`)
 
@@ -770,7 +770,7 @@ docker run -p 8000:8000 alh477/dcf-agent
 
 ## Documentation
 
-For comprehensive documentation on the HydraMesh Framework, including detailed SDK guides, API references, design specifications, and contribution processes, refer to the Sphinx-generated docs. These cover all SDKs in the mono repo (e.g., C SDK, Python, HydraMesh-Lisp, Rust) and are built from the Markdown/reST sources in `Documentation/`.
+For comprehensive documentation on the Punctim Framework, including detailed SDK guides, API references, design specifications, and contribution processes, refer to the Sphinx-generated docs. These cover all SDKs in the mono repo (e.g., C SDK, Python, Punctim-Lisp, Rust) and are built from the Markdown/reST sources in `Documentation/`.
 
 ### Viewing the Documentation
 - **Online**: Hosted on GitHub Pages at [https://alh477.github.io/DeMoD-Communication-Framework/](https://alh477.github.io/DeMoD-Communication-Framework/) (auto-built via CI/CD on pushes to `main`).
@@ -783,7 +783,7 @@ For comprehensive documentation on the HydraMesh Framework, including detailed S
   ```
 - **Key Sections**:
   - [Design Specifications](https://alh477.github.io/DeMoD-Communication-Framework/specs/dcf_design_spec.html): Covers protocol design, AUTO mode, master node, plugins, and SDK guidelines.
-  - [SDK Guides](https://alh477.github.io/DeMoD-Communication-Framework/guides/sdk-development.html): Tutorials for developing and integrating SDKs (e.g., C SDK with RTT grouping, HydraMesh-Lisp with StreamDB persistence).
+  - [SDK Guides](https://alh477.github.io/DeMoD-Communication-Framework/guides/sdk-development.html): Tutorials for developing and integrating SDKs (e.g., C SDK with RTT grouping, Punctim-Lisp with StreamDB persistence).
   - [API References](https://alh477.github.io/DeMoD-Communication-Framework/api/index.html): Auto-generated from code comments/docstrings across languages (e.g., `hydramesh_client_send_message` in C, `hydramesh-quick-send` in Lisp).
   - [Contribution Guidelines](https://alh477.github.io/DeMoD-Communication-Framework/process/CONTRIBUTING.html): How to add new SDKs or plugins.
 
@@ -793,7 +793,7 @@ The docs support multi-format outputs (HTML, ePub) and include custom rendering 
 Contributions are welcome! See **[CONTRIBUTING.md](CONTRIBUTING.md)** for the full
 workflow and **[ARCHITECTURE.md](ARCHITECTURE.md)** for the repo map. In short:
 1. Fork the repo and branch off `main` (`git checkout -b feature/xyz`).
-2. Add tests and code (follow style: `perltidy`, `black`, `ktlint`, `swiftformat`, `clang-format` for C, Lisp conventions for HydraMesh-Lisp).
+2. Add tests and code (follow style: `perltidy`, `black`, `ktlint`, `swiftformat`, `clang-format` for C, Lisp conventions for Punctim-Lisp).
 3. **The certificate is the contract** — if you touch any codec, regenerate the golden vectors and run the certs (`make certify`); CI fails on drift.
 4. Submit a PR using the [pull request template](.github/PULL_REQUEST_TEMPLATE.md).
 5. Discuss issues via [GitHub Issues](https://github.com/ALH477/DeMoD-Communication-Framework/issues).

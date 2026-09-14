@@ -1,4 +1,4 @@
-# HydraMesh
+# Punctim
 
 ![logo](hydramesh.svg)
 
@@ -7,14 +7,14 @@
 **開発: DeMoD LLC**
 **連絡先:** alh477@demod.ltd
 
-[![Wire certification](https://github.com/ALH477/HydraMesh/actions/workflows/wire-certify.yml/badge.svg)](https://github.com/ALH477/HydraMesh/actions/workflows/wire-certify.yml)
+[![Wire certification](https://github.com/ALH477/Punctim/actions/workflows/wire-certify.yml/badge.svg)](https://github.com/ALH477/Punctim/actions/workflows/wire-certify.yml)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPLv3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 
 ![gpl](https://www.gnu.org/graphics/lgplv3-with-text-154x68.png)
 
 **言語:** [English](README.md) · [Español](README.es-ES.md) · [日本語](README.ja-JP.md) · [Français](README.fr-FR.md) · [Italiano](README.it-IT.md)
 
-> **正直な現状。** HydraMesh は **pre-1.0** です。本プロジェクトはまだ
+> **正直な現状。** Punctim は **pre-1.0** です。本プロジェクトはまだ
 > 「実運用可能な 11 の言語バインディング」を出荷していません。今日実在するのは
 > **ワイヤ量子**と、その言語横断的な**証明書**であり、少数の実装について CI で
 > グリーンになっています。何が認証済みで、何が設計完了で、何がまだ実験的なスタブ
@@ -24,7 +24,7 @@
 https://github.com/user-attachments/assets/4f167206-7c25-4f70-b277-4f23d707cb7f
 
 ## 概要
-HydraMesh は、DeMoD Secure Protocol から発展した自由かつオープンソースのソフトウェア（FOSS）フレームワークであり、低レイテンシ・モジュール式・相互運用可能なデータ交換のために設計されています。IoT メッセージング、リアルタイムゲーム同期、分散コンピューティング、エッジネットワーキングといったアプリケーションを対象としています。HydraMesh はハンドシェイク不要の設計と、UDP・TCP・WebSocket・gRPC トランスポート向けの互換レイヤーを備え、自己修復型の冗長性を備えたピアツーピア（P2P）ネットワーキングを目指しています。
+Punctim は、DeMoD Secure Protocol から発展した自由かつオープンソースのソフトウェア（FOSS）フレームワークであり、低レイテンシ・モジュール式・相互運用可能なデータ交換のために設計されています。IoT メッセージング、リアルタイムゲーム同期、分散コンピューティング、エッジネットワーキングといったアプリケーションを対象としています。Punctim はハンドシェイク不要の設計と、UDP・TCP・WebSocket・gRPC トランスポート向けの互換レイヤーを備え、自己修復型の冗長性を備えたピアツーピア（P2P）ネットワーキングを目指しています。
 
 今日において実在し、かつ認証されている唯一の不変量は**ワイヤ量子**、すなわち 17 バイトの `DeModFrame` です。それ以外のもの — オーディオ、ゲーム状態、トランスポート — はすべてその上の*アダプタ*であり、言語横断的な**証明書**（`Documentation/golden_vectors.json`）が、各実装をバイト単位で同一に保つ契約です。リンク可能なライブラリは **LGPL-3.0**、GPL-3.0 は同梱の DOOM サンプルにのみ適用されます。
 
@@ -34,7 +34,7 @@ HydraMesh は、DeMoD Secure Protocol から発展した自由かつオープン
 
 ## 言語ステータス
 
-HydraMesh は多くの言語で実装されていますが、その成熟度は大きく異なります。
+Punctim は多くの言語で実装されていますが、その成熟度は大きく異なります。
 ある言語が**宣伝可能なバインディング**となるのは、そのワイヤコーデックが CI で
 ゴールデンベクター検証に合格したときだけです。各言語は、**その `certify-<lang>`
 CI ジョブがグリーンになった時点で「認証済み」に昇格します**
@@ -58,7 +58,7 @@ CI ジョブがグリーンになった時点で「認証済み」に昇格し�
 
 ## クイックスタート
 
-**初めての方へ。** HydraMesh には不変量が 1 つだけあります — 17 バイトの `DeModFrame`
+**初めての方へ。** Punctim には不変量が 1 つだけあります — 17 バイトの `DeModFrame`
 ワイヤ量子です — そしてそれ以外のすべて（オーディオ、ゲーム、トランスポート）はその上の
 *アダプタ*であり、言語横断的な**証明書**によって整合性が保たれます。手っ取り早く
 「動作した」を確認する方法は、グリーンな認証実行です:
@@ -90,7 +90,7 @@ bash スクリプト（`install_deps.sh`、`*-edit-gen.sh`）と `flake.nix` / `
 
 
 ### HYDRA の頭字語
-**HydraMesh** という名前は**設計目標**を表しています: プロキシのような適応性を備えた、自己修復型の分散メッシュです。頭字語 **HYDRA** は目標とするアーキテクチャを表します — 下記のいくつかの行は**計画中**であり、現在のリリースには存在しません（[`Documentation/DCF_CODE_REVIEW.md`](Documentation/DCF_CODE_REVIEW.md) の項目 D1 を参照）:
+**Punctim** という名前は**設計目標**を表しています: プロキシのような適応性を備えた、自己修復型の分散メッシュです。頭字語 **HYDRA** は目標とするアーキテクチャを表します — 下記のいくつかの行は**計画中**であり、現在のリリースには存在しません（[`Documentation/DCF_CODE_REVIEW.md`](Documentation/DCF_CODE_REVIEW.md) の項目 D1 を参照）:
 
 | 文字 | 意味 | 機能 | 説明 | ステータス |
 |--------|---------|---------|-------------|--------|
@@ -100,7 +100,7 @@ bash スクリプト（`install_deps.sh`、`*-edit-gen.sh`）と `flake.nix` / `
 | **R** | **Resilient** | 自己修復 | 自動フェイルオーバーと冗長性。 | ピアヘルス FSM、選出 + フェイルオーバーは **DCF-Mesh** として出荷。AI 駆動ルーティングは**計画中** |
 | **A** | **Adaptive** | プロキシミドルウェア | 柔軟なデータリレーのためのプラグインシステムとトランスポート切り替え（例: gRPC、LoRaWAN）。 | 部分的 / 進行中 |
 
-> **重要**: HydraMesh は米国の輸出規制（EAR および ITAR）に準拠しています。輸出管理の対象外であり続けるために暗号化を避けています。ユーザーは、カスタム拡張が準拠していることを自ら確認する必要があります。具体的なユースケースについては法律の専門家に相談してください。DeMoD LLC は、非準拠の改変について一切の責任を負いません。
+> **重要**: Punctim は米国の輸出規制（EAR および ITAR）に準拠しています。輸出管理の対象外であり続けるために暗号化を避けています。ユーザーは、カスタム拡張が準拠していることを自ら確認する必要があります。具体的なユースケースについては法律の専門家に相談してください。DeMoD LLC は、非準拠の改変について一切の責任を負いません。
 
 ## 機能
 
@@ -185,7 +185,7 @@ IQ 波形、HydraModem/PM の合成オーディオにも当てはまります。
 ## アーキテクチャ
 ```mermaid
 graph TD
-    A[HydraMesh Framework] --> B[CLI]
+    A[Punctim Framework] --> B[CLI]
     A --> C[TUI]
     A --> D[Networking Layer]
     
@@ -239,7 +239,7 @@ graph TD
 
 ## 協調オーディオ（DCF-Audio）
 
-HydraMesh は、**新しいワイヤフォーマットなしで**、リアルタイムの協調オーディオ（ジャム、トークバック）をメッシュ上で運びます: 20 ms のコーデックブロックは 17 バイトの `DeModFrame` 上のアダプタであり、通常の `CTRL` フレームの短いバーストにシリアライズされます。フレーミング層（L2）はコーデック非依存で、**C、Rust、Python にまたがってバイト単位に認証されています** — ワイヤ量子と同じやり方です。**ここでの「認証済み」の範囲は厳密です: バイト単位で認証されているのは L2 フレーミング、PCM-diag コーデックのバイト列、PM パラメータレイアウトのみです。Opus の出力と PM（位相変調）合成オーディオはバイト単位では認証されていません。**[`Documentation/DCF_AUDIO_SPEC.md`](Documentation/DCF_AUDIO_SPEC.md) を参照してください。
+Punctim は、**新しいワイヤフォーマットなしで**、リアルタイムの協調オーディオ（ジャム、トークバック）をメッシュ上で運びます: 20 ms のコーデックブロックは 17 バイトの `DeModFrame` 上のアダプタであり、通常の `CTRL` フレームの短いバーストにシリアライズされます。フレーミング層（L2）はコーデック非依存で、**C、Rust、Python にまたがってバイト単位に認証されています** — ワイヤ量子と同じやり方です。**ここでの「認証済み」の範囲は厳密です: バイト単位で認証されているのは L2 フレーミング、PCM-diag コーデックのバイト列、PM パラメータレイアウトのみです。Opus の出力と PM（位相変調）合成オーディオはバイト単位では認証されていません。**[`Documentation/DCF_AUDIO_SPEC.md`](Documentation/DCF_AUDIO_SPEC.md) を参照してください。
 
 `codec_id` レジストリの背後に 3 つのコーデックがあります:
 
@@ -270,7 +270,7 @@ gcc -std=c11 -I codec C_SDK/tests/test_audio_certify.c -lm -o /tmp/ac && /tmp/ac
 
 *(`nix develop .#sdr` から `nix run nixpkgs#vhs -- Documentation/media/dcf-sdr-demo.tape` で再生成します。)*
 
-HydraMesh は IP に縛られていません。UDP 上でメッシュを構成する**同じ 17 バイトの `DeModFrame`** が、**実電波**を横断できます — ノート PC 2 台 + 約 25 ドルの RTL-SDR 2 台、インターネットなし — ソケットの下に 2 つのアダプタがあるからです:
+Punctim は IP に縛られていません。UDP 上でメッシュを構成する**同じ 17 バイトの `DeModFrame`** が、**実電波**を横断できます — ノート PC 2 台 + 約 25 ドルの RTL-SDR 2 台、インターネットなし — ソケットの下に 2 つのアダプタがあるからです:
 
 - **DCF-FEC** — GF(2⁸) 上の系統的**リード・ソロモン**符号（+ RF バースト用のブロックインターリーバ）で、損失のあるリンクが注入するバイト誤りを**訂正**します。フレームの CRC は検出しかできません。RS のバイト列は**13 のワイヤコーデック言語すべてでバイト単位に認証済み**です（SuperPack と同様）。[`Documentation/DCF_FEC_SPEC.md`](Documentation/DCF_FEC_SPEC.md) を参照してください。
 - **DCF-SDR** — FEC 符号化されたフレームを複素ベースバンドに描画する IQ モデム（`python/modem/iq.py`）— **GFSK / QPSK / 16-QAM / OOK·AM / AFSK-over-FM** — SoapySDR デバイスまたは `.cf32` ファイル向け。バイト↔シンボルのマッピングは認証済み（Python/Rust/C）、波形はループバックでテストされます。[`Documentation/DCF_SDR_SPEC.md`](Documentation/DCF_SDR_SPEC.md) を参照してください。
@@ -316,7 +316,7 @@ cd DeMoD-Communication-Framework
 - **Java/Kotlin (Android)**: `io.grpc:grpc-okhttp`、`com.google.protobuf:protobuf-java`。
 - **Swift (iOS)**: `GRPC-Swift`、`SwiftProtobuf`。
 - **Lisp**: Quicklisp 入りの SBCL。依存: `cl-protobufs`、`cl-grpc`、`cffi` など（`lisp/src/hydramesh.lisp` を参照）。
-- **StreamDB**: HydraMesh-Lisp SDK での永続化のために、Cargo を使って `streamdb/` から `libstreamdb.so` をビルドします。
+- **StreamDB**: Punctim-Lisp SDK での永続化のために、Cargo を使って `streamdb/` から `libstreamdb.so` をビルドします。
 
 ### Protobuf/gRPC の生成
 `protoc` を使って各言語のバインディングを生成します:
@@ -577,7 +577,7 @@ const char* get_plugin_version() { return "1.0"; }
 ```
 
 ## 設定
-`config.json.example` を基に `config.json` を作成します。HydraMesh は、パフォーマンス・信頼性・リソース使用量のバランスを取るためのさまざまな最適化レベルをサポートしています:
+`config.json.example` を基に `config.json` を作成します。Punctim は、パフォーマンス・信頼性・リソース使用量のバランスを取るためのさまざまな最適化レベルをサポートしています:
 
 - **高最適化（パフォーマンス重視）**: 最小限のオーバーヘッドで速度を優先します — 軽量なトランスポート（例: UDP）、StreamDB のクイックモード（CRC チェックをスキップして読み取りを約 10 倍高速化）、ログの削減を使用します。データ完全性を外部で管理する、ゲームのような高スループット・低レイテンシのアプリケーションに適しています。
   ```json
@@ -674,60 +674,60 @@ gcc -std=c11 -Wall -Wextra -I codec C_SDK/tests/test_wire_certify.c -lm -o /tmp/
 - **メッシュ**: `cd go && go test ./mesh/`（Go）、`cd codec && cargo test --test certify_mesh`（Rust）、`gcc -std=c11 -I codec C_SDK/tests/test_mesh_certify.c -lm -o /tmp/mc && /tmp/mc`（C）、`python3 python/MCP/gen_mesh_vectors.py /tmp/mv.json`（再生成 + 法則検証）— メッシュのアルゴリズム層と REPORT/ROLE 制御バイトを認証します。ランタイムの*タイミング*はベクターではなく統合テストで検証されます。
 - **統合**: RTT グルーピング、フェイルオーバー、AUTO/master のロール割り当ては、Go/C/Rust/Python のメッシュノードで**実装され、統合テストされています**（アルゴリズムと制御バイトは認証済み — 上記の**メッシュ**を参照）。**StreamDB 永続化**は**計画中**のままです。
 
-### HydraMesh-Lisp における StreamDB 統合の強化された利点
+### Punctim-Lisp における StreamDB 統合の強化された利点
 
 > **ステータス:** StreamDB は **Lisp SDK 専用かつ実験的**です。実戦で検証されて
 > おらず、他の SDK には出荷されておらず、認証済みのワイヤ経路の一部でもありません。
 > 以下のセクションは、その*意図された*利点と設計を述べたものであり、
 > 本番環境での保証ではありません。
 
-HydraMesh モノレポ（https://github.com/ALH477/DeMoD-Communication-Framework）で SDK の構築を続ける中で、StreamDB の HydraMesh-Lisp SDK への統合は、永続的で組み込みのストレージに向けた実験的な一歩です。StreamDB は Rust で実装された軽量な組み込みキー・バリュー・データベースで、現在は HydraMesh-Lisp SDK 専用であり、HydraMesh がどのようにストレージを取り込めるかの概念実証として機能しています。この専用性により、他の SDK（例: C、Python）への拡張の前に、Lisp の表現力豊かな環境で反復開発できます。以下では、StreamDB の設計目標と利点を、HydraMesh-Lisp の DSL 機能との相乗効果に関する注記とともに反復的に述べ、最先端技術を民主化する唯一の完全な GPLv3 版を開発するという DeMoD LLC の役割を強調します。
+Punctim モノレポ（https://github.com/ALH477/DeMoD-Communication-Framework）で SDK の構築を続ける中で、StreamDB の Punctim-Lisp SDK への統合は、永続的で組み込みのストレージに向けた実験的な一歩です。StreamDB は Rust で実装された軽量な組み込みキー・バリュー・データベースで、現在は Punctim-Lisp SDK 専用であり、Punctim がどのようにストレージを取り込めるかの概念実証として機能しています。この専用性により、他の SDK（例: C、Python）への拡張の前に、Lisp の表現力豊かな環境で反復開発できます。以下では、StreamDB の設計目標と利点を、Punctim-Lisp の DSL 機能との相乗効果に関する注記とともに反復的に述べ、最先端技術を民主化する唯一の完全な GPLv3 版を開発するという DeMoD LLC の役割を強調します。
 
 #### 1. **耐障害分散システムのための優れた永続化**
-   - **反復**: 基本的な状態回復を超えて、StreamDB のページングストレージ（4KB ページ、最大 256MB のドキュメントのためのチェーン付き）と逆トライインデックスにより、階層データ（例: `/state/peers/node1/rtt`）に対する効率的なプレフィックスベースのクエリが可能になります。HydraMesh-Lisp では、ノードがピアグループやメッセージログのような複雑な構造をアトミックに永続化でき、断片化を減らし、最大 8TB のデータベースをサポートします — HydraMesh ネットワークの拡張に理想的です。
-   - **HydraMesh-Lisp 固有**: DSL のマクロ（例: `def-hydramesh-plugin`）により、StreamDB 操作をシームレスにラップでき、永続化がネイティブに感じられます（例: `hydramesh-db-insert "/metrics/sends" count`）。この簡潔さ（約 50 行に統合）は、動的なロール切り替えが StreamDB からの素早い状態再ロードに依存する AUTO モードにおいて、障害耐性を高めます。
+   - **反復**: 基本的な状態回復を超えて、StreamDB のページングストレージ（4KB ページ、最大 256MB のドキュメントのためのチェーン付き）と逆トライインデックスにより、階層データ（例: `/state/peers/node1/rtt`）に対する効率的なプレフィックスベースのクエリが可能になります。Punctim-Lisp では、ノードがピアグループやメッセージログのような複雑な構造をアトミックに永続化でき、断片化を減らし、最大 8TB のデータベースをサポートします — Punctim ネットワークの拡張に理想的です。
+   - **Punctim-Lisp 固有**: DSL のマクロ（例: `def-hydramesh-plugin`）により、StreamDB 操作をシームレスにラップでき、永続化がネイティブに感じられます（例: `hydramesh-db-insert "/metrics/sends" count`）。この簡潔さ（約 50 行に統合）は、動的なロール切り替えが StreamDB からの素早い状態再ロードに依存する AUTO モードにおいて、障害耐性を高めます。
    - **民主化の観点**: DeMoD の GPLv3 完全版は、自動チェーン修復のような高度な機能へのオープンなアクセスを保証し、開発者がプロプライエタリな依存なしに耐障害性のあるシステムを構築できるようにします。
 
 #### 2. **リアルタイムワークロードのための超低レイテンシのデータアクセス**
-   - **反復**: StreamDB の QuickAndDirtyMode（CRC をスキップして読み取りを約 10 倍高速化、最大 100MB/s）と LRU キャッシュが HydraMesh-Lisp のサブミリ秒メッセージングを補完し、キャッシュされた状態へのほぼ即時のアクセスを可能にします。新機能: エッジのシナリオでは、StreamDB の no-mmap フォールバックが制約のあるハードウェアでも一貫したパフォーマンスを保証し、ピアグルーピング中の RTT メトリクスの検索が 1ms 未満になります。
-   - **HydraMesh-Lisp 固有**: `hydramesh-node` に直接統合され（`streamdb` スロット経由）、`hydramesh-get-metrics` や `hydramesh-group-peers` の結果をキャッシュし、高頻度ループでの I/O を削減します。Lisp の動的型付けは StreamDB のバイナリストリームサポートと組み合わさり、柔軟なデータ処理（例: シリアライズされた CLOS メッセージの保存）を可能にします。
+   - **反復**: StreamDB の QuickAndDirtyMode（CRC をスキップして読み取りを約 10 倍高速化、最大 100MB/s）と LRU キャッシュが Punctim-Lisp のサブミリ秒メッセージングを補完し、キャッシュされた状態へのほぼ即時のアクセスを可能にします。新機能: エッジのシナリオでは、StreamDB の no-mmap フォールバックが制約のあるハードウェアでも一貫したパフォーマンスを保証し、ピアグルーピング中の RTT メトリクスの検索が 1ms 未満になります。
+   - **Punctim-Lisp 固有**: `hydramesh-node` に直接統合され（`streamdb` スロット経由）、`hydramesh-get-metrics` や `hydramesh-group-peers` の結果をキャッシュし、高頻度ループでの I/O を削減します。Lisp の動的型付けは StreamDB のバイナリストリームサポートと組み合わさり、柔軟なデータ処理（例: シリアライズされた CLOS メッセージの保存）を可能にします。
    - **民主化の観点**: 完全な GPLv3 実装をオープンソース化することで、DeMoD は高速な組み込みデータベースを誰もが利用できるようにし、Redis のようなプロプライエタリなソリューションに対してインディー開発者の土俵を平らにします。
 
 #### 3. **モジュール式の拡張性とプラグインの相乗効果**
-   - **反復**: StreamDB の `DatabaseBackend` トレイトによりカスタムバックエンド（例: テスト用のインメモリ）が可能になり、HydraMesh-Lisp のプラグインシステムを拡張します。新機能: ミドルウェアが StreamDB 操作にフックでき（例: 挿入前にデータを JSON/CBOR としてシリアライズ）、トランスポートとストレージの統一された拡張ポイントを作ります。
-   - **HydraMesh-Lisp 固有**: コアバックエンドとして（密結合のためプラグインではなく）モジュール性を高めます — 例: `save-state` は `/state/config` のような StreamDB パスを使い、`hydramesh-db-search "/state/"` でクエリできます。これはトランスポート（例: 組み込み向けの Serial）と統合され、IoT データを同期前にローカルに保存します。
-   - **民主化の観点**: DeMoD の GPLv3 版はプラグ可能なバックエンドを含み、コミュニティの拡張（例: S3 統合）を促し、HydraMesh のエコシステムにおけるイノベーションを育みます。
+   - **反復**: StreamDB の `DatabaseBackend` トレイトによりカスタムバックエンド（例: テスト用のインメモリ）が可能になり、Punctim-Lisp のプラグインシステムを拡張します。新機能: ミドルウェアが StreamDB 操作にフックでき（例: 挿入前にデータを JSON/CBOR としてシリアライズ）、トランスポートとストレージの統一された拡張ポイントを作ります。
+   - **Punctim-Lisp 固有**: コアバックエンドとして（密結合のためプラグインではなく）モジュール性を高めます — 例: `save-state` は `/state/config` のような StreamDB パスを使い、`hydramesh-db-search "/state/"` でクエリできます。これはトランスポート（例: 組み込み向けの Serial）と統合され、IoT データを同期前にローカルに保存します。
+   - **民主化の観点**: DeMoD の GPLv3 版はプラグ可能なバックエンドを含み、コミュニティの拡張（例: S3 統合）を促し、Punctim のエコシステムにおけるイノベーションを育みます。
 
 #### 4. **リソース制約のあるデプロイメント向けに最適化**
-   - **反復**: StreamDB の調整可能なパラメータ（例: ページサイズ、キャッシュ制限）と最小限の依存関係により、Raspberry Pi のようなデバイス上の HydraMesh-Lisp に最適です。新機能: フリーページ管理（統合付きのファーストフィット LIFO）が断片化を最小化し、限られたストレージの長時間稼働エッジノードを支えます。
-   - **HydraMesh-Lisp 固有**: DSL の約 700 行の効率性が StreamDB の軽量なフットプリントと組み合わさり、ARM ベースの IoT ハードウェアでのデプロイを可能にします。例えば、オフライン期間中にセンサログを StreamDB に永続化し、接続時に LoRaWAN 経由で同期します。
+   - **反復**: StreamDB の調整可能なパラメータ（例: ページサイズ、キャッシュ制限）と最小限の依存関係により、Raspberry Pi のようなデバイス上の Punctim-Lisp に最適です。新機能: フリーページ管理（統合付きのファーストフィット LIFO）が断片化を最小化し、限られたストレージの長時間稼働エッジノードを支えます。
+   - **Punctim-Lisp 固有**: DSL の約 700 行の効率性が StreamDB の軽量なフットプリントと組み合わさり、ARM ベースの IoT ハードウェアでのデプロイを可能にします。例えば、オフライン期間中にセンサログを StreamDB に永続化し、接続時に LoRaWAN 経由で同期します。
    - **民主化の観点**: DeMoD の完全な GPLv3 実装は組み込みデータベースを民主化し、高価なライセンスなしでオーファン収集のような機能を提供します — オープンハードウェアプロジェクトに理想的です。
 
 #### 5. **シームレスな言語横断の相互運用性**
-   - **反復**: StreamDB のファイルベースのストレージと FFI（`libstreamdb.so` 経由）により、HydraMesh SDK 間での共有アクセスが可能になります。新機能: HydraMesh-Lisp ノードは JSON シリアライズされたメトリクスを StreamDB に保存でき、ハイブリッドネットワークのために C SDK から読めます。
-   - **HydraMesh-Lisp 固有**: `hydramesh.lisp` の CFFI バインディングが StreamDB を DSL 関数として公開します（例: `hydramesh-db-insert`）。これにより、Lisp の動的な機能（例: マクロ）が複雑さなしに相互運用性を高めます。
+   - **反復**: StreamDB のファイルベースのストレージと FFI（`libstreamdb.so` 経由）により、Punctim SDK 間での共有アクセスが可能になります。新機能: Punctim-Lisp ノードは JSON シリアライズされたメトリクスを StreamDB に保存でき、ハイブリッドネットワークのために C SDK から読めます。
+   - **Punctim-Lisp 固有**: `hydramesh.lisp` の CFFI バインディングが StreamDB を DSL 関数として公開します（例: `hydramesh-db-insert`）。これにより、Lisp の動的な機能（例: マクロ）が複雑さなしに相互運用性を高めます。
    - **民主化の観点**: 唯一の完全な GPLv3 版として（Iain Ballard の不完全な C# リポジトリから開発）、DeMoD の Rust 実装は FFI 対応の高度なデータベースへのオープンなアクセスを促進します。
 
 #### 6. **堅牢なエラー処理と自動復旧**
-   - **反復**: StreamDB の CRC32 チェック、バージョンの単調性、復旧（例: インデックス再構築）が HydraMesh-Lisp の `hydramesh-error` 処理を強化します。新機能: フェイルオーバー（`hydramesh-heal`）と統合し、クラッシュ後に StreamDB から状態を復旧します。
-   - **HydraMesh-Lisp 固有**: StreamDB からのエラーは `hydramesh-error` でラップされ、`log4cl` でログされ、FiveAM（例: `streamdb-integration-test`）でテストされ、P2P メッシュでの耐障害性を保証します。
+   - **反復**: StreamDB の CRC32 チェック、バージョンの単調性、復旧（例: インデックス再構築）が Punctim-Lisp の `hydramesh-error` 処理を強化します。新機能: フェイルオーバー（`hydramesh-heal`）と統合し、クラッシュ後に StreamDB から状態を復旧します。
+   - **Punctim-Lisp 固有**: StreamDB からのエラーは `hydramesh-error` でラップされ、`log4cl` でログされ、FiveAM（例: `streamdb-integration-test`）でテストされ、P2P メッシュでの耐障害性を保証します。
    - **民主化の観点**: GPLv3 は復旧に対するコミュニティ主導の改善を保証し、信頼性の高いストレージをすべての人に利用可能にします。
 
 #### 7. **高度な監視と分析**
    - **反復**: StreamDB は履歴メトリクス（例: `/metrics/sends`）を保存し、トレンド分析を可能にします。新機能: プレフィックス検索（`hydramesh-db-search "/metrics/"`）がマスターモードでの AI 最適化を支えます。
-   - **HydraMesh-Lisp 固有**: StreamDB をクエリすることで `hydramesh-get-metrics` を強化し、TUI や Graphviz で可視化します。
+   - **Punctim-Lisp 固有**: StreamDB をクエリすることで `hydramesh-get-metrics` を強化し、TUI や Graphviz で可視化します。
    - **民主化の観点**: DeMoD のオープンな実装は、エッジ AI のための分析対応ストレージを民主化します。
 
 #### 8. **合理化されたテストと検証**
    - **反復**: StreamDB のテストは FiveAM と統合され、ネットワークシナリオでの永続化を検証します。新機能: 再起動後もデータが残ることを保証します — AUTO モードにとって重要です。
-   - **HydraMesh-Lisp 固有**: `streamdb-integration-test` が CRUD と復旧を検証し、HydraMesh のテストを拡張します。
-   - **民主化の観点**: GPLv3 は信頼性の高い HydraMesh デプロイのための共有テストツールを育みます。
+   - **Punctim-Lisp 固有**: `streamdb-integration-test` が CRUD と復旧を検証し、Punctim のテストを拡張します。
+   - **民主化の観点**: GPLv3 は信頼性の高い Punctim デプロイのための共有テストツールを育みます。
 
-### StreamDB の HydraMesh-Lisp への専用性（現時点では）
-StreamDB は現在 HydraMesh-Lisp SDK にのみ統合され、Lisp の動的環境（例: StreamDB ラッパー用のマクロ）でその利点を試作しています。これにより、他の SDK へ移植する前に永続化機能（例: `hydramesh-send` でのメッセージログ）を素早く反復できます。今後の計画には C SDK 向けの CFFI バインディングと Python ラッパーが含まれ、StreamDB をモノレポ全体に広げます。
+### StreamDB の Punctim-Lisp への専用性（現時点では）
+StreamDB は現在 Punctim-Lisp SDK にのみ統合され、Lisp の動的環境（例: StreamDB ラッパー用のマクロ）でその利点を試作しています。これにより、他の SDK へ移植する前に永続化機能（例: `hydramesh-send` でのメッセージログ）を素早く反復できます。今後の計画には C SDK 向けの CFFI バインディングと Python ラッパーが含まれ、StreamDB をモノレポ全体に広げます。
 
 ### DeMoD の GPLv3 完全版 StreamDB: 最先端技術の民主化
-DeMoD LLC は、Iain Ballard の不完全な C# リポジトリから、唯一の完全な GPLv3 版の StreamDB を開発し、安全性と性能のために Rust で再実装しました。これにより、最先端の機能（例: トライインデックス、MVCC ライクなバージョニング）が自由に利用可能になり、組み込みストレージにおけるオープンなイノベーションを促進し、HydraMesh の FOSS 精神と一致します。GPLv3 の下でオープンソース化することで、DeMoD は通常プロプライエタリなシステムに囲い込まれる技術を民主化し、開発者が高度でコストのかからないソリューションを構築できるようにします。
+DeMoD LLC は、Iain Ballard の不完全な C# リポジトリから、唯一の完全な GPLv3 版の StreamDB を開発し、安全性と性能のために Rust で再実装しました。これにより、最先端の機能（例: トライインデックス、MVCC ライクなバージョニング）が自由に利用可能になり、組み込みストレージにおけるオープンなイノベーションを促進し、Punctim の FOSS 精神と一致します。GPLv3 の下でオープンソース化することで、DeMoD は通常プロプライエタリなシステムに囲い込まれる技術を民主化し、開発者が高度でコストのかからないソリューションを構築できるようにします。
 
 ## LangGraph マルチエージェントシステム（`langgraph_agents/`）
 
@@ -749,7 +749,7 @@ docker run -p 8000:8000 alh477/dcf-agent
 
 ## ドキュメント
 
-HydraMesh フレームワークに関する包括的なドキュメント（詳細な SDK ガイド、API リファレンス、設計仕様、コントリビューション手順を含む）については、Sphinx 生成のドキュメントを参照してください。これらはモノレポのすべての SDK（例: C SDK、Python、HydraMesh-Lisp、Rust）を網羅し、`Documentation/` 内の Markdown/reST ソースからビルドされます。
+Punctim フレームワークに関する包括的なドキュメント（詳細な SDK ガイド、API リファレンス、設計仕様、コントリビューション手順を含む）については、Sphinx 生成のドキュメントを参照してください。これらはモノレポのすべての SDK（例: C SDK、Python、Punctim-Lisp、Rust）を網羅し、`Documentation/` 内の Markdown/reST ソースからビルドされます。
 
 ### ドキュメントの閲覧
 - **オンライン**: GitHub Pages で公開されています — [https://alh477.github.io/DeMoD-Communication-Framework/](https://alh477.github.io/DeMoD-Communication-Framework/)（`main` への push 時に CI/CD で自動ビルド）。
@@ -762,7 +762,7 @@ HydraMesh フレームワークに関する包括的なドキュメント（詳�
   ```
 - **主要セクション**:
   - [設計仕様](https://alh477.github.io/DeMoD-Communication-Framework/specs/dcf_design_spec.html): プロトコル設計、AUTO モード、マスターノード、プラグイン、SDK ガイドラインを網羅。
-  - [SDK ガイド](https://alh477.github.io/DeMoD-Communication-Framework/guides/sdk-development.html): SDK の開発と統合のチュートリアル（例: RTT グルーピング付きの C SDK、StreamDB 永続化付きの HydraMesh-Lisp）。
+  - [SDK ガイド](https://alh477.github.io/DeMoD-Communication-Framework/guides/sdk-development.html): SDK の開発と統合のチュートリアル（例: RTT グルーピング付きの C SDK、StreamDB 永続化付きの Punctim-Lisp）。
   - [API リファレンス](https://alh477.github.io/DeMoD-Communication-Framework/api/index.html): 各言語のコードコメント/docstring から自動生成（例: C の `hydramesh_client_send_message`、Lisp の `hydramesh-quick-send`）。
   - [コントリビューションガイドライン](https://alh477.github.io/DeMoD-Communication-Framework/process/CONTRIBUTING.html): 新しい SDK やプラグインの追加方法。
 
@@ -771,7 +771,7 @@ HydraMesh フレームワークに関する包括的なドキュメント（詳�
 ## コントリビューション
 貢献を歓迎します！完全なワークフローについては **[CONTRIBUTING.md](CONTRIBUTING.md)** を、リポジトリの地図については **[ARCHITECTURE.md](ARCHITECTURE.md)** を参照してください。要約すると:
 1. リポジトリをフォークし、`main` からブランチを切ります（`git checkout -b feature/xyz`）。
-2. テストとコードを追加します（スタイルに従ってください: C には `perltidy`、`black`、`ktlint`、`swiftformat`、`clang-format`、HydraMesh-Lisp には Lisp の慣習）。
+2. テストとコードを追加します（スタイルに従ってください: C には `perltidy`、`black`、`ktlint`、`swiftformat`、`clang-format`、Punctim-Lisp には Lisp の慣習）。
 3. **証明書が契約です** — コーデックに触れた場合は、ゴールデンベクターを再生成して認証を実行してください（`make certify`）。CI はドリフトで失敗します。
 4. [プルリクエストテンプレート](.github/PULL_REQUEST_TEMPLATE.md) を使って PR を送信します。
 5. 問題は [GitHub Issues](https://github.com/ALH477/DeMoD-Communication-Framework/issues) で議論します。
