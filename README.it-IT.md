@@ -1,6 +1,6 @@
 # Punctim
 
-![logo](punctim.svg)
+<img width="1254" height="1254" alt="image" src="https://github.com/user-attachments/assets/69549629-d990-4192-befd-931a94b14c43" />
 
 
 **0.x — pre-release, in sviluppo attivo**
