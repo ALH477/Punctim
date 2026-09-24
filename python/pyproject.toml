@@ -46,12 +46,14 @@ dcf-node = "dcf_node:main"
 dcf-bridge = "dcf.bridge:main"
 # ETSI GS QKD 014 key-delivery bridge: end-to-end harness over a loopback transport.
 dcf-qkd-demo = "dcf.qkd.demo:main"
+# The DCF medium tool: frames between any two media, deterministically (DCF_MEDIUM_SPEC.md).
+punctim = "punctim:main"
 
 [tool.setuptools]
-# dcf_node.py is a top-level script module; the SDR modem + reference codecs ship
+# dcf_node.py and punctim.py are top-level script modules; the SDR modem + reference codecs ship
 # *under* the dcf package (dcf.modem, dcf.MCP) so their sibling-relative sys.path
 # resolution works identically from-source and once installed.
-py-modules = ["dcf_node"]
+py-modules = ["dcf_node", "punctim"]
 packages = [
   "dcf", "dcf.modem", "dcf.MCP",
   # Subpackages: each is importable from-source, so each must also ship in the wheel.
@@ -62,3 +64,7 @@ packages = [
 "dcf" = "dcf"
 "dcf.modem" = "modem"
 "dcf.MCP" = "MCP"
+
+[tool.setuptools.package-data]
+# `punctim certify` falls back to the packaged medium certificate when Documentation/ is absent.
+"dcf.MCP" = ["medium_vectors.json"]
