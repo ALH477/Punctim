@@ -177,6 +177,16 @@ static int cmd_start(int argc, char **argv) {
                     dcf_game_packet_t pkt;
                     if (dcf_game_reasm_push(&gr, p, &pkt) == DCF_GAME_REASM_PACKET)
                         printf("game from %s: type=%u %u bytes (packet %u)\n", fip, pkt.msg_type_id, pkt.payload_len, pkt.packet_id);
+                } else if (mt == DCF_MSG_FRAME && plen == DCF_FRAME_SIZE) {
+                    /* DCF-Medium udp:dialect=proto: a bare frame (e.g. from `punctim io`) */
+                    static const char hx[] = "0123456789abcdef";
+                    char fh[2 * DCF_FRAME_SIZE + 1];
+                    for (size_t k = 0; k < DCF_FRAME_SIZE; k++) {
+                        fh[2 * k] = hx[p[k] >> 4];
+                        fh[2 * k + 1] = hx[p[k] & 0xFu];
+                    }
+                    fh[2 * DCF_FRAME_SIZE] = '\0';
+                    printf("frame %s from %s:%u\n", fh, fip, (unsigned)ntohs(from.sin_port));
                 } else if (mt == DCF_MSG_POSITION && plen == 12) {
                     uint32_t xi = ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | p[3];
                     uint32_t yi = ((uint32_t)p[4] << 24) | ((uint32_t)p[5] << 16) | ((uint32_t)p[6] << 8) | p[7];

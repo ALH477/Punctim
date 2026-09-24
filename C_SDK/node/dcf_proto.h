@@ -35,6 +35,8 @@
 #define DCF_MSG_GAME_DCF   9u
 #define DCF_MSG_TEXT_DCF   10u  /* Go extension; carries one DCF-Text DeModFrame */
 #define DCF_MSG_MESH       11u  /* DCF-Mesh control (REPORT/ROLE); see demod_mesh.h */
+#define DCF_MSG_FRAME      12u  /* DCF-Medium udp:dialect=proto — one raw 17-byte DeModFrame
+                                   (payload_len == 17); see codec/demod_medium.h */
 
 #define DCF_PROTO_HEADER_LEN 17u
 
