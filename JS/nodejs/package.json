@@ -5,6 +5,9 @@
   "license": "LGPL-3.0-only",
   "author": "DeMoD LLC",
   "main": "src/frame.js",
+  "bin": {
+    "punctim": "bin/punctim.js"
+  },
   "keywords": [
     "dcf",
     "punctim",
@@ -21,14 +24,16 @@
     "src/frame.js",
     "src/superpack.js",
     "src/fec.js",
-    "src/text.js"
+    "src/text.js",
+    "src/medium.js",
+    "bin/"
   ],
   "scripts": {
-    "certify": "node test/certify.js && node test/certify_superpack.js && node test/certify_fec.js && node test/certify_text.js",
+    "certify": "node test/certify.js && node test/certify_superpack.js && node test/certify_fec.js && node test/certify_text.js && node test/certify_medium.js",
     "certify:superpack": "node test/certify_superpack.js",
     "certify:fec": "node test/certify_fec.js",
     "certify:text": "node test/certify_text.js",
-    "test": "node test/certify.js && node test/certify_superpack.js && node test/certify_fec.js && node test/certify_text.js"
+    "test": "node test/certify.js && node test/certify_superpack.js && node test/certify_fec.js && node test/certify_text.js && node test/certify_medium.js"
   },
   "repository": {
     "type": "git",
