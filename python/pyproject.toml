@@ -57,7 +57,7 @@ py-modules = ["dcf_node", "punctim"]
 packages = [
   "dcf", "dcf.modem", "dcf.MCP",
   # Subpackages: each is importable from-source, so each must also ship in the wheel.
-  "dcf.pipe", "dcf.qkd", "dcf.sense", "dcf.spa",
+  "dcf.pipe", "dcf.qkd", "dcf.sense", "dcf.sim", "dcf.spa",
 ]
 
 [tool.setuptools.package-dir]

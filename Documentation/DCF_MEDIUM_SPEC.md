@@ -500,3 +500,39 @@ Media add no cryptography and remove none: every representation here is **plaint
 (`DCF_SECURITY_EXPOSURE.md`). Deploy behind WireGuard or operator-supplied,
 export-compliant crypto **beneath** the medium (under the UDP socket, on the Ethernet
 segment); never inside a codec.
+
+## `punctim sim` — sizing a system (Python only)
+
+`punctim sim` answers "what medium, and what hardware, does this system need?" from the same
+certified codecs this spec defines. It is stdlib-only (`python/dcf/sim/`: `media.py`,
+`traffic.py`, `plan.py`), reads a system description (`--spec system.json` or flags: nodes,
+primary medium + candidates, latency target, traffic per adapter, MAC, guard, node power) and
+prints a report whose every row is tagged:
+
+- **EXACT** — arithmetic on the certified codecs: airtime/frame = `total_syms / baud` (hydra:
+  0.356 s default conv, 0.192 s none, 0.290 s aux conv) or `n_bits / baud` (afsk: 1.36 s
+  handheld crc8, 0.153 s aux-cable); datagram bytes (ProtoMessage 34 B + 28 B IPv4/UDP;
+  SuperPack 32 B per pair / 17 B lone; l2eth `2 + 32·⌈n/2⌉` + 14 B Ethernet, padded to 46 B);
+  adapter fragmentation `1 + ⌈len/4⌉` via each adapter's certified packetizer; frames/s and duty
+  cycle per candidate; the sense TDMA slot (airtime + 2 × guard) and cycle, and FDMA channels
+  (`dcf/sense/mac.py`); Pipe chunks, `⌈N/W⌉` rounds and data-lane bytes; `OutboundQueue(256)`
+  time-to-overflow.
+- **MODEL** — a stated basis the certificate cannot give: link rates mirrored from
+  `lua/dcf_profile.lua` `M.media` (the tests parse the Lua and assert equality), the measured
+  HydraModem airtime (= exact symbol time + 40 ms lead/tail, asserted for every FEC mode),
+  node energy and the LoRa / RS-485 comparison (`dcf/sense/model.py`), hardware class
+  (`mcu` < `sbc-1core` < `desktop`) and the `DCF_FIELD_USE.md` tier.
+
+A candidate passes iff duty < 80 %, one message of each interactive adapter fits the latency
+target, the 13 600 bit/s live-voice floor (`2 × 17 B × 50 × 8`) holds when audio is requested,
+and on a shared channel the sense TDMA cycle fits its interval. The recommendation is the
+passing candidate with the cheapest hardware class, then the least link load. `--json` emits
+`{"exact", "model", "recommendation"}`. Exit 0 ok (also when nothing passes) · 1 I/O · 2 bad
+input.
+
+```sh
+python3 python/punctim.py sim --spec tests/sim_example.json [--json]
+python3 python/punctim.py sim --nodes 200 --sense-interval 60 --mac fdma \
+    --candidates 'hydra:profile=default,fec=conv;afsk:profile=handheld'
+cd python && python3 -m unittest tests.test_sim -v
+```

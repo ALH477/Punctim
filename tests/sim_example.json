@@ -1,0 +1,18 @@
+{
+  "nodes": 4,
+  "medium": "hydra:profile=default,fec=conv",
+  "candidates": ["udp:proto", "udp:bare", "l2eth", "hydra:profile=default,fec=conv",
+                 "hydra:profile=aux,fec=conv", "afsk:profile=handheld,fec=1", "sdr_narrow",
+                 "janus"],
+  "latency_ms": 200,
+  "traffic": {
+    "audio": {"blocks_per_s": 50, "payload_b": 124},
+    "text": {"bytes_per_s": 20},
+    "sstv": {"images_per_h": 2, "bytes": 8188},
+    "sense": {"readings_per_node": 1, "interval_s": 60},
+    "pipe": {"bytes": 1048576, "profile": "hydramodem"}
+  },
+  "mac": "tdma",
+  "guard_ms": 50,
+  "energy": {"node_mw": 70}
+}
