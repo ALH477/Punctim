@@ -44,6 +44,15 @@ path = "tests/certify_fec.rs"
 name = "certify_pipemulti"
 path = "tests/certify_pipemulti.rs"
 
+[[test]]
+name = "certify_medium"
+path = "tests/certify_medium.rs"
+
+# `punctim` — the uniform DCF-Medium CLI (io/encode/decode/certify/version); std-only.
+[[bin]]
+name = "punctim"
+path = "src/bin/punctim.rs"
+
 [[example]]
 name = "jam_loopback"
 path = "examples/jam_loopback.rs"

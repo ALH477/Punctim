@@ -94,6 +94,10 @@ pub mod msg_type {
     pub const TEXT_DCF: u8 = 10;
     /// DCF-Mesh control message (REPORT/ROLE) for self-healing AUTO/master roles.
     pub const MESH: u8 = 11;
+    /// A bare 17-byte DeModFrame carried as the multi-transport unit — the DCF-Medium
+    /// `udp:dialect=proto` datagram (`punctim io`, `python/dcf/transport.py`). See
+    /// Documentation/DCF_MEDIUM_SPEC.md.
+    pub const FRAME: u8 = 12;
 }
 
 const DEFAULT_UDP_PORT: u16 = 7777;
@@ -1210,6 +1214,10 @@ pub trait MessageHandler: Send + Sync {
     /// a per-`src_id` [`game::GameReassembler`] via [`reassemble_game_payload`] to
     /// recover whole messages. Defaults to a no-op so existing handlers still compile.
     fn handle_game(&self, _data: &[u8], _from: SocketAddr) {}
+    /// One DCF-Medium frame ([`msg_type::FRAME`]): a bare 17-byte DeModFrame, as sent by
+    /// `punctim io --out udp:dialect=proto`. Not gated here — check it with
+    /// `dcf_wire_codec::medium::gate`. Defaults to a no-op so existing handlers compile.
+    fn handle_frame(&self, _frame: &[u8], _from: SocketAddr) {}
 }
 
 /// Default handler that just logs messages
@@ -1230,6 +1238,10 @@ impl MessageHandler for DefaultMessageHandler {
 
     fn handle_game(&self, data: &[u8], from: SocketAddr) {
         log::debug!("Game frame from {} ({} bytes)", from, data.len());
+    }
+
+    fn handle_frame(&self, frame: &[u8], from: SocketAddr) {
+        log::debug!("DCF frame from {}: {}", from, hex::encode(frame));
     }
 }
 
@@ -1368,6 +1380,14 @@ async fn handle_incoming_message(
         msg_type::GAME_DCF => {
             node.metrics.write().events_received += 1;
             handler.handle_game(&msg.payload, from);
+        }
+        msg_type::FRAME => {
+            // DCF-Medium udp:dialect=proto — exactly one 17-byte DeModFrame.
+            if msg.payload.len() == dcf_wire_codec::FRAME_SIZE {
+                handler.handle_frame(&msg.payload, from);
+            } else {
+                log::debug!("FRAME message with {} bytes (want 17) from {}", msg.payload.len(), from);
+            }
         }
         _ => {
             log::debug!("Unknown message type {} from {}", msg.msg_type, from);
