@@ -97,6 +97,11 @@ func (n *DcfNode) dispatch(h MessageHandler, msg *ProtoMessage, from *net.UDPAdd
 		h.HandleGame(msg.Payload, from)
 	case MsgTextDCF:
 		h.HandleText(msg.Payload, from)
+	case MsgFrame:
+		// The udp:dialect=proto medium: exactly one raw 17-byte DeModFrame.
+		if len(msg.Payload) == 17 {
+			h.HandleFrame(msg.Payload, from)
+		}
 	default:
 		// Unknown message type: ignore.
 	}

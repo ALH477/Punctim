@@ -79,6 +79,9 @@ type MessageHandler interface {
 	HandleGame(payload []byte, from *net.UDPAddr)
 	// HandleText receives one DCF-Text L2 frame (a single 17-byte DeModFrame DATA frame).
 	HandleText(payload []byte, from *net.UDPAddr)
+	// HandleFrame receives one raw 17-byte DeModFrame carried as a MsgFrame (12) envelope
+	// (the `udp:dialect=proto` medium). It is NOT gated here; callers validate if needed.
+	HandleFrame(frame []byte, from *net.UDPAddr)
 }
 
 // DefaultMessageHandler is a no-op MessageHandler. Embed it to implement only the callbacks
@@ -90,3 +93,4 @@ func (DefaultMessageHandler) HandleAudio([]byte, *net.UDPAddr)        {}
 func (DefaultMessageHandler) HandleGameEvent(GameEvent, *net.UDPAddr) {}
 func (DefaultMessageHandler) HandleGame([]byte, *net.UDPAddr)         {}
 func (DefaultMessageHandler) HandleText([]byte, *net.UDPAddr)         {}
+func (DefaultMessageHandler) HandleFrame([]byte, *net.UDPAddr)        {}

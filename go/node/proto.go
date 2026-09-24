@@ -34,6 +34,11 @@ const (
 	// MsgMesh carries a DCF-Mesh control message (REPORT/ROLE; see go/mesh) for the
 	// self-healing runtime's AUTO/master role assignment.
 	MsgMesh uint8 = 11
+
+	// MsgFrame carries exactly one raw 17-byte DeModFrame (payload_len == 17) — the
+	// `udp:dialect=proto` medium of Documentation/DCF_MEDIUM_SPEC.md, shared with the
+	// Python dcf.transport UDP medium and every `punctim io`.
+	MsgFrame uint8 = 12
 )
 
 // protoHeaderLen is the fixed ProtoMessage header size:
