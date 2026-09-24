@@ -454,8 +454,11 @@ void dcf_log_write_v(DCFLogLevel level, const char* file, int line,
     /* Output to destinations */
     dcf_mutex_lock(&g_logger.mutex);
     
-    dcf_atomic_fetch_add(&g_logger.stats.messages_logged[level], 1);
-    dcf_atomic_fetch_add(&g_logger.stats.bytes_written, len);
+    /* DCFLogStats fields are plain uint64_t (public struct); they are updated
+     * under g_logger.mutex, so no atomic op is needed (clang rejects C11
+     * atomic_fetch_add on non-_Atomic objects). */
+    g_logger.stats.messages_logged[level] += 1;
+    g_logger.stats.bytes_written += (uint64_t)len;
     
     /* stderr */
     if (g_logger.config.log_to_stderr) {
@@ -556,7 +559,7 @@ DCFError dcf_log_rotate(void) {
     }
     
     g_logger.log_file = fopen(g_logger.config.log_file_path, "w");
-    dcf_atomic_fetch_add(&g_logger.stats.rotations, 1);
+    g_logger.stats.rotations += 1;  /* plain uint64_t; see dcf_log_write */
     
     return g_logger.log_file ? DCF_SUCCESS : DCF_ERR_IO_FAIL;
 }

@@ -40,7 +40,7 @@
         # Shared proto generation function
         generateProtos = lang: outDir: flags: pkgs.runCommand "dcf-protos-${lang}" {} ''
           mkdir -p $out/${outDir}
-          ${protobuf}/bin/protoc -I${self} ${flags} ${self}/messages.proto ${self}/services.proto
+          ${protobuf}/bin/protoc -I${self}/python/dcf/proto ${flags} ${self}/python/dcf/proto/messages.proto ${self}/python/dcf/proto/services.proto
           cp -r . $out/${outDir}
         '';
         # LangGraph agent system — Python env + CLI/TUI/serve/mcp wrappers.
@@ -259,7 +259,7 @@
             build-system = with pkgs.python3Packages; [ setuptools ];
             propagatedBuildInputs = with pkgs.python3Packages; [ numpy protobuf grpcio grpcio-tools ];
             preBuild = ''
-              python -m grpc_tools.protoc -I${self} --python_out=dcf --grpc_python_out=dcf ${self}/messages.proto ${self}/services.proto
+              python -m grpc_tools.protoc -I${self}/python/dcf/proto --python_out=dcf --grpc_python_out=dcf ${self}/python/dcf/proto/messages.proto ${self}/python/dcf/proto/services.proto
             '';
             # The wheel ships dcf, dcf.modem, dcf.MCP and the dcf.{pipe,qkd,sense,spa}
             # subpackages; prove every one of them imports from the installed layout.
@@ -587,7 +587,7 @@
             nativeBuildInputs = [ protobuf pkgs.perl pkgs.perlPackages.GrpcXs ];
             buildInputs = with pkgs.perlPackages; [ JSON IOSocketINET GetoptLong CursesUI GoogleProtocolBuffersDynamic ModulePluggable ];
             preBuild = ''
-              ${protobuf}/bin/protoc -I${self} --perl_out=lib ${self}/messages.proto ${self}/services.proto
+              ${protobuf}/bin/protoc -I${self}/python/dcf/proto --perl_out=lib ${self}/python/dcf/proto/messages.proto ${self}/python/dcf/proto/services.proto
             '';
             installPhase = "cp -r lib $out/lib";
             meta.description = "Perl SDK for DCF";

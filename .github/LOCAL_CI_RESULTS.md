@@ -1,5 +1,17 @@
 # Local CI results — `wire-certify.yml` run off-platform
 
+> **Status note (2026-09-24): hosted GitHub Actions have never executed a real job
+> for this repository.** All 57 `wire-certify.yml` runs (2026-06-10 → 2026-06-21)
+> failed at startup within seconds (an account billing lock; no step ever ran), and
+> no run was triggered by any later commit. Separately, the workflow file itself was
+> **invalid YAML** from commit `70beec5` (committed 2026-08-16; an unquoted `run:`
+> one-liner in the Lua transport step) until this fix, so it could not have run even
+> with billing cleared. Until the owner clears the billing lock, **`make ci-local`**
+> (`.github/ci-local.sh`) and the dated attestations in this file are the certification
+> path of record. `workflow_dispatch` is now enabled on `wire-certify.yml`, `ci.yml`
+> and `cmake-multi-platform.yml`, so a manual hosted run can be triggered as soon as
+> Actions is unblocked.
+
 The Wire Certification workflow (`.github/workflows/wire-certify.yml`) was executed
 **locally**, job-for-job, instead of on GitHub Actions. Toolchains not installed on
 the host were supplied hermetically with Nix (`nix shell nixpkgs#…`), exactly the

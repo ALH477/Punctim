@@ -5,6 +5,7 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   certify-python:
@@ -433,6 +434,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Install Python dependencies
+        run: pip install numpy
       - name: Beacon L2 laws + bridge end-to-end
         working-directory: python
         run: python3 -m unittest tests.test_qkd_beacon tests.test_qkd_bridge -v
@@ -521,6 +524,9 @@ jobs:
           /tmp/test_snake_l2
           gcc -std=c11 -Wall -Wextra -I codec -c hydramodem/dcf-tools/snake_l2.c -o /tmp/snake_l2.o
 
+      - name: Install Python dependencies
+        run: pip install numpy
+
       - name: Run the Python raw-L2 transport tests (privilege-free batch double)
         run: python3 -m unittest python/tests/test_snake_l2.py -v
 
@@ -538,11 +544,17 @@ jobs:
           cd hydramodem/dcf-tools
           cc -std=gnu11 -O2 -Wall -Wextra -I../../codec snake_loopback.c -lm -o /tmp/snake_loopback
           /tmp/snake_loopback
-          cc -std=gnu11 -O2 -Wall -Wextra -I../../codec snake_source.c snake_l2.c -lm -o /tmp/snake_source
-          cc -std=gnu11 -O2 -Wall -Wextra -I../../codec snake_mixer.c  snake_l2.c -lm -o /tmp/snake_mixer
-          head -c 200000 /dev/urandom > /tmp/pcm.f32
-          /tmp/snake_source --selftest --no-quanta --block 1024 --in /tmp/pcm.f32
-          /tmp/snake_mixer  --selftest --no-quanta --out /tmp/rec.f32
+          # snake_source/snake_mixer #include "snake_ipc.h", which lives in the separate
+          # DeMoD audio-stack repo (not vendored here) -- same guard as dcf-tools/build.sh.
+          if [ -f "${DEMOD_IPC_INCLUDE:-/nonexistent}/snake_ipc.h" ]; then
+            cc -std=gnu11 -O2 -Wall -Wextra -I../../codec -I"$DEMOD_IPC_INCLUDE" snake_source.c snake_l2.c -lm -lrt -o /tmp/snake_source
+            cc -std=gnu11 -O2 -Wall -Wextra -I../../codec -I"$DEMOD_IPC_INCLUDE" snake_mixer.c  snake_l2.c -lm -lrt -o /tmp/snake_mixer
+            head -c 200000 /dev/urandom > /tmp/pcm.f32
+            /tmp/snake_source --selftest --no-quanta --block 1024 --in /tmp/pcm.f32
+            /tmp/snake_mixer  --selftest --no-quanta --out /tmp/rec.f32
+          else
+            echo "skip: snake_source/snake_mixer need snake_ipc.h (external DeMoD audio-stack)"
+          fi
 
       - name: Run Rust Snake + Cue certification
         working-directory: codec
@@ -576,7 +588,8 @@ jobs:
         run: lua5.4 lua/selftest_snake.lua
 
       - name: Certify the Lua transport (SuperPack + FEC batching)
-        run: lua5.4 -e 'local X=dofile("lua/dcf_transport.lua") local r=X.report(40,"wan") assert(r.datagrams==1 and r.kbps<90, "transport batching regressed") print(("transport OK: %d frames -> %d datagram, %.1f kbps"):format(r.frames,r.datagrams,r.kbps))'
+        run: |
+          lua5.4 -e 'local X=dofile("lua/dcf_transport.lua") local r=X.report(40,"wan") assert(r.datagrams==1 and r.kbps<90, "transport batching regressed") print(("transport OK: %d frames -> %d datagram, %.1f kbps"):format(r.frames,r.datagrams,r.kbps))'
 
       - name: Certify the Lua SuperPack container
         run: lua5.4 lua/dcf_superpack.lua
