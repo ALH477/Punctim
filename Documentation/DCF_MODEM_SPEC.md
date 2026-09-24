@@ -3,7 +3,9 @@
 Status: the **byte↔symbol mapping** is certified across Python/Rust/C
 (`Documentation/modulation_vectors.json`); the **Faust waveform** synthesis/recovery
 is loopback-tested, not byte-certified (same policy as DCF-Audio's Opus/PM synthesis).
-Shipped in the C SDK node (`dcfnode send-modem` / `recv-modem`).
+Shipped in the C SDK node (`dcfnode send-modem` / `recv-modem`). HydraModem
+(`hydramodem/`, the `hydra:` medium) is a separate modem whose **symbol stream** is
+certified on its own (`hydra_symbols`, see [Certification](#certification)).
 
 ## Motivation
 
@@ -47,9 +49,19 @@ The live audio path (`python/modem/`) defines three medium profiles optimized fo
 | handheld | 1200 | 1800 | 300 | 240 bits | walkie-talkie radio, mid-band tones, long AGC keyup |
 | aux-cable | 1000 | 1500 | 1200 | 16 bits | wired line-level (3.5mm/TRS), 4× faster |
 
-The `aux-cable` profile is optimized for **wired connections** where the channel has flat frequency response, no AGC settling, and minimal noise. The higher baud rate (1200 vs 300) and shorter preamble (16 vs 80 bits) yield ~4× lower latency for control ops: a 17-byte frame takes ~113ms over aux cable vs ~453ms over acoustic.
+The `aux-cable` profile is optimized for **wired connections** where the channel has flat frequency response, no AGC settling, and minimal noise. The higher baud rate (1200 vs 300) and shorter preamble (16 vs 80 bits) cut control-op latency: the 136 frame bits alone take ~113 ms over aux cable vs ~453 ms at 300 baud, and the complete on-air frame (preamble + `0x7E` sync + frame + CRC-8 + 16-bit postamble) is 184 bits = ~153 ms over `aux-cable` vs 248 bits = ~827 ms over `standard` (exact bit counts are pinned by the `afsk_bits` family of `Documentation/medium_vectors.json`).
 
-The C SDK (`hydramodem/src/hydra_profile.c`) provides `hydra_profile_aux_cable()` which configures the MFSK modem for the same channel: 1200/2400 Hz orthogonal tones at 1200 baud, 16-symbol preamble. Both Python and C implementations interoperate over the same physical cable.
+**HydraModem's aux profile is a different medium — it does not interoperate with the Python `aux-cable` profile.** `hydramodem/src/hydra_profile.c` also ships an aux-cable profile, `hydra_profile_aux_cable()` (exposed as `frame_tx`/`frame_rx --profile aux`; before that flag it had no caller), but only the baud rate and preamble length coincide:
+
+| | Python `aux-cable` (`python/modem/acoustic_frame.py`) | HydraModem `aux` (`hydra_profile_aux_cable`) |
+|---|---|---|
+| tones | 1000 / 1500 Hz (mark / space) | 1200 / 2400 Hz (tone 0 / tone 1, orthogonal) |
+| baud · preamble | 1200 · 16 alternating bits | 1200 · 16 alternating symbols |
+| sync | `0x7E` (8 bits) | `0x2DD4` (16 bits) |
+| integrity / FEC | CRC-8 (default) or RS 2t=16 (`fec=1`) | CRC-16/CCITT-FALSE + K=7 r=1/2 conv (soft Viterbi) + interleaver |
+| postamble | 16 alternating bits | none |
+
+A frame sent by one cannot be decoded by the other, even over the same cable. They are therefore two separately named media in the DCF-Medium layer (`DCF_MEDIUM_SPEC.md`) — **`afsk:`** (`afsk:profile=aux-cable`) and **`hydra:`** (`hydra:profile=aux`) — each certified to its own stream in `Documentation/medium_vectors.json`: `afsk_bits` (the on-air bit string of `acoustic_frame.encode_bits`) and `hydra_symbols` (the tone-index string of `hydra_frame_build`). Both carry the 17-byte `DeModFrame` opaquely.
 
 ## Mapping rule (the certified law)
 
@@ -72,14 +84,19 @@ Anchors: Gray(0..15) = `[0,1,3,2,6,7,5,4,12,13,15,14,10,11,9,8]`;
 
 The modem transport reads/writes a sample stream from a **medium**:
 - **loopback / file** (default, deterministic) — `dcfnode send-modem --medium PATH`
-  writes a self-describing capture (`"DCFM" | mod | nbytes | nsamples | f64[]`);
+  writes a self-describing capture (`"DCFM" | mod | nbytes | nsamples | fec | f64[]`);
   `recv-modem --medium PATH` demodulates it. A frame pair crosses the "channel"
   byte-exact. Used by the interop test (per modulation).
 - **live audio** (`DCF_MODEM_AUDIO`, default OFF) — a PortAudio/ALSA backend rendering
   `dcf_modem.dsp` over speaker↔mic, the open-air path of `python/modem/`.
 
-The medium header carries a trailing `nparity` byte (`"DCFM" | mod | nbytes |
-nsamples | nparity | f64[]`; `nparity=0` = no FEC).
+The 14-byte medium header is `"DCFM" | mod u8 | nbytes u32 BE | nsamples u32 BE |
+fec u8`, followed by `nsamples` native `f64` samples. The trailing byte is a **0/1 FEC
+flag, not a parity count** (`C_SDK/node/dcfnode.c` `cmd_send_modem` / `cmd_recv_modem`,
+`hdr[13]`): `fec=0` = the symbols carry the raw payload; `fec=1` = they carry a DCF-FEC
+multi-codeword blob and `nbytes` is the blob length. The RS parity count (`--parity N`,
+default 16) is not in the medium header — the blob's own self-protecting header
+(`[len u32 | nparity u8]`, `DCF_FEC_SPEC.md`) carries it, so `recv-modem` needs no flag.
 
 ## Forward error correction (`--fec`)
 
@@ -107,4 +124,31 @@ python3 python/MCP/gen_modulation_vectors.py /tmp/m.json   # regen + verify laws
 cd codec && cargo test --test certify_modulation           # Rust
 gcc -std=c11 -I codec C_SDK/tests/test_modulation_certify.c -o /tmp/mc && /tmp/mc  # C
 gcc -std=c11 -I codec -I C_SDK/node C_SDK/tests/test_modem_loopback.c -lm -o /tmp/ml && /tmp/ml
+```
+
+### HydraModem symbol stream (`hydra_symbols`)
+
+HydraModem (`hydramodem/`) is now **byte-certified to its symbol stream across
+languages**. The `hydra_symbols` family of `Documentation/medium_vectors.json` (+ the
+identical `python/MCP/` copy and `codec/medium_vectors.gen.h`, generated by
+`python/MCP/gen_medium_vectors.py` from the Python port in `python/MCP/mediumlab_core.py`)
+pins, for each basis frame × profile (`default` / `aux`) × FEC (`none` / `rep3` / `conv`)
+× interleave (0 / 1), plus 4-FSK cases, the exact tone-index sequence
+`[preamble][sync 0x2DD4][interleave(fec(frame ‖ CRC-16))]` (one hex digit per symbol)
+together with `coded_bits`, `interleave_stride` and `total_syms`. The per-language
+`hydra:` medium codecs certify against it (`DCF_MEDIUM_SPEC.md` lists which).
+
+The ground truth is the upstream C: `hydramodem/dcf-tools/hydra_symbols_certify`
+checks every case against the **real** `hydra_frame_build` (symbol-for-symbol), feeds
+the vector symbols through the real `hydra_frame_decode_soft`, confirms the profile
+tables equal `hydra_profile_default()` / `hydra_profile_aux_cable()`, and runs a
+`hydra_modem_tx → hydra_modem_rx_ex` loopback per case. CI runs it in the
+`certify-hydramodem` job. The **waveform** (tone synthesis, acquisition, timing
+recovery, soft metrics) stays **loopback-tested, not certified** — the same line as
+Opus/PM synthesis — so certification stops at the symbols.
+
+```sh
+cd hydramodem/dcf-tools && ./build.sh && build/hydra_symbols_certify   # vectors vs real C
+build/frame_tx <34-hex> aux.wav --profile aux --none --interleave 0     # profile knobs:
+build/frame_rx aux.wav --profile aux --none --interleave 0              #   --profile/--interleave/--preamble
 ```

@@ -60,7 +60,8 @@ typedef struct {
 
 /* A sensible default: orthogonal binary FSK in the voice band at 48 kHz.
  *   tones 2000 / 3000 Hz, 1000 baud (48 samples/symbol), 24-symbol preamble,
- *   sync 0x2DD4, FEC off, gain 0.9. Matches faust/hydramodem_{tx,rx}.dsp. */
+ *   sync 0x2DD4, FEC convolutional (K=7 r=1/2, soft Viterbi) with the coded-bit
+ *   interleaver on, gain 0.9. Matches faust/hydramodem_{tx,rx}.dsp. */
 void hydra_profile_default(hydra_profile *p);
 
 /* Aux-cable profile: wired line-level connection (3.5mm/TRS).
