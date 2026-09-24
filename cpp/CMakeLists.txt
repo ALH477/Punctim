@@ -15,7 +15,7 @@ if(DCF_CPP_GNS AND DCF_CPP_STEAM)
     message(FATAL_ERROR "DCF_CPP_GNS and DCF_CPP_STEAM are mutually exclusive backends")
 endif()
 
-# Header-only wire codec (frame.hpp + superpack.hpp).
+# Header-only wire codec (frame.hpp + superpack.hpp + medium.hpp).
 add_library(dcf_wire INTERFACE)
 target_include_directories(dcf_wire INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
@@ -28,6 +28,12 @@ add_test(NAME certify
 add_executable(certify_superpack tests/certify_superpack.cpp)
 target_link_libraries(certify_superpack PRIVATE dcf_wire)
 add_test(NAME certify_superpack COMMAND certify_superpack
+         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
+
+# DCF-Medium digital codecs (stream/hex/udp_proto/udp_bare/l2eth), header-only medium.hpp.
+add_executable(certify_medium tests/certify_medium.cpp)
+target_link_libraries(certify_medium PRIVATE dcf_wire)
+add_test(NAME certify_medium COMMAND certify_medium
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..)
 
 # ── dcfcpp node: gRPC and/or Steam-compatible (GNS / Steamworks) transports ──

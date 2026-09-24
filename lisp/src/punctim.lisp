@@ -139,6 +139,10 @@
 (defconstant +msg-type-ack+ 6 "Acknowledgment")
 (defconstant +msg-type-ping+ 7 "Ping for RTT measurement")
 (defconstant +msg-type-pong+ 8 "Pong response")
+(defconstant +msg-type-game-dcf+ 9 "One DCF-Game L2 frame (a 17-byte DATA DeModFrame)")
+(defconstant +msg-type-text-dcf+ 10 "One DCF-Text L2 frame (a 17-byte DATA DeModFrame)")
+(defconstant +msg-type-mesh+ 11 "DCF-Mesh control message (REPORT/ROLE)")
+(defconstant +msg-type-frame+ 12 "One raw 17-byte DeModFrame (DCF-Medium udp:dialect=proto)")
 
 (defstruct proto-message
   (type 0 :type (unsigned-byte 8))

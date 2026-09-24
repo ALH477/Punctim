@@ -216,6 +216,11 @@ jobs:
           ./build.sh
           ./build/dcf_loopback
 
+      - name: HydraModem — hydra_symbols vectors vs the real hydra_frame_build (+ TX->RX per case)
+        run: |
+          cd hydramodem/dcf-tools
+          ./build/hydra_symbols_certify
+
       - name: HydraModem — Faust DSP compile-check (only if faust is available)
         continue-on-error: true
         run: |
@@ -659,10 +664,12 @@ jobs:
         run: |
           javac -d /tmp/jout java/com/demod/dcf/Frame.java java/com/demod/dcf/Certify.java \
             java/com/demod/dcf/SuperPack.java java/com/demod/dcf/SuperPackCertify.java \
-            java/com/demod/dcf/FEC.java java/com/demod/dcf/FECCertify.java
+            java/com/demod/dcf/FEC.java java/com/demod/dcf/FECCertify.java \
+            java/com/demod/dcf/Medium.java java/com/demod/dcf/MediumCertify.java
           java -cp /tmp/jout com.demod.dcf.Certify Documentation/golden_vectors.json
           java -cp /tmp/jout com.demod.dcf.SuperPackCertify Documentation/superpack_vectors.json
           java -cp /tmp/jout com.demod.dcf.FECCertify Documentation/fec_vectors.json
+          java -cp /tmp/jout com.demod.dcf.MediumCertify Documentation/medium_vectors.json
 
   certify-kotlin:
     runs-on: ubuntu-latest
