@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Copyright (C) 2025 DeMoD LLC
 //! StreamDb - A lightweight, embedded database for storing and retrieving binary streams via paths.
-//! ##LICESNE LGPL
 //! ## Overview
 //! StreamDb is a reliable, performant, and simple key-value store where keys are string paths
 //! (supporting prefix searches via a compressed reverse trie) and values are binary streams (documents up to 256MB by default).

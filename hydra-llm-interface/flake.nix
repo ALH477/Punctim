@@ -46,6 +46,14 @@
             mkdir -p $out/lib
             cp target/release/libstreamdb.so $out/lib/
           '';
+
+          # Every licence header in this subtree grants LGPLv3 "or (at your option)
+          # any later version", so this sub-project is LGPL-3.0-or-later -- unlike
+          # the rest of the repo, which is LGPL-3.0-only.
+          meta = {
+            description = "StreamDb shared library for the LLM interface";
+            license = pkgs.lib.licenses.lgpl3Plus;
+          };
         };
 
         pythonEnv = pkgs.python312.withPackages (ps: with ps; [
@@ -74,6 +82,7 @@
           '';
           meta = {
             description = "LLM interface with Punctim";
+            license = pkgs.lib.licenses.lgpl3Plus;  # see the headers in this subtree
             mainProgram = "llm_hydra_interface.py";
           };
         };

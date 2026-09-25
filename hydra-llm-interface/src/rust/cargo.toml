@@ -2,6 +2,11 @@
 name = "streamdb"
 version = "0.1.0"
 edition = "2025"
+authors = ["DeMoD LLC"]
+description = "StreamDb - embedded path-keyed binary stream store (LLM interface build)"
+# LGPL-3.0-or-later, matching every licence header in hydra-llm-interface/.
+# (The repo's other StreamDb, HandHelds/core, is LGPL-3.0-only.)
+license = "LGPL-3.0-or-later"
 
 [lib]
 crate-type = ["cdylib"]

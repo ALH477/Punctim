@@ -72,6 +72,16 @@
 
           # Skip tests in static builds (often require networking/runners)
           doCheck = false;
+
+          # Licence of the built artefact = licence of the source it is built from
+          # (rust/Cargo.toml: `license = "LGPL-3.0-only"`), matching every other
+          # package in the tree. Note the binary is statically linked, so a
+          # redistributor relying on LGPLv3 s4 must also ship the means to relink.
+          meta = {
+            description = "DCF Rust SDK node (dcf), statically linked";
+            license = pkgs.lib.licenses.lgpl3Only;
+            mainProgram = "dcf";
+          };
         };
 
         # ---------------------------------------------------------------------
@@ -102,6 +112,12 @@
             Entrypoint = [ "${dcf-node-static}/bin/dcf" ];
             # CMD is the default argument (matches your Dockerfile)
             Cmd = [ "start" ];
+          };
+
+          # The image ships dcf-node-static, so it carries that licence.
+          meta = {
+            description = "DCF Rust SDK node container (distroless, static)";
+            license = pkgs.lib.licenses.lgpl3Only;
           };
         };
 

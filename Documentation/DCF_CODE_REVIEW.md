@@ -183,13 +183,23 @@ declare `LGPL-3.0-only` throughout; `node/README.md` carried an **MIT** badge li
 `../LICENSE`. `LICENSING.md` documented the `janus-c` GPL boundary thoroughly but never
 mentioned `quanta` (built `gpl3Only`, `flake.nix:711-716`); it now carries a matching
 subsection — nothing was ever vendored or linked, so that was a documentation gap, not a
-leak. **Still open:** no GPLv3 text ships in the tree even though LGPLv3 incorporates it by
-reference (FSF practice is `COPYING` beside `COPYING.LESSER`); `rust/flake.nix`
-`packages.default` (L131) and `packages.container` (L134) carry no `meta` block at all;
-`hydra-llm-interface/flake.nix` has no `meta.license` and its file header grants LGPL
-"or (at your option) any later version" = `LGPL-3.0-or-later`, not `-only`; and
-`hydra-llm-interface/src/rust/cargo.toml` has no `license` field (and is lowercase-named,
-so cargo ignores it). *Open (the four items above).*
+leak. **Licence metadata completed 2026-09-25.** `rust/flake.nix`'s two packages
+(`dcf-node-static`, the container) now declare `lgpl3Only`, matching the `LGPL-3.0-only`
+in `rust/Cargo.toml` that they are built from; the static link is noted, since a
+redistributor relying on LGPLv3 §4 must also ship the means to relink. The
+`hydra-llm-interface/` subtree is the tree's **one deliberate exception**: all five of its
+licence headers grant LGPLv3 "or (at your option) any later version", so its flake
+derivations declare `lgpl3Plus` and its crate declares `LGPL-3.0-or-later` — the metadata
+describes the grant rather than overriding it. Its two unheadered sources
+(`src/rust/src/lib.rs`, whose only notice was a typo'd version-less `##LICESNE LGPL`, and
+`src/proto/dcf.proto`) gained SPDX headers to match.
+
+**Still open:** no GPLv3 text ships in the tree even though LGPLv3 incorporates it by
+reference (FSF practice is `COPYING` beside `COPYING.LESSER`) — the one remaining licence
+gap. Separately, and **not** a licensing issue: `hydra-llm-interface/` is referenced
+nowhere in the repo, its crate manifest is lowercase-named (`cargo.toml`, which cargo does
+not read, so the flake's `streamdb` derivation cannot build) and declares the nonexistent
+`edition = "2025"`. It is dead code that should be repaired or deleted. *Open.*
 
 **DCF-Medium (new module) — status.** Spec `Documentation/DCF_MEDIUM_SPEC.md` (normative)
 and a **162-case certificate** over seven families (stream 11, hex 8, udp_proto 21,
