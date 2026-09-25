@@ -13,7 +13,7 @@ dependencies = [
     "langchain-core>=0.3",
     "httpx>=0.27",
     "aiohttp>=3.9",
-    "mcp>=1.0",
+    "mcp>=1.0,<2",  # targets the v1 low-level Server API (2.x dropped list_tools)
 ]
 
 [project.optional-dependencies]
@@ -21,7 +21,7 @@ dev = ["pytest", "pytest-asyncio"]
 cli = ["rich>=13.0"]
 tui = ["rich>=13.0", "textual>=0.50"]
 api = ["fastapi>=0.100", "uvicorn>=0.20"]
-mcp-server = ["mcp>=1.0"]
+mcp-server = ["mcp>=1.0,<2"]
 
 [project.scripts]
 dcf-agent = "langgraph_agents.cli:main"
