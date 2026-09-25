@@ -13,7 +13,9 @@
 > note immediately below is preserved as the historical record of why local
 > attestation was the sole certification path of record up to that point.
 
-> **Update (2026-09-25, DCF-Minecraft branch `feat/dcf-minecraft`):** the new `certify-minecraft`
+> **Update (2026-09-25, DCF-Minecraft branch `feat/dcf-minecraft`, PR #32):** hosted CI is green on
+> the branch — Wire Certification run `36101123986` (**28 jobs**, `certify-minecraft` included),
+> CI `36101124002`, CMake `36101123956`, Docs `36101123987`. Before that, the new `certify-minecraft`
 > job and the jobs it touches were run locally with `make ci-local` (parity guard OK after adding
 > the previously missing `certify-exsecutor` entry) and the full `make certify` (ALL CERTS PASS):
 >
