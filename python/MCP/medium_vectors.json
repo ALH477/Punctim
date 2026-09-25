@@ -176,6 +176,17 @@
      ],
      "skipped_bytes": 0,
      "tail_bytes": 0
+    },
+    {
+     "name": "reserved_types_with_garbage",
+     "input": "5ad314006a756e6bd314040400040400040404040404044b96d3d318080800080800080808080808087bacd31ffff00f0ff0f00ff00ff00f0f0f5365d31fff",
+     "frames": [
+      "d314040400040400040404040404044b96",
+      "d318080800080800080808080808087bac",
+      "d31ffff00f0ff0f00ff00ff00f0f0f5365"
+     ],
+     "skipped_bytes": 9,
+     "tail_bytes": 3
     }
    ]
   },
@@ -280,6 +291,22 @@
      "decoded": [
       "d31312340001ffffdeadbeefab12cd24c0",
       "d310010203440506cafebabe010203f4af"
+     ],
+     "bad_lines": 0
+    },
+    {
+     "name": "reserved_types",
+     "frames": [
+      "d314040400040400040404040404044b96",
+      "d318080800080800080808080808087bac",
+      "d31ffff00f0ff0f00ff00ff00f0f0f5365"
+     ],
+     "text": "d314040400040400040404040404044b96\nd318080800080800080808080808087bac\nd31ffff00f0ff0f00ff00ff00f0f0f5365\n",
+     "decode_input": "D314040400040400040404040404044B96\nd318080800080800080808080808087bac\nd31FfFf00F0Ff0f00Ff00Ff00F0F0F5365\n",
+     "decoded": [
+      "d314040400040400040404040404044b96",
+      "d318080800080800080808080808087bac",
+      "d31ffff00f0ff0f00ff00ff00f0f0f5365"
      ],
      "bad_lines": 0
     }
@@ -502,6 +529,16 @@
      "payload": "010203",
      "datagram": "010000002a010203040506070800000003010203",
      "accept_as_frame": false
+    },
+    {
+     "name": "frame12_type15",
+     "type": 12,
+     "seq": 15,
+     "ts": 0,
+     "ts_hex": "0000000000000000",
+     "payload": "d31ffff00f0ff0f00ff00ff00f0f0f5365",
+     "datagram": "0c0000000f000000000000000000000011d31ffff00f0ff0f00ff00ff00f0f0f5365",
+     "accept_as_frame": true
     }
    ]
   },
@@ -558,6 +595,25 @@
       "d31510010203040506cafebabe010203117fffa1a100b270696e670000ff2ea0",
       "d3151200a010002000ff00ff00ffffff13ffffffffffffffffffffffffff02d4"
      ]
+    },
+    {
+     "name": "lone_type8",
+     "frames": [
+      "d318080800080800080808080808087bac"
+     ],
+     "datagrams": [
+      "d318080800080800080808080808087bac"
+     ]
+    },
+    {
+     "name": "pair_type4_type15",
+     "frames": [
+      "d314040400040400040404040404044b96",
+      "d31ffff00f0ff0f00ff00ff00f0f0f5365"
+     ],
+     "datagrams": [
+      "d31514040400040400040404040404041ffff00f0ff0f00ff00ff00f0f0f0cb8"
+     ]
     }
    ]
   },
@@ -598,6 +654,15 @@
       "d31200a010002000ff00ff00ffffffb630"
      ],
      "payload": "0004d3151312340001ffffdeadbeefab12cd10010203040506cafebabe0102034560d315117fffa1a100b270696e670000ff1200a010002000ff00ff00ffffffd516"
+    },
+    {
+     "name": "three_frames_with_type8",
+     "frames": [
+      "d318080800080800080808080808087bac",
+      "d31312340001ffffdeadbeefab12cd24c0",
+      "d31ffff00f0ff0f00ff00ff00f0f0f5365"
+     ],
+     "payload": "0003d31518080800080800080808080808081312340001ffffdeadbeefab12cd9a65d3151ffff00f0ff0f00ff00ff00f0f0f100000000000000000000000000032c8"
     }
    ]
   },

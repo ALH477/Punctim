@@ -385,43 +385,13 @@ pub fn proto_frame_decode(datagram: &[u8]) -> Option<Frame17> {
 
 // ── SuperPack unpack with the medium gate ────────────────────────────────────────
 
-/// Split a 32-byte SuperPack into its two frames, checking exactly what the Python/C
-/// references check (`python/MCP/superpack.py:unpack`): length, sync, version nibble,
-/// SUPER type, joint CRC, then each rebuilt inner frame against the frame [`gate`]
-/// (sync + version nibble 1 + CRC). Unlike [`superpack::unpack`], whose belt-and-braces
-/// `Frame::decode` also rejects the reserved type nibbles 4..15, this carries every
-/// gated frame — media never parse the frame beyond the gate.
+/// Split a 32-byte SuperPack into its two frames — [`superpack::unpack`], which checks
+/// exactly what the Python/C references check (`python/MCP/superpack.py:unpack`): length,
+/// sync, version nibble, SUPER type, joint CRC, then each rebuilt inner frame against the
+/// frame [`gate`] (sync + version nibble 1 + CRC). Every gated frame is carried, whatever
+/// its type nibble (0..15) — media never parse the frame beyond the gate.
 pub fn superpack_unpack(buf: &[u8]) -> Result<(Frame17, Frame17), SuperPackError> {
-    if buf.len() != SUPER_LEN {
-        return Err(SuperPackError::BadLength);
-    }
-    if buf[0] != SYNC_BYTE {
-        return Err(SuperPackError::BadSync);
-    }
-    if buf[1] >> 4 != VERSION {
-        return Err(SuperPackError::BadVersion);
-    }
-    if buf[1] & 0x0F != superpack::SUPER_TYPE {
-        return Err(SuperPackError::BadType);
-    }
-    if crc16_ccitt(&buf[..30]) != (u16::from(buf[30]) << 8 | u16::from(buf[31])) {
-        return Err(SuperPackError::JointCrc);
-    }
-    let core = superpack::CORE_LEN;
-    let rebuild = |c: &[u8]| -> Frame17 {
-        let mut f = [0u8; FRAME_LEN];
-        f[0] = SYNC_BYTE;
-        f[1..15].copy_from_slice(c);
-        let crc = crc16_ccitt(&f[..15]);
-        f[15..17].copy_from_slice(&crc.to_be_bytes());
-        f
-    };
-    let a = rebuild(&buf[2..2 + core]);
-    let b = rebuild(&buf[2 + core..2 + 2 * core]);
-    if !gate(&a) || !gate(&b) {
-        return Err(SuperPackError::InnerDecode);
-    }
-    Ok((a, b))
+    superpack::unpack(buf)
 }
 
 // ══ udp dialect "bare" (17-B frame / 32-B SuperPack per datagram) ═══════════════

@@ -39,6 +39,18 @@ B = [encode(*t) for t in _FRAMES]
 for f in B:
     assert M.gate(f)
 
+# Reserved frame-type nibbles. The gate is sync 0xD3 + version nibble 1 + CRC only — the
+# 4-bit type nibble is NOT part of it (golden_vectors.json encode_basis already carries
+# types 4 and 8), so every medium must carry types 4..15 exactly like 0..3. These three
+# ride inline in the cases below; they are NOT added to `basis` (MED_BASIS[6][17]).
+T4 = encode(4, 0x0404, 0x0004, 0x0400, b"\x04\x04\x04\x04", 0x040404)
+T8 = encode(8, 0x0808, 0x0008, 0x0800, b"\x08\x08\x08\x08", 0x080808)
+T15 = encode(15, 0xFFF0, 0x0F0F, 0xF0F0, b"\x0f\xf0\x0f\xf0", 0x0F0F0F)
+RESERVED = [T4, T8, T15]
+for f, t in zip(RESERVED, (4, 8, 15)):
+    assert M.gate(f) and f[1] == 0x10 | t
+assert all(M.gate(encode(t, 1, 2, 3, b"\x00\x00\x00\x00", 4)) for t in range(16))  # type-agnostic
+
 
 def hx(frames):
     return [f.hex() for f in frames]
@@ -89,6 +101,9 @@ stream_inputs = [
     ("d3_inside_payload", b"\xd3" + D3IN + B[2]),
     ("only_garbage", bytes((i * 29 + 7) & 0xFF for i in range(40))),
     ("all_six", b"".join(B)),
+    # garbage (with a fake "D3 14" sync) || T4 || D3 || T8 || T15 || a 3-byte T15 prefix
+    ("reserved_types_with_garbage",
+     b"\x5a\xd3\x14\x00junk" + T4 + b"\xd3" + T8 + T15 + T15[:3]),
 ]
 stream_cases = []
 for name, buf in stream_inputs:
@@ -118,9 +133,12 @@ assert exp["d3_inside_payload"]["frames"] == hx([D3IN, B[2]])
 assert exp["d3_inside_payload"]["skipped_bytes"] == 1
 assert exp["only_garbage"]["frames"] == [] and exp["only_garbage"]["tail_bytes"] == 16
 assert exp["all_six"]["frames"] == hx(B)
+assert exp["reserved_types_with_garbage"]["frames"] == hx(RESERVED)
+assert exp["reserved_types_with_garbage"]["skipped_bytes"] == 9
+assert exp["reserved_types_with_garbage"]["tail_bytes"] == 3
 assert M.stream_encode(B) == b"".join(B)
 ok(f"stream: {len(stream_cases)} cases — lossless, byte-wise resync, fake-sync + "
-   f"D3-in-payload handled, chunk-invariant (1..35-byte chunks)")
+   f"D3-in-payload handled, reserved types 4/8/15 carried, chunk-invariant (1..35-byte chunks)")
 
 
 # ══ hex ═══════════════════════════════════════════════════════════════════════
@@ -138,6 +156,8 @@ hex_inputs = [
      + B[2].hex() + "\n" + B[3].hex() + "00\n" + "d3 13" + B[1].hex()[4:] + "\n"),
     ("no_trailing_newline", B[5].hex()),
     ("ungated_line", B[1].hex() + "\n" + BADF.hex() + "\n"),
+    ("reserved_types", T4.hex().upper() + "\n" + T8.hex() + "\n"
+     + "".join(c.upper() if k & 1 else c for k, c in enumerate(T15.hex())) + "\n"),
 ]
 hex_cases = []
 for name, text in hex_inputs:
@@ -155,8 +175,9 @@ assert hexp["comments_blank"]["decoded"] == hx([B[3], B[4]])
 assert hexp["bad_lines"]["decoded"] == hx([B[1], B[2]]) and hexp["bad_lines"]["bad_lines"] == 4
 assert hexp["no_trailing_newline"]["decoded"] == hx([B[5]])
 assert hexp["ungated_line"]["decoded"] == hx([B[1], BADF])  # hex_decode never gates
-ok(f"hex: {len(hex_cases)} cases — lossless, CRLF/uppercase/comments/blank accepted, "
-   f"bad lines counted, not gated")
+assert hexp["reserved_types"]["decoded"] == hx(RESERVED) and hexp["reserved_types"]["bad_lines"] == 0
+ok(f"hex: {len(hex_cases)} cases — lossless, CRLF/upper/mixed case/comments/blank accepted, "
+   f"bad lines counted, not gated, reserved types 4/8/15 carried")
 
 
 # ══ udp_proto ═════════════════════════════════════════════════════════════════
@@ -193,30 +214,45 @@ for bad in (bytes(16), bytes.fromhex(proto_cases[-1]["datagram"])[:-1]):
         raise AssertionError("header guard missed")
     except ValueError:
         pass
+_proto_case("frame12_type15", M.MSG_FRAME, 15, 0, T15)       # a reserved-type frame carried
+assert proto_cases[-1]["accept_as_frame"]
+assert M.proto_frame_decode(bytes.fromhex(proto_cases[-1]["datagram"])) == T15
+assert M.proto_frame_encode(T15, 15) == bytes.fromhex(proto_cases[-1]["datagram"])
 ok(f"udp_proto: {len(proto_cases)} cases — types 1..11 pass through, MSG_FRAME=12 carries "
-   f"exactly one 17-B frame in 34 B, Go/C golden vector, header guards")
+   f"exactly one 17-B frame (any type nibble) in 34 B, Go/C golden vector, header guards")
 
 
 # ══ udp_bare ══════════════════════════════════════════════════════════════════
 bare_cases = []
-for n in (0, 1, 2, 3, 6):
-    fs = B[:n]
+
+
+def _bare_case(name, fs):
+    n = len(fs)
     dgs = M.bare_encode(fs)
     assert [len(d) for d in dgs] == [32] * (n // 2) + [17] * (n % 2)
+    assert all(superpack.is_superpack(d) for d in dgs[:n // 2])
     assert [f for d in dgs for f in M.bare_decode(d)] == fs
-    bare_cases.append({"name": f"frames_{n}", "frames": hx(fs), "datagrams": hx(dgs)})
+    bare_cases.append({"name": name, "frames": hx(fs), "datagrams": hx(dgs)})
+
+
+for n in (0, 1, 2, 3, 6):
+    _bare_case(f"frames_{n}", B[:n])
+_bare_case("lone_type8", [T8])
+_bare_case("pair_type4_type15", [T4, T15])
 assert M.bare_decode(bytes(33)) == [] and M.bare_decode(bytes(16)) == []
 tam = bytearray(M.bare_encode(B[:2])[0])
 tam[7] ^= 1
 assert M.bare_decode(bytes(tam)) == []
 ok(f"udp_bare: {len(bare_cases)} cases — pairs -> 32-B SuperPack, lone frame raw 17 B, "
-   f"lossless, tampered SuperPack rejected")
+   f"lossless (reserved types 4/8/15 too), tampered SuperPack rejected")
 
 
 # ══ l2eth ═════════════════════════════════════════════════════════════════════
 l2_cases = []
-for n in (1, 2, 3, 4):
-    fs = B[1:1 + n]
+
+
+def _l2_case(name, fs):
+    n = len(fs)
     pl = M.l2_batch(fs)
     assert len(pl) == M.L2_HDR + ((n + 1) // 2) * 32 <= 130
     assert int.from_bytes(pl[:2], "big") == n
@@ -229,10 +265,15 @@ for n in (1, 2, 3, 4):
         pass
     if n % 2:
         assert superpack.unpack(pl[-32:])[1] == M.L2_FILLER
-    l2_cases.append({"name": f"frames_{n}", "frames": hx(fs), "payload": pl.hex()})
+    l2_cases.append({"name": name, "frames": hx(fs), "payload": pl.hex()})
+
+
+for n in (1, 2, 3, 4):
+    _l2_case(f"frames_{n}", B[1:1 + n])
+_l2_case("three_frames_with_type8", [T8, B[1], T15])
 assert M.l2_capacity(1500) == 92 and M.l2_capacity(9000) == 562
 ok(f"l2eth: {len(l2_cases)} cases — [n u16][SuperPack*ceil(n/2)], zero-DATA filler on odd n, "
-   f"truncation rejected")
+   f"reserved types 4/8/15 carried, truncation rejected")
 
 
 # ══ hydra_symbols ═════════════════════════════════════════════════════════════

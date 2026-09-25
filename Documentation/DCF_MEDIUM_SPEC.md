@@ -6,7 +6,7 @@
 [`DCF_MODEM_SPEC.md`](DCF_MODEM_SPEC.md) (the acoustic modems).
 
 Status: the **Python reference is canonical** (`python/MCP/mediumlab_core.py`), the
-golden vectors are `Documentation/medium_vectors.json` (156 cases, with an identical
+golden vectors are `Documentation/medium_vectors.json` (162 cases, with an identical
 `python/MCP/` copy and the dependency-free `codec/medium_vectors.gen.h`), and the
 uniform **`punctim`** CLI (`python/punctim.py`) is the Python implementation of the
 cross-language contract in [§ punctim](#the-punctim-cli-contract). The C, Rust, Go and
@@ -415,14 +415,14 @@ anchors: { crc_123456789: 0x29B1, crc_zero15: 0x4EC3, frame_len: 17,
            afsk_crc8_123456789: 0xA2 }
 basis:   [ { id, type, seq, src, dst, payload(hex), ts, hex } × 6 ]   # = gen_superpack_vectors._FRAMES
 families:
-  stream:        { cases: [ { name, input(hex), frames[hex], skipped_bytes, tail_bytes } ] }        # 10
-  hex:           { cases: [ { name, frames[hex], text, decode_input, decoded[hex], bad_lines } ] }  # 7
+  stream:        { cases: [ { name, input(hex), frames[hex], skipped_bytes, tail_bytes } ] }        # 11
+  hex:           { cases: [ { name, frames[hex], text, decode_input, decoded[hex], bad_lines } ] }  # 8
                    (text == hex_encode(frames); hex_decode(decode_input) == (decoded, bad_lines); frames == decoded)
   udp_proto:     { header_len: 17, msg_frame: 12, types: {NAME: id},
-                   cases: [ { name, type, seq, ts, ts_hex, payload(hex), datagram(hex), accept_as_frame } ] }  # 20
+                   cases: [ { name, type, seq, ts, ts_hex, payload(hex), datagram(hex), accept_as_frame } ] }  # 21
                    (ts_hex = 16 hex digits of ts, for languages whose JSON numbers are doubles)
-  udp_bare:      { cases: [ { name, frames[hex], datagrams[hex] } ] }                               # 5 (0,1,2,3,6 frames)
-  l2eth:         { hdr: 2, filler(hex), cases: [ { name, frames[hex], payload(hex) } ] }             # 4 (1..4 frames)
+  udp_bare:      { cases: [ { name, frames[hex], datagrams[hex] } ] }                               # 7 (0,1,2,3,6 frames + 2 reserved-type)
+  l2eth:         { hdr: 2, filler(hex), cases: [ { name, frames[hex], payload(hex) } ] }             # 5 (1..4 frames + 1 reserved-type)
   hydra_symbols: { profiles: { default|aux: { sample_rate, baud, n_tones, base_freq, tone_spacing,
                                                preamble_syms, sync_word, fec_mode, interleave, tx_gain } },
                    cases: [ { name, profile, fec: "none"|"rep3"|"conv", interleave: 0|1, n_tones, frame(hex),
