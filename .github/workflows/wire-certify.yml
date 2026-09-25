@@ -948,3 +948,66 @@ jobs:
           name: io-matrix-results
           path: tests/io_matrix_results.md
           if-no-files-found: warn
+
+  # Exsecutor — the 14th wire binding. The codec and its certificate live upstream
+  # (ALH477/exsecutor, conformance entry 23): a DeModFrame encode/decode written in
+  # Exsecutor, checked against a VENDORED copy of this repo's golden_vectors.json.
+  # Exsecutor is GPL-3.0, so nothing is vendored here in the other direction — `exsc`
+  # is a compiler invoked as a subprocess and its Exception A puts no obligation on
+  # compiler output. See LICENSING.md and Documentation/DCF_EXSECUTOR.md.
+  #
+  # This job's real work is DRIFT DETECTION, and it cuts both ways: it fails if
+  # upstream's vendored certificate stops matching the one this repo ships, which is
+  # what would silently happen the next time golden_vectors.json is regenerated.
+  certify-exsecutor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Punctim
+        uses: actions/checkout@v4
+        with:
+          path: punctim
+
+      - name: Check out Exsecutor
+        uses: actions/checkout@v4
+        with:
+          repository: ALH477/exsecutor
+          path: exsecutor
+
+      - name: Certificate drift — upstream's vendored copy must equal ours
+        run: |
+          ours=punctim/Documentation/golden_vectors.json
+          theirs=exsecutor/vendor/hydramesh-wire/golden_vectors.json
+          echo "ours:   $(sha256sum $ours   | cut -c1-64)"
+          echo "theirs: $(sha256sum $theirs | cut -c1-64)"
+          if ! cmp -s "$ours" "$theirs"; then
+            echo "::error::certificate drift — Exsecutor vendors a stale golden_vectors.json."
+            echo "Re-vendor it upstream (vendor/hydramesh-wire/, update PROVENANCE.md digests)."
+            diff <(head -40 "$ours") <(head -40 "$theirs") || true
+            exit 1
+          fi
+          echo "vendored certificate is byte-identical to the one this repo ships"
+          cmp -s punctim/Documentation/WIRE_QUANTUM_SPEC.md \
+                 exsecutor/vendor/hydramesh-wire/WIRE_QUANTUM_SPEC.md \
+            && echo "vendored WIRE_QUANTUM_SPEC.md is byte-identical too" \
+            || echo "::warning::vendored WIRE_QUANTUM_SPEC.md differs from ours"
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: "experimental-features = nix-command flakes"
+
+      - name: Run Exsecutor conformance entry 23 (DeModFrame, all 246 vectors)
+        working-directory: exsecutor
+        run: |
+          nix develop --command bash tests/run.sh 2>&1 | tee /tmp/exs.log | grep -iE "entry23|pass:|fail:|RESULT" || true
+          # The suite covers the whole language; this job gates on entry 23 only.
+          if grep -q "entry 23: certificate: 246/246 vectors" /tmp/exs.log; then
+            echo "Exsecutor DeModFrame codec: 246/246 vectors"
+          else
+            echo "::error::Exsecutor entry 23 did not report 246/246"
+            grep -iE "entry23" /tmp/exs.log | head -20
+            exit 1
+          fi
+          grep -q "entry 23: .*mutant .*fails" /tmp/exs.log \
+            && echo "mutation checks present (a broken codec is proven to fail)" \
+            || echo "::warning::entry 23 reported no mutant checks"

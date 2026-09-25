@@ -16,6 +16,13 @@
     # used by the DCF `janus:` transport as a subprocess only — never linked into
     # the LGPL library. See Documentation/DCF_JANUS_SPEC.md and LICENSING.md.
     janus-c-src = { url = "github:mission-systems-pty-ltd/janus-c"; flake = false; };
+    # GPL-3.0 (+ §7 exceptions) Exsecutor systems language. Its conformance entry 23
+    # is an Exsecutor DeModFrame codec certified against THIS repo's 246-vector
+    # golden certificate, making it the 14th wire binding. Consumed as a SEPARATE
+    # flake — `exsc` is a compiler invoked as a subprocess, never linked into the
+    # LGPL library, and its Exception A puts no obligation on compiler output.
+    # See LICENSING.md and Documentation/DCF_EXSECUTOR.md.
+    exsecutor = { url = "github:ALH477/exsecutor"; inputs.nixpkgs.follows = "nixpkgs"; };
     # GPL-3.0-only (OR DeMoD Commercial) quanta codec. Built as a SEPARATE package and
     # used by the DCF-Snake record plane via the quanta-stream / quanta-stream-decode
     # subprocesses only — never linked into the LGPL library (mere aggregation, like
@@ -24,7 +31,7 @@
     demod-quanta-src = { url = "github:ALH477/DeMoD"; flake = false; };
   };
 
-  outputs = { self, nixpkgs, flake-utils, rust-overlay, nixpkgs-faust, janus-c-src, demod-quanta-src }:
+  outputs = { self, nixpkgs, flake-utils, rust-overlay, nixpkgs-faust, janus-c-src, demod-quanta-src, exsecutor }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; overlays = [ rust-overlay.overlays.default ]; };
@@ -714,6 +721,16 @@
             meta.description = "DeMoD quanta codec streaming encoder/decoder (quanta-stream/quanta-stream-decode)";
             meta.license = pkgs.lib.licenses.gpl3Only;
           };
+
+          # Exsecutor compiler (exsc) — GPL-3.0 with §7 additional permissions. Re-exposed
+          # from the upstream flake, which owns the fasmg bootstrap. A STANDALONE package:
+          # exsc is a COMPILER run as a separate process, never linked, so this GPL build is
+          # NOT in any LGPL package's closure — the same boundary as janus-c and quanta.
+          # Its Exception A puts no licensing obligation on compiler output. Exsecutor is the
+          # 14th wire binding (conformance entry 23 certifies a DeModFrame codec written in
+          # Exsecutor against this repo's 246 vectors); the codec lives upstream and nothing
+          # is vendored here. See Documentation/DCF_EXSECUTOR.md and LICENSING.md.
+          exsc = exsecutor.packages.${system}.exsc;
 
           # Docs
           dcf-docs = pkgs.stdenv.mkDerivation {
