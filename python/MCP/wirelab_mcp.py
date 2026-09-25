@@ -12,11 +12,35 @@ Companion artifacts: wirelab_core.py (reference codec), golden_vectors.json
 one codec definition; the vectors are the cross-language source of truth.
 """
 import json, pathlib, sys
-from mcp.server.fastmcp import FastMCP
+try:
+    from mcp.server.fastmcp import FastMCP
+except ImportError:  # mcp 2.x renamed FastMCP -> MCPServer and changed the API
+    FastMCP = None
 import wirelab_core as core
 
 HERE = pathlib.Path(__file__).resolve().parent
-mcp = FastMCP("dcf-wirelab")
+
+
+class _NoMCP:
+    """Stand-in for FastMCP when the `mcp` SDK is absent or is the incompatible 2.x.
+
+    The tools below are ordinary functions that the decorator merely registers, so
+    `--selftest` certifies the codec without the SDK installed. Only `run()` (the
+    actual stdio server) needs it. This keeps the certification path free of a
+    third-party API whose breaking changes would otherwise fail CI.
+    """
+
+    def tool(self, *_a, **_k):
+        return lambda fn: fn
+
+    def run(self):
+        raise SystemExit(
+            "the `mcp` package (v1) is required to serve: pip install 'mcp<2'\n"
+            "(the codec self-test needs no SDK: python3 wirelab_mcp.py --selftest)"
+        )
+
+
+mcp = FastMCP("dcf-wirelab") if FastMCP is not None else _NoMCP()
 
 FIELD_MAP = [("sync", 0, 1), ("flags(ver|type)", 1, 2), ("seq", 2, 4), ("src", 4, 6),
              ("dst", 6, 8), ("payload", 8, 12), ("ts_us", 12, 15), ("crc16", 15, 17)]

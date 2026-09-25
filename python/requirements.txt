@@ -1,3 +1,4 @@
+mcp<2  # the WireLab MCP server targets FastMCP (v1); 2.x renamed it to MCPServer
 numpy>=1.21
 grpcio
 grpcio-tools

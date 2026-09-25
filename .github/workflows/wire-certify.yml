@@ -19,7 +19,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install MCP dependency
-        run: pip install mcp numpy
+        run: pip install 'mcp<2' numpy   # mcp 2.x renamed FastMCP -> MCPServer
 
       - name: Verify wire laws and regenerate golden vectors
         run: python3 python/MCP/verify_laws.py /tmp/golden_vectors.json
