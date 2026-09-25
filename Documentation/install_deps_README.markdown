@@ -96,4 +96,4 @@ If you encounter issues or want to add support for other distros, contribute to 
 5. Discuss issues via [GitHub Issues](https://github.com/ALH477/DeMoD-Communication-Framework/issues).
 
 ## License
-This script is part of the DCF project and is licensed under the GNU General Public License v3.0 (GPL-3.0). See the DCF repo’s `LICENSE` file for details.
+This script is part of the DCF project and is licensed under the GNU Lesser General Public License v3.0 only (LGPL-3.0-only). See the DCF repo’s `LICENSE` file for details.

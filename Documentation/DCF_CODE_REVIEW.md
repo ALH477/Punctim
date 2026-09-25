@@ -47,13 +47,26 @@ review. Below, severity-ordered.
 Each entry below is dated 2026-09-24 and was verified against the tree on that date.
 Open items are marked *Open*; items fixed in this pass say so.
 
-**R1. Hosted CI has never run a job.** All 57 `.github/workflows/wire-certify.yml` runs on GitHub Actions
-(2026-06-10 → 2026-06-21) failed at startup within seconds under an account billing lock
-— no step ever executed — and no run has been triggered since. The workflow was also
-invalid YAML from commit `70beec5` until this pass fixed it. Every "green in CI" /
-"CI-tested" claim in the tree therefore means *attested locally*: until the owner clears
-billing, `make ci-local` and `.github/LOCAL_CI_RESULTS.md` are the certification path of
-record. New jobs this pass: `certify-medium` and `io-matrix`. *Open (billing).*
+**R1. Hosted CI had never run a job — root cause found and fixed 2026-09-25.** All 57
+`.github/workflows/wire-certify.yml` runs on GitHub Actions (2026-06-10 → 2026-06-21) failed
+at startup within seconds. The earlier "billing lock" framing was at best incomplete: the
+true root cause was that **GitHub Actions was disabled at the repository level**
+(`GET /repos/ALH477/Punctim/actions/permissions` returned `{"enabled": false}`), which is
+why no run was even triggered after 2026-06-21 — and the repo is public, so standard
+GitHub-hosted runners are free regardless. The workflow was also invalid YAML from commit
+`70beec5` until this pass fixed it. Actions was re-enabled on 2026-09-25, and the workflow
+**executed steps for the first time** that day (run `36082394985`, `workflow_dispatch`):
+**25 of 26 jobs green**. The one failure, `certify-python`, was not in the certification
+itself — all 246 vectors passed — but in a later step, `wirelab_mcp.py --selftest`, which
+broke on an unpinned dependency: `pip install mcp` now resolves to mcp 2.x, which renamed
+`FastMCP` to `MCPServer`. Fixed in `bd771db` (made the MCP SDK import optional so the
+certification path no longer depends on that third-party API, plus pinned `mcp<2`) and
+`d6764ec` (same pin for `langgraph_agents`, whose `Server.list_tools` also vanished in 2.x).
+`ci.yml` is now 4/4 green (run `36083085188`) and `docs.yml` is green (run `36082816317`).
+Hosted CI is running and green as of today — but this is its first day running, not a
+track record; `make ci-local` and `.github/LOCAL_CI_RESULTS.md` remain the local
+certification path. New jobs this pass: `certify-medium` and `io-matrix`. *Resolved
+2026-09-25.*
 
 **R2. Lua never checks the 246 golden vectors.** `GUI/wirelab.lua` self-certifies on load
 against its own anchors only — `crc16("123456789") = 0x29B1` and one example frame ending
@@ -101,8 +114,15 @@ nibble. C `dcf_frame_decode` / `dcf_frame_valid` (`codec/demod_frame.h`) check s
 only and skip the version nibble. Any SDK path that inspects received frames through them
 drops reserved types (Rust) or accepts a wrong-version frame (Rust, C);
 `codec-wasm/src/lib.rs::decode_frame` inspects through `Frame::decode`, so the browser Wire
-inspector shows a valid type-4..15 frame as rejected. The medium codecs and every
-`punctim` apply the gate directly and are unaffected. *Open.*
+inspector shows a valid type-4..15 frame as rejected. The desktop Tauri client has the same
+defect, not just the browser: `client/src-tauri/src/lib.rs:192` decodes via
+`dcf_wire_codec::Frame::decode`. Every Rust adapter reassembler inherits the same gap by
+inspecting through `Frame::decode` (`codec/src/{audio,text,sstv,game,snake,monitor,qkd}.rs`).
+A third divergent decoder, not listed above: Lisp `lisp/src/punctim.lisp:355-362` checks
+length + sync + CRC and **skips the version nibble** — the same defect as C. The medium
+codecs and every DCF-Medium `punctim` CLI apply the gate directly and are unaffected (the
+Lisp SDK's own binary is also named `punctim`, so read that as the five DCF-Medium CLIs
+specifically, not every binary of that name). *Open.*
 
 **R7. `python/modem/main.py` — the only live audio path — is non-conforming.** It sends its
 own frame: a 15-byte header (`>BIQH`: type u8, seq u32, ts u64, len u16) + N payload bytes
@@ -110,32 +130,29 @@ own frame: a 15-byte header (`>BIQH`: type u8, seq u32, ts u64, len u16) + N pay
 `acoustic_frame.encode_bits` bit layer. Now labelled non-conforming in its docstrings; its
 `crc8` was also mislabelled "CRC-8/MAXIM" (it is the non-reflected poly-0x31 CRC, check
 `0xA2`; MAXIM is reflected, `0xA1`). The port to the 17-byte frame is deferred to v0.2 and
-should target the certified `afsk_bits` codec in `python/MCP/mediumlab_core.py`. Not
-edited here: `Documentation/DCF_FIELD_USE.md` says `python/modem/main.py` and `python/modem/acoustic.py`
-interoperate "byte-for-byte" — true of the bit layer only (the numpy modem decodes 17-byte
-frames, so it cannot decode the live modem's output unless N = 2), and `python/modem/acoustic_frame.py`'s
-module docstring repeats the MAXIM label. *Open (port).*
+should target the certified `afsk_bits` codec in `python/MCP/mediumlab_core.py`. *Open
+(port).*
 
 **R8. Dead `DCF_MODEM_AUDIO` option — removed in this pass.** `option(DCF_MODEM_AUDIO …)` in
 `C_SDK/CMakeLists.txt` was consumed by nothing (no `if()`, no `#ifdef` anywhere) and no
 PortAudio/ALSA backend exists. `DCF_MODEM_SPEC.md`, the README and CLAUDE.md now say the
-C modem has no live-audio path. Still mentioned in the four translated READMEs and a
-comment in `codec/faust/dcf_modem.dsp`.
+C modem has no live-audio path.
 
 **R9. HydraModem `aux_cable` comment — corrected in this pass.** `hydramodem/src/hydra_profile.c` called
 the aux profile "4x faster than default" and said it "matches python/modem/acoustic_frame.py
 aux-cable". It is 1.2× the baud (1200 vs 1000 baud; 0.290 s vs 0.356 s per conv-coded
 frame) and shares only baud and preamble length with the AFSK profile (tones, sync, CRC
-and FEC differ; they do not interoperate — `DCF_MODEM_SPEC.md` already said so). The same
-wording remains in `hydramodem/src/hydra_profile.h`. *Open (header comment).*
+and FEC differ; they do not interoperate — `DCF_MODEM_SPEC.md` already said so). *Resolved
+2026-09-25.*
 
 **R10. Smaller doc corrections in this pass.** `DCF_STEAM_SPEC.md` claimed the GNS backend
 runs in CI — no job builds or tests it (`nix build .#dcf-cpp-gns` builds only; the
 `gns_loopback` ctest runs locally). `lua/dcf_transport.lua` pointed at a nonexistent
-DCF_TALK_SPEC.md — now `DCF_FIELD_USE.md` / `SUPERPACK_SPEC.md` / `DCF_FEC_SPEC.md`
-(`lua/dcf_voice.lua` and `lua/selftest_voice.lua` still cite it). `MineCraft/` now states
-that the datapack is a demonstration emitting no `0xD3` sync / CRC-16 — non-conforming and
-uncertified. `Documentation/index.md` now lists every spec.
+DCF_TALK_SPEC.md — now `DCF_FIELD_USE.md` / `SUPERPACK_SPEC.md` / `DCF_FEC_SPEC.md`.
+`MineCraft/` now states that the datapack is a demonstration emitting no `0xD3` sync /
+CRC-16 — non-conforming and uncertified. `Documentation/index.md` now lists every spec,
+though the legacy `Documentation/Specs/*.markdown` set (including `export_compliance.markdown`,
+which CLAUDE.md cites as normative) is not in the index.
 
 **Found by `punctim sim`** (2026-09-24):
 
@@ -152,6 +169,27 @@ the wrapped chunk ≤ 1472 B. *Open.*
 `punctim io --queue`) defaults to **256**, so one un-paced send sheds frames on any medium
 slower than the producer. Senders must pace; `punctim sim` reports it as an EXACT burst row.
 *Open.*
+
+**R13. Verdict item 5's "GPL-3.0 stays scoped to the DOOM example only" did not hold —
+mostly fixed in this pass.** An exhaustive licence sweep (every flake `meta.license`, every
+language manifest, all 504 SPDX identifiers across 455 tracked files) found the core claim
+sound — 502 of 504 SPDX headers say `LGPL-3.0-only`, the top-level `LICENSE` is the
+canonical FSF LGPLv3 text, and CPack points at it — but five tracked docs contradicted it.
+**Fixed 2026-09-25:** `Documentation/Specs/briefing.markdown`,
+`Documentation/Specs/dcf_design_spec.markdown`, `Documentation/install_deps_README.markdown`
+and `C_SDK/compilation-guide.markdown` declared GPL-3.0 (header *and* body prose) and now
+declare `LGPL-3.0-only` throughout; `node/README.md` carried an **MIT** badge linking
+`./LICENSE`, a file that does not exist, and now declares `LGPL-3.0-only` against the real
+`../LICENSE`. `LICENSING.md` documented the `janus-c` GPL boundary thoroughly but never
+mentioned `quanta` (built `gpl3Only`, `flake.nix:711-716`); it now carries a matching
+subsection — nothing was ever vendored or linked, so that was a documentation gap, not a
+leak. **Still open:** no GPLv3 text ships in the tree even though LGPLv3 incorporates it by
+reference (FSF practice is `COPYING` beside `COPYING.LESSER`); `rust/flake.nix`
+`packages.default` (L131) and `packages.container` (L134) carry no `meta` block at all;
+`hydra-llm-interface/flake.nix` has no `meta.license` and its file header grants LGPL
+"or (at your option) any later version" = `LGPL-3.0-or-later`, not `-only`; and
+`hydra-llm-interface/src/rust/cargo.toml` has no `license` field (and is lowercase-named,
+so cargo ignores it). *Open (the four items above).*
 
 **DCF-Medium (new module) — status.** Spec `Documentation/DCF_MEDIUM_SPEC.md` (normative)
 and a **162-case certificate** over seven families (stream 11, hex 8, udp_proto 21,
@@ -265,6 +303,12 @@ F8 adds the matching `defcstruct` and walks `next`.
 
 ## HIGH — wrong results, hangs, silent data loss
 
+> **Status (v0.3.0, verified 2026-09-25): all HIGH items below are RESOLVED.** An
+> out-of-tree build + `ctest` (21/21) confirmed H1–H2 are applied in source (the C
+> SDK builds and the tests pass); the Lisp fixes (H3–H7) are folded into
+> `lisp/src/punctim.lisp` and self-cert on load. Descriptions are retained for
+> history.
+
 **H1. UDP send silently truncates >512 B and returns success (data loss).**
 `DOOM_udp_transport.c` `udp_send` caps at 512 and returns `true`, and sends from
 an uninitialized `sockaddr_in`. *Fix:* reject oversize, `memset` the address,
@@ -318,6 +362,13 @@ any object (JSON-encoded), closing the `aref` trap for all callers.
 
 ## MEDIUM — portability, robustness
 
+> **Status (v0.3.0, verified 2026-09-25): all MEDIUM items below are RESOLVED**
+> (M1–M6, including M4 — see its corrected parenthetical below). An out-of-tree
+> build + `ctest` (21/21) confirmed the fixes are applied in source. This does
+> not extend to the quarantined transports (`plugins/experimental/`,
+> `tests/legacy/`): those were **moved, not repaired** — the defects remain
+> in-file, which was the prescribed remedy.
+
 **M1. `DCF_INTERNAL` is GCC-only but the code supports MSVC.**
 `#define DCF_INTERNAL __attribute__((visibility("hidden")))` is unconditional.
 *Fix:* guard for `_MSC_VER` / `__GNUC__`. (patch)
@@ -333,7 +384,8 @@ signed return in `ssize_t` first. (patch)
 **M4. Crash handler is async-signal-unsafe.** `dcf_error.c`'s handler calls
 `fopen`/`malloc`/`backtrace_symbols` inside a signal context. *Fix:* use
 `write(2)` and `backtrace_symbols_fd` to a pre-opened fd; precompute the message.
-(not in patch — needs a small rework; flagged for a follow-up)
+(fixed: `src/dcf_error.c:597-634` now uses only `write()`, a pre-opened
+`g_crash_log_fd`, and `backtrace_symbols_fd`)
 
 **M5. Logging before `dcf_log_init` is UB.** `dcf_log_write_v` locks a possibly
 uninitialized mutex. *Fix:* either require init, or use a statically-initialized

@@ -3,7 +3,7 @@
 **Version 5.0.0 | August 19, 2025**  
 **Developed by DeMoD LLC**  
 **Contact:** info@demodllc.example  
-**License:** GNU General Public License v3.0 (GPL-3.0)
+**License:** GNU Lesser General Public License v3.0 only (LGPL-3.0-only)
 
 ## Table of Contents
 - [1. Executive Summary](#1-executive-summary)
@@ -80,7 +80,7 @@ gRPC is a high-performance RPC framework using Protobuf for service definitions 
 - **Dynamic Role Assignment**: AUTO mode enables nodes to switch roles (client, server, P2P) under master node control, supporting AI-driven network optimization.
 - **Usability**: CLI for automation, TUI for monitoring; supports server, client, P2P, and AUTO modes with logging; master node commands for role/config management.
 - **Self-Healing P2P**: Uses redundant paths (2-3 backups), RTT-based grouping (<50ms clusters), and Dijkstra routing with RTT weights.
-- **Open Source**: GPL-3.0 ensures transparency and community contributions.
+- **Open Source**: LGPL-3.0-only ensures transparency and community contributions.
 
 ### 4.2. Architecture and Modularity
 DCF’s layered architecture, implemented in SDKs (e.g., `c_sdk/src/dcf_sdk`):
@@ -119,4 +119,4 @@ The compatibility layer abstracts transports (UDP, TCP, WebSocket, gRPC, custom)
 - **Testing**: C SDK includes unit tests (`test_redundancy.c`, `test_plugin.c`); Lisp uses FiveAM (`plugin-manager-test.lisp`); Valgrind ensures memory safety.
 
 ## 5. Conclusion
-Protocol Buffers provide efficient, cross-language serialization, while gRPC enables high-performance RPC with HTTP/2 multiplexing. The DeMoD Communications Framework leverages these technologies for a modular, low-latency solution suitable for IoT, gaming, and edge applications. The C and Lisp SDKs enhance DCF with robust error handling, memory safety, and optimized P2P features like RTT-based grouping. The refined plugin manager supports multiple hardware plugins by ID, version checking, and JSON configuration, ensuring extensibility. Future SDKs will extend this model, maintaining GPL-3.0 compliance and export regulation adherence. Users are responsible for adding security via TLS or custom plugins.
+Protocol Buffers provide efficient, cross-language serialization, while gRPC enables high-performance RPC with HTTP/2 multiplexing. The DeMoD Communications Framework leverages these technologies for a modular, low-latency solution suitable for IoT, gaming, and edge applications. The C and Lisp SDKs enhance DCF with robust error handling, memory safety, and optimized P2P features like RTT-based grouping. The refined plugin manager supports multiple hardware plugins by ID, version checking, and JSON configuration, ensuring extensibility. Future SDKs will extend this model, maintaining LGPL-3.0-only compliance and export regulation adherence. Users are responsible for adding security via TLS or custom plugins.

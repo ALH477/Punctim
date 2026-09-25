@@ -2,7 +2,7 @@
 
 This guide provides detailed instructions for compiling the DeMoD Communications Framework (DCF) C SDK from the monorepo at [github.com/ALH477/DeMoD-Communication-Framework](https://github.com/ALH477/DeMoD-Communication-Framework) on various platforms, including Windows, BSD, macOS, WebAssembly (Wasm), and mobile ARM64 (Android/iOS). The C SDK supports client, server, P2P, and AUTO modes with gRPC/Protobuf, RTT-based grouping, and plugins. Builds are optimized for low-latency (<1ms local RTT) and <5% CPU usage on Raspberry Pi-like devices, with Valgrind-compatible memory management.
 
-All builds assume GPL-3.0 compliance and no built-in encryption for export regulations. Dependencies include CMake (>=3.10), Protobuf-C (>=1.4.1), libuuid, cJSON (>=1.7.18), gRPC (>=1.54), and ncurses (>=6.4). Use `git clone --recurse-submodules https://github.com/ALH477/DeMoD-Communication-Framework` to get the source, then `cd c_sdk`.
+All builds assume LGPL-3.0-only compliance and no built-in encryption for export regulations. Dependencies include CMake (>=3.10), Protobuf-C (>=1.4.1), libuuid, cJSON (>=1.7.18), gRPC (>=1.54), and ncurses (>=6.4). Use `git clone --recurse-submodules https://github.com/ALH477/DeMoD-Communication-Framework` to get the source, then `cd c_sdk`.
 
 ## General Prerequisites
 - **Tools**: CMake, make (or nmake on Windows), C/C++ compiler (gcc/g++, clang, or MSVC), git, pkg-config (or equivalent).

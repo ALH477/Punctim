@@ -8,6 +8,7 @@
 **Contacto:** alh477@demod.ltd 
 
 [![Wire certification](https://github.com/ALH477/Punctim/actions/workflows/wire-certify.yml/badge.svg)](https://github.com/ALH477/Punctim/actions/workflows/wire-certify.yml)
+[![CI](https://github.com/ALH477/Punctim/actions/workflows/ci.yml/badge.svg)](https://github.com/ALH477/Punctim/actions/workflows/ci.yml)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPLv3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 
 ![gpl](https://www.gnu.org/graphics/lgplv3-with-text-154x68.png)

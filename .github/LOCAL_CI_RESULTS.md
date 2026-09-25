@@ -1,5 +1,18 @@
 # Local CI results — `wire-certify.yml` run off-platform
 
+> **Update (2026-09-25): hosted CI is now enabled and green.** GitHub Actions was
+> re-enabled at the repository level, and `wire-certify.yml` executed real steps for
+> the first time that day. On the current tree it is green: **all 26 jobs passed**
+> (run `36083085187`). The `CI` workflow is 4/4 green (run `36083085188`) and `Build and Deploy
+> Docs` is green too. That first hosted run caught two genuine bugs, both the same
+> root cause — an unpinned `mcp` dependency resolving to 2.x, whose API renamed
+> `FastMCP`→`MCPServer` and dropped `Server.list_tools` (fixed in `bd771db`,
+> `d6764ec`). This is day one of hosted certification, not a long track record.
+> This file, and `make ci-local`, remain useful and are kept up — but from here on
+> they are a **complement** to hosted runs, not a substitute for them. The status
+> note immediately below is preserved as the historical record of why local
+> attestation was the sole certification path of record up to that point.
+
 > **Status note (2026-09-24): hosted GitHub Actions have never executed a real job
 > for this repository.** All 57 `wire-certify.yml` runs (2026-06-10 → 2026-06-21)
 > failed at startup within seconds (an account billing lock; no step ever ran), and

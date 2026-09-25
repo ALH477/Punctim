@@ -5,7 +5,7 @@ Contribute your bandwidth and compute power to the **DeMoD Distributed Computing
 This is the **official open-source community node** — lightweight, secure, and easy to run on any VPS, home server, or even free-tier cloud instances.
 
 [![Docker Pulls](https://img.shields.io/docker/pulls/alh477/dcf-rs.svg?style=flat-square&logo=docker)](https://hub.docker.com/r/alh477/dcf-rs)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](./LICENSE)
+[![License: LGPL-3.0-only](https://img.shields.io/badge/License-LGPL--3.0--only-yellow.svg?style=flat-square)](../LICENSE)
 
 ## Why Run a Community Node?
 
@@ -140,7 +140,7 @@ Pull requests are welcome!
 
 ## License
 
-- Setup script & documentation → **MIT License**
+- Setup script & documentation → **LGPL-3.0-only** (see the repository's [`LICENSE`](../LICENSE))
 - DCF-SDK container image → See [Docker Hub page](https://hub.docker.com/r/alh477/dcf-rs) for licensing
 
 ## Community & Support

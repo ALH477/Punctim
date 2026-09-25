@@ -3,7 +3,7 @@
 **Version 5.0.0 | August 20, 2025**  
 **Developed by DeMoD LLC**  
 **Contact:** info@demod.ltd
-**License:** GNU General Public License v3.0 (GPL-3.0)  
+**License:** GNU Lesser General Public License v3.0 only (LGPL-3.0-only)
 
 ## Table of Contents
 - [1. Introduction](#1-introduction)
@@ -53,7 +53,7 @@
 ## 1. Introduction
 The DeMoD Communications Framework (DCF) is a free and open-source software (FOSS) framework designed for low-latency, modular, and interoperable data exchange across diverse applications, including IoT messaging, real-time gaming synchronization, distributed computing, and edge networking. Evolving from the DeMoD Secure Protocol, DCF employs a handshakeless design, efficient serialization via Protocol Buffers (Protobuf), and a unified compatibility layer supporting UDP, TCP, WebSocket, gRPC, and custom transports (e.g., LoRaWAN). This enables seamless peer-to-peer (P2P) networking with self-healing redundancy for dynamic environments.
 
-DCF is hardware- and language-agnostic, supporting deployments from resource-constrained embedded devices (e.g., microcontrollers) to high-performance cloud servers and mobile platforms (Android, iOS) via dedicated bindings. Version 5.0.0 introduces a refined plugin system with separate registries for transport and hardware plugins, enhanced security plugins, expanded language support (C, C++, JavaScript, Go, Rust, Lisp), AUTO mode with master node control for dynamic role assignment, and SDK submodules for streamlined integration. Licensed under GPL-3.0, DCF ensures transparency and community-driven development, offering command-line interface (CLI), text user interface (TUI), server/client logic, P2P, and AUTO modes for versatile use cases, including standalone tools, libraries, and networked services.
+DCF is hardware- and language-agnostic, supporting deployments from resource-constrained embedded devices (e.g., microcontrollers) to high-performance cloud servers and mobile platforms (Android, iOS) via dedicated bindings. Version 5.0.0 introduces a refined plugin system with separate registries for transport and hardware plugins, enhanced security plugins, expanded language support (C, C++, JavaScript, Go, Rust, Lisp), AUTO mode with master node control for dynamic role assignment, and SDK submodules for streamlined integration. Licensed under LGPL-3.0-only, DCF ensures transparency and community-driven development, offering command-line interface (CLI), text user interface (TUI), server/client logic, P2P, and AUTO modes for versatile use cases, including standalone tools, libraries, and networked services.
 
 ## 2. Compliance with Export Regulations
 DCF adheres to U.S. Export Administration Regulations (EAR) and International Traffic in Arms Regulations (ITAR) by excluding cryptographic primitives, ensuring export-control-free distribution. Users implementing custom extensions (e.g., TLS via plugins) must ensure compliance with applicable regulations. DeMoD LLC disclaims liability for non-compliant modifications; consult legal experts for specific use cases.
@@ -63,7 +63,7 @@ DCF adheres to U.S. Export Administration Regulations (EAR) and International Tr
 - Ensure cross-language (C, Perl, Python, Lisp, etc.) and cross-platform interoperability via Protobuf and gRPC.
 - Support extensibility through a robust plugin system with separate transport and hardware registries.
 - Enable self-healing P2P networking with RTT-based grouping and redundancy.
-- Maintain GPL-3.0 compliance and encourage community contributions.
+- Maintain LGPL-3.0-only compliance and encourage community contributions.
 
 ## 4. Glossary
 - **DCFMessage**: Protobuf-defined message for data exchange, including fields like `sender`, `data`, `group_id`.
@@ -222,7 +222,7 @@ Test master node role assignment, config updates, and plugin metrics collection 
 ```
 demod-communications-framework/
 ├── README.md
-├── LICENSE  // GPL-3.0
+├── LICENSE  // LGPL-3.0-only
 ├── messages.proto
 ├── services.proto  // For gRPC
 ├── config.schema.json  // For validation
@@ -294,5 +294,5 @@ demod-communications-framework/
 ### 12.3. Contribution Guidelines
 - Fork the repository, create a feature branch, add tests, and submit a pull request.
 - Follow code style: `perltidy` (Perl), `black` (Python), `clang-format` (C/C++), `lispindent` (Lisp).
-- New SDKs (e.g., Python, Perl) must implement plugin manager, RTT grouping, AUTO mode, and GPL-3.0 compliance.
+- New SDKs (e.g., Python, Perl) must implement plugin manager, RTT grouping, AUTO mode, and LGPL-3.0-only compliance.
 - Discuss contributions via GitHub Issues.

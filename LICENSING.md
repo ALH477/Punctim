@@ -39,6 +39,19 @@ calls. janus-c is **never vendored or linked** into this `LGPL-3.0-only` tree; i
 `nix build .#janus-c`, kept out of every LGPL package's closure). The transport raises (and
 its tests skip) when janus-c is absent, so the LGPL library never depends on GPL code.
 
+## DCF-Snake / quanta — GPL-3.0 boundary (subprocess only)
+
+The DCF-Snake record plane ([`Documentation/DCF_SNAKE_SPEC.md`](Documentation/DCF_SNAKE_SPEC.md))
+carries the DeMoD **quanta** codec by invoking the **GPL-3.0-only** (dual-licensed
+`GPL-3.0-only OR DeMoD-Commercial`) `quanta-stream` / `quanta-stream-decode` binaries
+(from the separate DeMoD `quanta` repository) as **separate subprocesses** — mere aggregation, exactly
+like the existing janus-c and `pw-play`/`ffmpeg` calls. quanta is **never vendored or linked**
+into this `LGPL-3.0-only` tree; it is an **optional, standalone GPL dependency** (built by its
+own Nix derivation, `nix build .#quanta`, kept out of every LGPL package's closure —
+`flake.nix`). The mixer/spoke nodes shell out to the `quanta-stream`/`quanta-stream-decode`
+binaries at runtime (`$QUANTA_STREAM`/`$QUANTA_STREAM_DECODE`), so the LGPL library never
+depends on GPL code.
+
 ## HydraModem — LGPL-3.0-only
 
 The [`hydramodem/`](hydramodem/) directory is a self-contained acoustic M-FSK modem that carries

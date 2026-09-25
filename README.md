@@ -8,6 +8,7 @@
 **Contact:** alh477@demod.ltd 
 
 [![Wire certification](https://github.com/ALH477/Punctim/actions/workflows/wire-certify.yml/badge.svg)](https://github.com/ALH477/Punctim/actions/workflows/wire-certify.yml)
+[![CI](https://github.com/ALH477/Punctim/actions/workflows/ci.yml/badge.svg)](https://github.com/ALH477/Punctim/actions/workflows/ci.yml)
 [![License: LGPL v3](https://img.shields.io/badge/License-LGPLv3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 
 ![gpl](https://www.gnu.org/graphics/lgplv3-with-text-154x68.png)
@@ -17,8 +18,9 @@
 > **Status, honestly.** Punctim is **pre-1.0**. The project does not yet ship
 > "11 production-ready language bindings." What is real today is the **wire
 > quantum** and its cross-language **certificate** (plus, now, the
-> [medium layer](#deterministic-across-mediums) beneath it), attested green locally with
-> `make ci-local` (hosted CI has never run a job). See the [language status tiers](#language-status) below for
+> [medium layer](#deterministic-across-mediums) beneath it), attested locally with
+> `make ci-local` and, as of 2026-09-25, green in hosted CI as well (day one of hosted
+> certification, not a long track record). See the [language status tiers](#language-status) below for
 > exactly what is certified, what is design-complete, and what is still an
 > experimental stub. Version 1.0.0 is reserved for when the advertised set is
 > green in CI.
@@ -113,19 +115,26 @@ wire codec is golden-vector-verified in CI. Each language **graduates to
 | **Certified** | **C** (`C_SDK/`), **Rust** (`codec/`), **Python** (`python/MCP/`, the reference), **Lua** (`GUI/wirelab.lua` + `lua/`), **Go** (`go/`), **Java** (`java/com/demod/dcf/`), **Node.js** (`JS/nodejs/`), **Perl** (`perl/`), **C++** (`cpp/include/dcf/`), **Haskell** (`haskell/`), **Kotlin** (`kotlin/`), **Swift** (`swift/`), **Lisp** (`lisp/`) | Golden-vector wire codec, each certifying all 246 vectors via its `certify-<lang>` CI job (ungated, every push/PR) — **except Lua**, whose wire codec (`GUI/wirelab.lua`, `lua/`) self-certifies against the CRC anchors and embedded example/adapter vectors only and never reads `golden_vectors.json` ([code review](Documentation/DCF_CODE_REVIEW.md#2026-09-24--dcf-medium-pass-dated-findings)). C/Rust/Python/Lua run without an extra toolchain; the rest use a hosted toolchain (`haskell-actions`, `setup-kotlin`, `swift-actions`, apt `sbcl`). **Go has graduated from a wire codec to a full stdlib-only SDK** — certified wire + game/audio/text adapters and a UDP `DcfNode` (`go/node`), with `certify-go` running `go vet`, `go test ./...`, and `go test -race ./node/`. Lua additionally certifies the audio L2 framing. **Lisp** certifies the full 109 encode + 137 syndrome vectors (and the FEC vector set) by reading the canonical JSON directly through a small in-tree reader — still no Quicklisp — via `lisp/src/{wire,fec}.lisp` under bare SBCL. These are the only implementations you should treat as bindings. | **7/7 families + CLI:** Python, C, Rust, Go, Node · **5/7 (cert only):** C++, Java, Perl (stream, hex, udp_proto, udp_bare, l2eth) · **—:** Kotlin, Swift, Haskell, Lua, Lisp (v0.2) |
 | **Experimental — building** | _(none)_ | Every advertised language is Certified above. | — |
 
-> **Hosted CI, honestly (2026-09-24).** GitHub Actions has never executed a real job on
-> this repository: all 57 `wire-certify.yml` runs (2026-06-10 → 06-21) failed at startup
-> within seconds under an account billing lock, and none has run since (the workflow was
-> also invalid YAML from `70beec5` until it was fixed). Until billing is cleared, "green"
-> means **attested locally** with `make ci-local`, recorded in
-> [`.github/LOCAL_CI_RESULTS.md`](.github/LOCAL_CI_RESULTS.md) — not a hosted run.
+> **Hosted CI, honestly (2026-09-25).** GitHub Actions had been disabled at the
+> repository level; it was re-enabled on 2026-09-25, and `wire-certify.yml` executed
+> real steps for the first time. That first run caught two genuine bugs, both the
+> same root cause — an unpinned `mcp` dependency resolving to 2.x, whose API renamed
+> `FastMCP`→`MCPServer` and dropped `Server.list_tools` (fixed in `bd771db`,
+> `d6764ec`). On the current tree the workflow is green: **all 26 jobs passed**
+> (run `36083085187`), the certificate gate included.
+> `CI` is 4/4 green (run `36083085188`) and `Build and Deploy Docs` is green too.
+> This is day one of hosted certification, not a long track record — `make ci-local`
+> and [`.github/LOCAL_CI_RESULTS.md`](.github/LOCAL_CI_RESULTS.md) remain useful as
+> the local path, now a complement to hosted runs rather than the sole certification
+> path of record.
 
 > Local pre-verification note: the dev shell ships C/Rust/Python/Go/Lua/Node/Perl/
 > C++ toolchains; Haskell/Kotlin/Swift/Lisp are verified reproducibly via
-> `nix shell nixpkgs#{ghc,kotlin,swift,sbcl}` / `make ci-local` (their hosted CI jobs
-> exist but, per the note above, have never run). Swift specifically cannot be
-> pre-verified under the Nix Swift-on-Linux wrapper (no `swift-test` subcommand); its
-> hosted `certify-swift` job is written but has never executed.
+> `nix shell nixpkgs#{ghc,kotlin,swift,sbcl}` / `make ci-local`, and now also by their
+> hosted `certify-<lang>` CI jobs, which have actually run as of 2026-09-25 (see
+> above). Swift specifically cannot be pre-verified under the Nix Swift-on-Linux
+> wrapper (no `swift-test` subcommand), so its hosted `certify-swift` job is the only
+> place it is exercised — it passed in the 2026-09-25 run.
 
 > The C SDK is intentionally narrow: only four modules compile and ship
 > (`dcf_platform`, `dcf_error`, `dcf_ringbuf`, `dcf_connpool`). See
@@ -746,9 +755,9 @@ For master node:
 ## Testing
 
 **The certificate is the test that matters.** The cross-language wire/audio/game/medium
-certs are what `.github/workflows/wire-certify.yml` gates every push on — but hosted CI
-has never executed a job (see the [note under Language status](#language-status)), so
-today they are attested locally with `make ci-local`. Run them with `make certify` or
+certs are what `.github/workflows/wire-certify.yml` gates every push on. Hosted CI is
+now enabled and green, as of 2026-09-25 (see the [note under Language status](#language-status));
+this repo also continues to attest locally with `make ci-local`. Run them with `make certify` or
 directly:
 
 ```bash
