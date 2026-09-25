@@ -75,7 +75,9 @@ jobs:
           diff /tmp/pipe_vectors.json   python/MCP/pipe_vectors.json
           diff /tmp/pipe_vectors.gen.h  codec/pipe_vectors.gen.h
           python3 python/dcf/pipe/laws.py
-          python3 -m unittest python/tests/test_pipe.py -v
+          # from python/ so the `dcf` package imports (the path form from the repo root
+          # cannot import dcf.pipe -- test_pipe.py only puts python/MCP on sys.path)
+          (cd python && python3 -m unittest tests.test_pipe -v)
 
       - name: HydraPack — regenerate vectors, diff the committed copies
         run: |
@@ -122,6 +124,28 @@ jobs:
           diff /tmp/mesh_vectors.json   Documentation/mesh_vectors.json
           diff /tmp/mesh_vectors.json   python/MCP/mesh_vectors.json
           diff /tmp/mesh_vectors.gen.h  codec/mesh_vectors.gen.h
+
+      # Every certificate is committed twice (Documentation/ + python/MCP/). The adapter
+      # jobs diff the regenerated file against both, but golden/audio/pm_param were only
+      # ever compared against Documentation/. This makes the python/MCP/ copy of EVERY
+      # family byte-identical to Documentation/ (and requires both copies to exist).
+      - name: Vector copies — python/MCP/*_vectors.json byte-identical to Documentation/ (all families)
+        run: |
+          fail=0; n=0
+          for req in golden audio pm_param; do
+            [ -f "Documentation/${req}_vectors.json" ] || { echo "MISSING required family: Documentation/${req}_vectors.json"; fail=1; }
+          done
+          for doc in Documentation/*_vectors.json; do
+            mcp="python/MCP/$(basename "$doc")"
+            if [ ! -f "$mcp" ]; then echo "MISSING copy: $mcp"; fail=1; continue; fi
+            if cmp -s "$doc" "$mcp"; then n=$((n+1)); echo "ok  $(basename "$doc")"
+            else echo "DRIFT: $doc != $mcp"; diff "$doc" "$mcp" | head -20 || true; fail=1; fi
+          done
+          for mcp in python/MCP/*_vectors.json; do
+            [ -f "Documentation/$(basename "$mcp")" ] || { echo "MISSING copy: Documentation/$(basename "$mcp")"; fail=1; }
+          done
+          echo "$n vector families: python/MCP/ == Documentation/"
+          exit $fail
 
   certify-c:
     runs-on: ubuntu-latest
@@ -796,3 +820,131 @@ jobs:
             --eval '(quicklisp-quickstart:install :path "quicklisp/")' \
             --load lisp/src/punctim.lisp \
             --eval '(sb-ext:exit :code (if (d-lisp::run-tests) 0 1))'
+
+  # DCF-Medium: the medium codecs (.dcf stream / hex / UDP proto+bare / raw-L2 / HydraModem
+  # symbol stream / AFSK bits) that carry the 17-byte quantum over one medium without parsing
+  # it. Regenerate the certificate (the generator asserts the medium laws), diff every
+  # committed copy, then certify Python / C / Rust / Go / Node / C++. The other medium certs
+  # ride their language jobs: Java MediumCertify -> certify-java, Perl t/medium.t ->
+  # certify-perl (`make test` runs t/*.t), hydra_symbols_certify -> certify-hydramodem.
+  # Spec: Documentation/DCF_MEDIUM_SPEC.md. The 246-vector wire certificate is untouched.
+  certify-medium:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Python dependencies
+        run: pip install numpy
+
+      - name: Regenerate medium vectors (laws) and diff every committed copy
+        run: |
+          python3 python/MCP/gen_medium_vectors.py /tmp/medium_vectors.json
+          diff /tmp/medium_vectors.json   Documentation/medium_vectors.json
+          diff /tmp/medium_vectors.json   python/MCP/medium_vectors.json
+          diff /tmp/medium_vectors.gen.h  codec/medium_vectors.gen.h
+          echo "medium vectors: committed == regenerated"
+
+      - name: Python — punctim certify + medium unit tests
+        run: |
+          python3 python/punctim.py certify
+          cd python && python3 -m unittest tests.test_medium -v
+
+      - name: Build and run C medium certification (header-only codec/demod_medium.h)
+        run: |
+          gcc -std=c11 -Wall -Wextra -I codec \
+            -o /tmp/test_medium_certify C_SDK/tests/test_medium_certify.c -lm
+          /tmp/test_medium_certify
+
+      - name: Run Rust medium certification
+        working-directory: codec
+        run: cargo test --test certify_medium
+
+      - name: Run Go medium certification
+        working-directory: go
+        run: go test ./medium/ -v
+
+      - name: Run Node.js medium certification
+        run: node JS/nodejs/test/certify_medium.js
+
+      - name: Build and run C++ medium certification
+        run: |
+          g++ -std=c++17 -Wall -Wextra -I cpp/include -o /tmp/cpp_medium cpp/tests/certify_medium.cpp
+          /tmp/cpp_medium
+
+  # Cross-language I/O matrix: the five `punctim` CLIs (Python / C / Rust / Go / Node) x the
+  # digital media — encode in one language, decode in another, byte-exact (tests/io_matrix.py,
+  # stdlib). CLIs are found at their default paths (PUNCTIM_{PY,C,RS,GO,JS} override); the
+  # HydraModem tools join via HYDRA_TOOLS_DIR (default hydramodem/dcf-tools/build) when they
+  # build, and are skipped otherwise. The results table is uploaded as an artifact.
+  io-matrix:
+    needs: certify-medium
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Python dependencies
+        run: pip install numpy
+
+      - name: Build the C punctim CLI (cmake -> C_SDK/build/punctim)
+        run: |
+          cmake -S C_SDK -B C_SDK/build -DDCF_BUILD_NODE=ON -DDCF_BUILD_EXAMPLES=OFF
+          cmake --build C_SDK/build --target punctim
+
+      - name: Build the Rust punctim CLI (codec/target/debug/punctim)
+        working-directory: codec
+        run: cargo build --bin punctim
+
+      - name: Build the Go punctim CLI (go/bin/punctim)
+        working-directory: go
+        run: go build -o bin/punctim ./cmd/punctim
+
+      - name: Build the HydraModem tools (best-effort; hydra media are skipped without them)
+        run: |
+          cd hydramodem/dcf-tools && ./build.sh || true
+
+      - name: Run the I/O matrix
+        run: python3 tests/io_matrix.py
+
+      - name: Upload the I/O matrix results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: io-matrix-results
+          path: tests/io_matrix_results.md
+          if-no-files-found: warn
