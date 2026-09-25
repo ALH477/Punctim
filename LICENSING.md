@@ -13,6 +13,24 @@ text is in [`LICENSE`](LICENSE).
 LGPL-3.0 lets you link DCF into proprietary applications, provided changes *to DCF itself* remain
 under the LGPL and users can relink. This is the default for the whole tree.
 
+### Why there are two licence texts
+
+LGPLv3 is not a standalone licence. Its own first paragraph says it "incorporates the terms and
+conditions of version 3 of the GNU General Public License, supplemented by the additional
+permissions listed below" — so the LGPLv3 text alone (7.6 kB of *additional permissions*) is
+incomplete without the GPLv3 it sits on top of. Both therefore ship here:
+
+| File | Text | Role |
+|---|---|---|
+| [`LICENSE`](LICENSE) | GNU **Lesser** General Public License v3.0 | the licence this project grants |
+| [`COPYING`](COPYING) | GNU General Public License v3.0 | the base terms LGPLv3 incorporates by reference |
+
+`COPYING` does **not** mean any part of the library is GPL-licensed — the library is
+`LGPL-3.0-only`, and the only GPL-scoped code in the repo is the DOOM example below. The FSF ships
+these as `COPYING` + `COPYING.LESSER`; this repo keeps the LGPL text at `LICENSE` instead, because
+that path is referenced by `CPACK_RESOURCE_FILE_LICENSE`, the per-language manifests and the
+READMEs. Both files are verbatim FSF texts and must not be edited.
+
 ## The DOOM example — GPL-3.0
 
 The DOOM integration example under [`C_SDK/examples/DOOM/`](C_SDK/examples/DOOM/) is licensed

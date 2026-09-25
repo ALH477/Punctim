@@ -194,9 +194,12 @@ describes the grant rather than overriding it. Its two unheadered sources
 (`src/rust/src/lib.rs`, whose only notice was a typo'd version-less `##LICESNE LGPL`, and
 `src/proto/dcf.proto`) gained SPDX headers to match.
 
-**Still open:** no GPLv3 text ships in the tree even though LGPLv3 incorporates it by
-reference (FSF practice is `COPYING` beside `COPYING.LESSER`) — the one remaining licence
-gap. Separately, and **not** a licensing issue: `hydra-llm-interface/` is referenced
+**Closed 2026-09-25:** the GPLv3 text now ships as [`COPYING`](../COPYING) — LGPLv3's own
+opening paragraph incorporates GPLv3 by reference, so the 7.6 kB `LICENSE` (additional
+permissions only) was incomplete without it. Verified byte-identical to two independent
+upstream copies; `LICENSING.md` explains why both texts are present and that `COPYING` does
+not make any part of the library GPL. With that, every licence gap R13 found is closed.
+Separately, and **not** a licensing issue: `hydra-llm-interface/` is referenced
 nowhere in the repo, its crate manifest is lowercase-named (`cargo.toml`, which cargo does
 not read, so the flake's `streamdb` derivation cannot build) and declares the nonexistent
 `edition = "2025"`. It is dead code that should be repaired or deleted. *Open.*
