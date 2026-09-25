@@ -43,7 +43,7 @@ import wirelab_core as wire  # noqa: E402
 EXIT_OK, EXIT_IO, EXIT_USAGE, EXIT_UNSUPPORTED, EXIT_CERT, EXIT_INVALID, EXIT_EXPECT = range(7)
 IMPL = "python"
 MEDIA = ("file", "stdio", "hex", "udp", "l2eth", "loop", "hydra", "afsk", "audio", "sdr",
-         "janus")
+         "janus", "mc")
 
 
 def _version():
@@ -252,11 +252,11 @@ def _parser():
         prog="punctim",
         description="DCF medium tool: move DeModFrames between any two media, "
                     "deterministically (Documentation/DCF_MEDIUM_SPEC.md).",
-        epilog="media: file: stdio: hex: udp: l2eth: loop: hydra: afsk: (audio:) sdr: janus:\n"
+        epilog="media: file: stdio: hex: udp: l2eth: loop: hydra: afsk: (audio:) sdr: janus: mc:\n"
                "exit: 0 ok, 1 I/O, 2 usage, 3 medium unsupported, 4 cert failed, "
                "5 invalid frame, 6 --expect not met",
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    sub = ap.add_subparsers(dest="cmd", metavar="{version,io,encode,decode,certify,sim}")
+    sub = ap.add_subparsers(dest="cmd", metavar="{version,io,encode,decode,certify,sim,mc}")
     sub.required = True
 
     v = sub.add_parser("version", help="print the version")
@@ -297,6 +297,8 @@ def _parser():
     c.add_argument("--family", nargs="+", metavar="NAME")
 
     sub.add_parser("sim", help="size the hardware a system needs (WP-Sim)", add_help=False)
+    sub.add_parser("mc", help="bridge a Minecraft world's DeModFrame register to UDP peers",
+                   add_help=False)
     return ap
 
 
@@ -318,6 +320,9 @@ def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv and argv[0] == "sim":
         return cmd_sim(argv[1:])
+    if argv and argv[0] == "mc":
+        from dcf.minecraft.cli import main as mc_main
+        return mc_main(argv[1:])
     a = _parser().parse_args(argv)               # argparse exits 2 on a usage error
     try:
         return {"version": cmd_version, "io": cmd_io, "encode": cmd_encode,
