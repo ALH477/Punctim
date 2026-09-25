@@ -241,6 +241,7 @@ static const scheme_keys_t SCHEMES[] = {
     {"audio", {"in", "out", "profile", "fec", NULL}},
     {"sdr",   {"in", "out", "mod", NULL}},
     {"janus", {"in", "out", "pset", "fs", "pset_file", "tx", "rx", NULL}},
+    {"mc",    {"rcon", "pass_file", "pass_env", "fifo", "log", "bot", "egress", "ns", "poll_hz", NULL}},
 };
 #define N_SCHEMES (sizeof SCHEMES / sizeof SCHEMES[0])
 #define URI_MAX_KV 32
@@ -272,7 +273,7 @@ static int uri_parse(const char *spec, uri_t *u) {
         if (!strcmp(SCHEMES[i].scheme, sch)) sk = &SCHEMES[i];
     if (!sk)
         return msg(PX_USAGE, "unknown medium '%s' (one of: file, stdio, hex, udp, l2eth, "
-                   "loop, hydra, afsk, audio, sdr, janus)", sch);
+                   "loop, hydra, afsk, audio, sdr, janus, mc)", sch);
     snprintf(u->scheme, sizeof u->scheme, "%s", sk->scheme);
     while (rest && *rest) {
         char *item = rest;
@@ -1070,7 +1071,7 @@ static int rd_open(reader_t *r, const char *spec, io_t *io) {
             return msg(PX_USAGE, "%s as input needs in=<dir>", s);
         return media_unsupported(s);
     }
-    return msg(PX_USAGE, "unknown medium '%s'", s);
+    return media_unsupported(s);   /* a known scheme this build cannot open (uri_parse already rejected unknown ones) */
 }
 
 static void rd_close(reader_t *r) {
@@ -1278,7 +1279,7 @@ static int wr_open(writer_t *w, const char *spec) {
             return msg(PX_USAGE, "%s as output needs out=<dir>", s);
         return media_unsupported(s);
     }
-    return msg(PX_USAGE, "unknown medium '%s'", s);
+    return media_unsupported(s);
 }
 
 /* Flush (incl. a pending bare frame) and release. 0 ok, -1 I/O error. */

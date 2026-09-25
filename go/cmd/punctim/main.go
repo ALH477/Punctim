@@ -603,7 +603,7 @@ func pyJSON(items []kv) string {
 // ── the medium URI grammar (mirrors python/dcf/medium.py:parse_uri) ─────────────
 
 var schemeOrder = []string{"file", "stdio", "hex", "udp", "l2eth", "loop", "hydra", "afsk",
-	"audio", "sdr", "janus"}
+	"audio", "sdr", "janus", "mc"}
 
 var schemeKeys = map[string][]string{
 	"file":  {"path", "mode", "append", "follow", "in", "out"},
@@ -618,6 +618,7 @@ var schemeKeys = map[string][]string{
 	"audio": {"in", "out", "profile", "fec"},
 	"sdr":   {"in", "out", "mod"},
 	"janus": {"in", "out", "pset", "fs", "pset_file", "tx", "rx"},
+	"mc":    {"rcon", "pass_file", "pass_env", "fifo", "log", "bot", "egress", "ns", "poll_hz"},
 }
 
 type uri struct {
@@ -782,6 +783,8 @@ func unsupportedMedium(u uri, dir string) error {
 		return unsupportedf("loop: an in-process medium has no peer inside a single punctim io")
 	case "sdr", "janus":
 		return unsupportedf("%s: needs the Python build", u.scheme)
+	case "mc":
+		return unsupportedf("mc: a Minecraft world's register is Python-only (punctim mc)")
 	}
 	return unsupportedf("%s: not supported as %s in this build", u.scheme, dir)
 }

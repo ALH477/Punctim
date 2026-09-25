@@ -97,6 +97,7 @@ const SCHEMES = {
   audio: ['in', 'out', 'profile', 'fec'],
   sdr: ['in', 'out', 'mod'],
   janus: ['in', 'out', 'pset', 'fs', 'pset_file', 'tx', 'rx'],
+  mc: ['rcon', 'pass_file', 'pass_env', 'fifo', 'log', 'bot', 'egress', 'ns', 'poll_hz'],
 };
 const COMMON_KEYS = ['name'];
 
@@ -193,6 +194,7 @@ function unsupported(scheme) {
     audio: 'audio: (= afsk:) the AFSK WAV modem is Python-only (numpy)',
     sdr: 'sdr: the IQ modem is Python-only (numpy)',
     janus: 'janus: the JANUS transport is Python-only (janus-c subprocess)',
+    mc: "mc: a Minecraft world's register is Python-only (punctim mc)",
   }[scheme];
   return new Unsupported(why || `${scheme}: not available in the Node build`);
 }
