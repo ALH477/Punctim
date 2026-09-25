@@ -52,8 +52,6 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
         -Wnull-dereference
         -Wstack-protector
         -Wstrict-overflow=2
-        -Warray-bounds=2
-        -Wshift-overflow=2
         -Wcast-qual
         -Wconversion
         -Wsign-conversion
@@ -78,11 +76,18 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
             -Wduplicated-branches
             -Wrestrict
             -Wnull-dereference
+            # GCC-only numeric levels: clang has no `=N` form and emits
+            # -Wunknown-warning-option for each of these on every file.
+            -Warray-bounds=2
+            -Wshift-overflow=2
         )
     endif()
     
     if(CMAKE_C_COMPILER_ID STREQUAL "Clang")
         list(APPEND DCF_WARNINGS
+            # clang spells these without the level suffix
+            -Warray-bounds
+            -Wshift-overflow
             -Wall -Wextra -Wconversion
             -Wno-padded
             -Wno-covered-switch-default
