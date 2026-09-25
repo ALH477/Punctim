@@ -186,23 +186,28 @@ subsection — nothing was ever vendored or linked, so that was a documentation 
 leak. **Licence metadata completed 2026-09-25.** `rust/flake.nix`'s two packages
 (`dcf-node-static`, the container) now declare `lgpl3Only`, matching the `LGPL-3.0-only`
 in `rust/Cargo.toml` that they are built from; the static link is noted, since a
-redistributor relying on LGPLv3 §4 must also ship the means to relink. The
-`hydra-llm-interface/` subtree is the tree's **one deliberate exception**: all five of its
-licence headers grant LGPLv3 "or (at your option) any later version", so its flake
-derivations declare `lgpl3Plus` and its crate declares `LGPL-3.0-or-later` — the metadata
-describes the grant rather than overriding it. Its two unheadered sources
-(`src/rust/src/lib.rs`, whose only notice was a typo'd version-less `##LICESNE LGPL`, and
-`src/proto/dcf.proto`) gained SPDX headers to match.
+redistributor relying on LGPLv3 §4 must also ship the means to relink. `hydra-llm-interface/`
+was the tree's one `LGPL-3.0-or-later` exception (all five of its licence headers granted
+"or at your option any later version"); it has since been **deleted** — see below — so the
+tree is now uniformly `LGPL-3.0-only`, with GPL-3.0 scoped to the DOOM example and the
+janus-c / quanta subprocess boundaries.
 
 **Closed 2026-09-25:** the GPLv3 text now ships as [`COPYING`](../COPYING) — LGPLv3's own
 opening paragraph incorporates GPLv3 by reference, so the 7.6 kB `LICENSE` (additional
 permissions only) was incomplete without it. Verified byte-identical to two independent
 upstream copies; `LICENSING.md` explains why both texts are present and that `COPYING` does
 not make any part of the library GPL. With that, every licence gap R13 found is closed.
-Separately, and **not** a licensing issue: `hydra-llm-interface/` is referenced
-nowhere in the repo, its crate manifest is lowercase-named (`cargo.toml`, which cargo does
-not read, so the flake's `streamdb` derivation cannot build) and declares the nonexistent
-`edition = "2025"`. It is dead code that should be repaired or deleted. *Open.*
+**`hydra-llm-interface/` deleted 2026-09-25.** It was referenced nowhere in the
+repo, its crate manifest was lowercase-named (`cargo.toml`, which cargo does not read, so
+the flake's `streamdb` derivation could not build) and declared the nonexistent
+`edition = "2025"` — both verified by running cargo against a copy. Every commit touching it
+was a one-shot "Create <file>" upload with no follow-up. Its two substantive files were
+unique but dead: a 1684-line Rust StreamDb (distinct from `HandHelds/core/src/streamdb.rs`
+and from the C `lisp/streamdb/`) and a 361-line Python LLM interface. Deleting it also
+removed the **only** use of `cryptography`/Fernet in the tree — that code encrypted StreamDb
+payloads at rest, never the wire, so it was not an export-posture breach, but its removal
+leaves the tree with no cryptography at all, which is a cleaner story to defend. Recoverable
+from history at `3f3b8dd` if ever wanted. *Closed.*
 
 **DCF-Medium (new module) — status.** Spec `Documentation/DCF_MEDIUM_SPEC.md` (normative)
 and a **162-case certificate** over seven families (stream 11, hex 8, udp_proto 21,
