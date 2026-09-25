@@ -17,7 +17,6 @@ option(DCF_BUILD_BENCHMARKS "Build benchmarks" OFF)
 option(DCF_BUILD_EXAMPLES "Build examples" ON)
 option(DCF_BUILD_NODE "Build the dcfnode UDP mesh node (ProtoMessage transport)" ON)
 option(DCF_BUILD_PLUGINS "Compile the v1 transport plugins (bit-rot guard; nothing loads them yet)" OFF)
-option(DCF_MODEM_AUDIO "Link a live-audio backend into the Faust modem transport" OFF)
 option(DCF_ENABLE_SANITIZERS "Deprecated alias for -DDCF_SAN=address" OFF)
 set(DCF_SAN "OFF" CACHE STRING
     "Sanitizer configuration: OFF, address (ASan+UBSan), thread (TSan), undefined (UBSan only)")
@@ -377,7 +376,7 @@ if(DCF_BUILD_TESTS)
     # Adapter certification binaries. These were previously compiled only by
     # raw gcc lines in wire-certify.yml; registering them here means one
     # `ctest` run covers the full C certification surface.
-    foreach(cert wire superpack fec audio game text sstv snake monitor pipe)
+    foreach(cert wire superpack fec audio game text sstv snake monitor pipe medium)
         add_executable(test_${cert}_certify tests/test_${cert}_certify.c)
         target_include_directories(test_${cert}_certify PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}/../codec)
@@ -423,6 +422,16 @@ if(DCF_BUILD_NODE)
         ${CMAKE_CURRENT_SOURCE_DIR}/../codec)
     target_compile_options(dcfnode PRIVATE ${DCF_WARNINGS})
     target_link_libraries(dcfnode PRIVATE m)
+
+    # punctim — the uniform DCF medium CLI (Documentation/DCF_MEDIUM_SPEC.md): any medium in
+    # -> any medium out, byte-deterministic across languages. Header-only codec
+    # (../codec/demod_medium.h); `punctim certify` compiles in tests/test_medium_certify.c.
+    add_executable(punctim node/punctim.c)
+    target_include_directories(punctim PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/node
+        ${CMAKE_CURRENT_SOURCE_DIR}/../codec)
+    target_compile_options(punctim PRIVATE ${DCF_WARNINGS})
+    target_link_libraries(punctim PRIVATE m)
 
     if(DCF_BUILD_TESTS)
         add_executable(test_proto_certify tests/test_proto_certify.c)

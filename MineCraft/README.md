@@ -4,6 +4,16 @@
 
 Version 3.1.0 | License: LGPL-3.0 | Minecraft 1.21.x
 
+> **Demonstration only — NOT a DCF wire-quantum implementation.** This datapack's
+> 17-byte frame (`"RDCF"` magic, version `0x4601`, a 1-byte checksum `0x01`) has **no
+> `0xD3` sync byte, no version nibble and no CRC-16/CCITT-FALSE**, so it is
+> **non-conforming** to [`Documentation/WIRE_QUANTUM_SPEC.md`](../Documentation/WIRE_QUANTUM_SPEC.md)
+> and fails the frame gate (`punctim decode 5254444346010000000000000000000001` →
+> `invalid (bad sync byte)`, exit 5). It is not certified against
+> `golden_vectors.json` and is not a binding. "Reference implementation" and
+> "normative" below (and in [`protocol.md`](protocol.md)) describe this redstone demo's
+> own rules, not DCF's.
+
 ---
 
 ## Overview

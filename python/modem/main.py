@@ -4,7 +4,17 @@ DeMoD DCF Acoustic Modem - Handshakeless Over-Air Communication
 ================================================================
 
 Faust JIT compiler + real-time audio I/O for speaker-to-microphone
-DCF frame transmission between two computers over open air.
+frame transmission between two computers over open air.
+
+NON-CONFORMING to the wire quantum (Documentation/WIRE_QUANTUM_SPEC.md). This is the
+repo's only *live* audio path, but what it puts on air is its own frame, not a
+DeModFrame: a 15-byte header (type u8 | seq u32 | ts u64 | payload_len u16, see
+DCFFrame below) + N payload bytes, followed by a CRC-8 -- no 0xD3 sync, no version
+nibble, no CRC-16. Only the bit layer (preamble, 0x7E sync, CRC-8, postamble) is shared
+with acoustic_frame.py, so its frames are not certified and do not interoperate with
+the certified `afsk:` medium. Porting it to carry the 17-byte DeModFrame is deferred to
+v0.2; the port should target the certified `afsk_bits` bit-stream codec in
+python/MCP/mediumlab_core.py (Documentation/DCF_MEDIUM_SPEC.md, `afsk:`).
 
 Usage:
     python dcf_acoustic_modem.py tx "Hello from DCF"
@@ -103,10 +113,11 @@ C_BG     = "\033[48;5;234m"
 
 class DCFFrame:
     """
-    DCF transport frame: 17-byte header + N-byte payload.
+    Acoustic-modem frame (NON-CONFORMING -- not the 17-byte DeModFrame wire quantum):
+    15-byte header + N-byte payload, followed on air by a CRC-8.
 
-    Wire format (big-endian):
-        type(1) + sequence(4) + timestamp(8) + payload_len(4) + payload(N)
+    Format (big-endian), as HEADER_FMT below actually packs it:
+        type(1) + sequence(4) + timestamp(8) + payload_len(2) + payload(N)
 
     The header maps to Z/136Z (S8).
     A 4-byte payload maps to Z/32Z (S7.4).
@@ -159,7 +170,8 @@ class DCFFrame:
 
     @staticmethod
     def crc8(data):
-        """CRC-8/MAXIM for frame integrity."""
+        """CRC-8 for frame integrity: poly 0x31, init 0x00, MSB-first, non-reflected
+        (crc8("123456789") = 0xA2). Not CRC-8/MAXIM, which is the reflected form (0xA1)."""
         crc = 0x00
         for byte in data:
             crc ^= byte

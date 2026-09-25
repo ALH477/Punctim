@@ -4,7 +4,9 @@
  * single-frame counterpart to rx_campaign, used by the DCF `hydra:` transport.
  * Repo glue (DeMoD LLC, LGPL-3.0).
  *
- *   frame_rx in.wav [--none|--rep3|--conv]   (must match the TX FEC; default conv)
+ *   frame_rx in.wav [--profile default|aux] [--none|--rep3|--conv] [--interleave 0|1]
+ *            [--preamble N] [--base-freq HZ] [--tone-spacing HZ] [--baud HZ] [--n-tones N]
+ * All flags must match the TX side (defaults: profile default, conv FEC, interleave on).
  */
 #include "../src/hydramodem.h"
 #include "frame_profile.h"
@@ -15,7 +17,9 @@
 int main(int argc, char **argv)
 {
     if (argc < 2) {
-        fprintf(stderr, "usage: %s in.wav [--none|--rep3|--conv]\n", argv[0]);
+        fprintf(stderr, "usage: %s in.wav " FRAME_PROFILE_USAGE "\n"
+                        "  (must match the TX flags; defaults: --profile default --conv --interleave 1)\n",
+                argv[0]);
         return 2;
     }
     hydra_profile p;

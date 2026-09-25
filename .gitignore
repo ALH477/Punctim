@@ -16,6 +16,9 @@ CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
 
+# Go CLI build output (go build -o bin/punctim ./cmd/punctim)
+go/bin/
+
 # Node.js
 node_modules/
 dist/

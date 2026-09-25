@@ -89,11 +89,25 @@ class HydraModem:
     """In-process HydraModem codec: encode_wav(frame, path) / decode_wav(path)."""
 
     def __init__(self, fec="conv", base_freq=None, tone_spacing=None, baud=None,
-                 n_tones=None):
+                 n_tones=None, profile="default", interleave=None, preamble_syms=None):
         lib = _load()
         p = _Profile()
-        lib.hydra_profile_default(C.byref(p))
+        if profile == "aux":
+            # hydra_profile_aux_cable(): 1200 baud, tones 1200/2400 Hz, 16-symbol preamble
+            fn = getattr(lib, "hydra_profile_aux_cable", None)
+            if fn is not None:
+                fn.argtypes = [C.POINTER(_Profile)]
+                fn(C.byref(p))
+            else:                                   # older library: same values by hand
+                lib.hydra_profile_default(C.byref(p))
+                p.baud, p.base_freq, p.tone_spacing, p.preamble_syms = 1200.0, 1200.0, 1200.0, 16
+        elif profile == "default":
+            lib.hydra_profile_default(C.byref(p))
+        else:
+            raise ValueError(f"unknown HydraModem profile {profile!r} (default|aux)")
         p.fec_mode = _FEC.get(fec, 2)
+        if interleave is not None: p.interleave = 1 if int(interleave) else 0
+        if preamble_syms is not None: p.preamble_syms = int(preamble_syms)
         if base_freq is not None: p.base_freq = float(base_freq)
         if tone_spacing is not None: p.tone_spacing = float(tone_spacing)
         if baud is not None: p.baud = float(baud)

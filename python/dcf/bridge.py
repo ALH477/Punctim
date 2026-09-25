@@ -167,37 +167,24 @@ def _demo():
 
 # ── CLI: compose a node's shape from transports ───────────────────────────────
 def _make_transport(spec):
-    from .transport import (UdpTransport, AudioTransport, SdrTransport, FileTransport,
-                            JanusTransport, HydraTransport)
-    typ, _, rest = spec.partition(":")
-    kw = dict(kv.split("=", 1) for kv in rest.split(",") if kv) if rest else {}
-    name = kw.pop("name", typ)
-    if typ == "udp":
-        host, port = kw.get("bind", "0.0.0.0:0").split(":")
-        peers = [(p.split("@")[-1].rsplit(":", 1)[0], int(p.rsplit(":", 1)[1]))
-                 for p in kw.get("peer", "").split("|") if p]
-        return UdpTransport(name, bind=(host, int(port)), peers=peers)
-    if typ == "audio":
-        return AudioTransport(name, out_dir=kw.get("out"), in_dir=kw.get("in"),
-                              profile=kw.get("profile", "handheld"), fec=kw.get("fec") == "1")
-    if typ == "sdr":
-        return SdrTransport(name, out_dir=kw.get("out"), in_dir=kw.get("in"),
-                            mod=kw.get("mod", "gfsk"))
-    if typ == "janus":
-        # STANAG-4748 via the GPL janus-c reference (separate process). Carries the
-        # frame as JANUS cargo; see Documentation/DCF_JANUS_SPEC.md.
-        return JanusTransport(name, out_dir=kw.get("out"), in_dir=kw.get("in"),
-                              pset_id=int(kw.get("pset", "1")), fs=int(kw.get("fs", "48000")),
-                              pset_file=kw.get("pset_file"),
-                              tx_bin=kw.get("tx"), rx_bin=kw.get("rx"))
-    if typ == "hydra":
-        # HydraModem (M-FSK + soft-Viterbi FEC) via the frame_tx/frame_rx subprocess PHY.
-        return HydraTransport(name, out_dir=kw.get("out"), in_dir=kw.get("in"),
-                              fec=kw.get("fec", "conv"),
-                              tx_bin=kw.get("tx"), rx_bin=kw.get("rx"))
-    if typ == "file":
-        return FileTransport(name, out_path=kw.get("out"), in_path=kw.get("in"))
-    raise SystemExit(f"unknown transport type {typ!r} (udp|audio|sdr|janus|hydra|file)")
+    """Build a transport from a medium URI — delegates to the single-sourced DCF-Medium
+    grammar in ``dcf.medium`` (Documentation/DCF_MEDIUM_SPEC.md). Historical strings
+    (``udp:bind=,peer=``, ``audio:``, ``sdr:``, ``janus:``, ``hydra:``, ``file:in=,out=``)
+    keep working; a bridge ``file:`` port tails its spool and appends, as before."""
+    from .medium import make_transport, UsageError, MediumUnsupported
+    try:
+        return make_transport(spec, direction=None)
+    except (UsageError, MediumUnsupported) as e:
+        raise SystemExit(f"dcf-bridge: {e}")
+
+
+_TRANSPORT_HELP = (
+    "medium URI SCHEME:k=v,... (repeatable): "
+    "udp:dialect=proto|bare,bind=HOST:PORT,peer=HOST:PORT|... | "
+    "file:path=F.dcf (or in=,out=) | stdio: | hex:[path=F] | loop:id=N | "
+    "l2eth:if=IF|impl=loop | hydra:in=,out=,profile=default|aux,fec=none|rep3|conv | "
+    "afsk:in=,out=,profile=,fec=0|1 (audio: alias) | sdr:in=,out=,mod= | "
+    "janus:in=,out=,pset= — see Documentation/DCF_MEDIUM_SPEC.md")
 
 
 def main(argv=None):
@@ -211,7 +198,7 @@ def main(argv=None):
                "  dcf-bridge --demo        # multi-hop across media, no hardware",
         formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("-t", "--transport", action="append", default=[], metavar="TYPE:k=v,...",
-                    help="udp|audio|sdr|file (repeatable)")
+                    help=_TRANSPORT_HELP)
     ap.add_argument("--route", choices=["flood", "egress"], default="flood")
     ap.add_argument("--uplink", default=None, help="transport name toward backhaul (egress)")
     ap.add_argument("--inject", metavar="HEX", help="originate a 17-byte frame (hex)")

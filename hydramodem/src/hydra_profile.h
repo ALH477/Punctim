@@ -60,13 +60,15 @@ typedef struct {
 
 /* A sensible default: orthogonal binary FSK in the voice band at 48 kHz.
  *   tones 2000 / 3000 Hz, 1000 baud (48 samples/symbol), 24-symbol preamble,
- *   sync 0x2DD4, FEC off, gain 0.9. Matches faust/hydramodem_{tx,rx}.dsp. */
+ *   sync 0x2DD4, FEC convolutional (K=7 r=1/2, soft Viterbi) with the coded-bit
+ *   interleaver on, gain 0.9. Matches faust/hydramodem_{tx,rx}.dsp. */
 void hydra_profile_default(hydra_profile *p);
 
 /* Aux-cable profile: wired line-level connection (3.5mm/TRS).
- *   1200 baud (4x faster than default), tones 1200/2400 Hz (orthogonal at 48 kHz),
+ *   1200 baud (1.2x the default), tones 1200/2400 Hz (orthogonal at 48 kHz),
  *   16-symbol preamble (short — no AGC settling needed on cable), FEC convolutional.
- *   Matches python/modem/acoustic_frame.py "aux-cable" profile behavior. */
+ *   NOT interoperable with python/modem/acoustic_frame.py's "aux-cable" AFSK profile
+ *   (different tones, sync word and FEC): that is the afsk: medium, this is hydra:. */
 void hydra_profile_aux_cable(hydra_profile *p);
 
 /* Compute derived fields and validate. Returns 0 on success, <0 on bad config:

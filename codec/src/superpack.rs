@@ -19,7 +19,7 @@
 //! ordinary, fully valid `DeModFrame`s and the 246-vector wire certificate is
 //! untouched. SuperPack is a *container adapter*, never a change to the quantum.
 
-use crate::{crc16_ccitt, Frame, SYNC_BYTE};
+use crate::{crc16_ccitt, SYNC_BYTE};
 
 /// 4-bit type nibble that tags a SuperPack container.
 pub const SUPER_TYPE: u8 = 0x05;
@@ -92,8 +92,18 @@ pub fn is_superpack(buf: &[u8]) -> bool {
     buf.len() == SUPER_LEN && buf[0] == SYNC_BYTE && buf[1] == SFLAGS
 }
 
+/// The frame gate: sync `0xD3` + version nibble 1 + CRC-16/CCITT-FALSE. The 4-bit type
+/// nibble is NOT part of it — reserved types 4..15 are valid on the wire (the golden
+/// certificate's encode basis carries types 4 and 8), so a container never rejects them.
+fn gate(frame: &[u8; 17]) -> bool {
+    frame[0] == SYNC_BYTE
+        && frame[1] >> 4 == VERSION
+        && crc16_ccitt(&frame[..15]) == (u16::from(frame[15]) << 8 | u16::from(frame[16]))
+}
+
 /// Split a 32-byte SuperPack back into `(frame_a, frame_b)`, each a bit-exact,
-/// fully valid 17-byte `DeModFrame`. Returns `Err` on any integrity failure.
+/// fully valid 17-byte `DeModFrame` (any type nibble). Returns `Err` on any integrity
+/// failure — exactly the checks of `python/MCP/superpack.py:unpack`.
 pub fn unpack(buf: &[u8]) -> Result<([u8; 17], [u8; 17]), SuperPackError> {
     if buf.len() != SUPER_LEN {
         return Err(SuperPackError::BadLength);
@@ -117,9 +127,12 @@ pub fn unpack(buf: &[u8]) -> Result<([u8; 17], [u8; 17]), SuperPackError> {
     core_b.copy_from_slice(&buf[2 + CORE_LEN..2 + 2 * CORE_LEN]);
     let frame_a = rebuild_frame(&core_a);
     let frame_b = rebuild_frame(&core_b);
-    // Belt and braces: the rebuilt frames must themselves decode cleanly.
-    Frame::decode(&frame_a).map_err(|_| SuperPackError::InnerDecode)?;
-    Frame::decode(&frame_b).map_err(|_| SuperPackError::InnerDecode)?;
+    // Belt and braces: the rebuilt frames must themselves pass the frame gate. (Not
+    // `Frame::decode`, which also rejects the reserved type nibbles 4..15 and does not
+    // check the version nibble — both diverge from the Python/C references.)
+    if !gate(&frame_a) || !gate(&frame_b) {
+        return Err(SuperPackError::InnerDecode);
+    }
     Ok((frame_a, frame_b))
 }
 
@@ -140,5 +153,53 @@ mod tests {
         let zero = Frame::new(1, crate::FrameType::Data, 0, 0, 0, [0, 0, 0, 0], 0).encode();
         let spz = pack(&zero, &zero).unwrap();
         assert_eq!(u16::from(spz[30]) << 8 | u16::from(spz[31]), 0x5B75);
+    }
+
+    fn gated(t: u8, seq: u16) -> [u8; 17] {
+        let mut f = [0u8; 17];
+        f[0] = SYNC_BYTE;
+        f[1] = (VERSION << 4) | t;
+        f[2..4].copy_from_slice(&seq.to_be_bytes());
+        let crc = crc16_ccitt(&f[..15]);
+        f[15..17].copy_from_slice(&crc.to_be_bytes());
+        f
+    }
+
+    fn unhex(s: &str) -> Vec<u8> {
+        (0..s.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
+            .collect()
+    }
+
+    /// The frame gate is sync + version nibble 1 + CRC — the type nibble is NOT gated, so
+    /// every type 0..15 must round-trip (as in python/MCP/superpack.py and
+    /// codec/demod_superpack.h), and an inner core whose version nibble is not 1 is
+    /// rejected (as the Python reference's `decode` does).
+    #[test]
+    fn any_type_nibble_roundtrips() {
+        for t in 0..16u8 {
+            let (a, b) = (gated(t, 0x0404), gated(15 - t, 0xFFF0));
+            let sp = pack(&a, &b).unwrap();
+            assert_eq!(unpack(&sp).unwrap(), (a, b), "type {t}");
+        }
+        // medium_vectors.json udp_bare "pair_type4_type15"
+        let t4 = unhex("d314040400040400040404040404044b96");
+        let t15 = unhex("d31ffff00f0ff0f00ff00ff00f0f0f5365");
+        let sp = unhex("d31514040400040400040404040404041ffff00f0ff0f00ff00ff00f0f0f0cb8");
+        let (a, b) = unpack(&sp).unwrap();
+        assert_eq!((a.to_vec(), b.to_vec()), (t4.clone(), t15.clone()));
+        let pa: [u8; 17] = t4.try_into().unwrap();
+        let pb: [u8; 17] = t15.try_into().unwrap();
+        assert_eq!(pack(&pa, &pb).unwrap().to_vec(), sp);
+    }
+
+    #[test]
+    fn inner_version_nibble_is_gated() {
+        let mut sp = pack(&gated(0, 1), &gated(0, 2)).unwrap();
+        sp[16] = 2 << 4; // frame B's flags byte -> version nibble 2 (type 0, a known type)
+        let crc = crc16_ccitt(&sp[..30]);
+        sp[30..32].copy_from_slice(&crc.to_be_bytes());
+        assert_eq!(unpack(&sp), Err(SuperPackError::InnerDecode));
     }
 }

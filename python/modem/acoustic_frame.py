@@ -14,7 +14,8 @@ On-air bit layout (MSB-first, identical to the deployed Faust modem):
 
 Two payload modes (both modems must agree per link):
   * `fec=False` (default, interop baseline): `frame(17B) + crc8`  — exactly what the Faust
-    modem has always sent (CRC-8/MAXIM, poly 0x31).
+    modem has always sent (CRC-8 poly 0x31, non-reflected, check value 0xA2 — not the
+    reflected CRC-8/MAXIM, whose check value is 0xA1).
   * `fec=True`  (robust): `rs_encode(frame)` — the certified Reed-Solomon codeword, so the
     receiver corrects (not just detects) the byte-errors a handheld radio injects.
 

@@ -23,8 +23,9 @@ for _mcp in (os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "MCP
              os.path.join(os.path.dirname(os.path.abspath(__file__)), "MCP")):
     if os.path.isdir(_mcp):
         sys.path.insert(0, _mcp)
-import wirelab_core as wire       # noqa: E402  (certified DeModFrame codec)
-import superpack                  # noqa: E402  (certified SuperPack container)
+import wirelab_core as wire       # noqa: E402,F401  (certified DeModFrame codec)
+import superpack                  # noqa: E402,F401  (certified SuperPack container)
+import mediumlab_core as _medium  # noqa: E402  (certified medium codecs: l2eth family)
 
 from .transport import Transport, LoopbackTransport
 
@@ -32,53 +33,19 @@ from .transport import Transport, LoopbackTransport
 ETHERTYPE_RECORD = 0x88B5         # wire A: quanta record plane
 ETHERTYPE_CUE = 0x88B6            # wire B: PCM cue plane
 
-L2_HDR = 2                        # the n_frames u16
 SUPER_LEN = 32
 FRAME_LEN = 17
 BROADCAST_MAC = b"\xff\xff\xff\xff\xff\xff"
 
+# The batch codec is the certified DCF-Medium `l2eth` family (python/MCP/mediumlab_core.py,
+# Documentation/medium_vectors.json); re-exported here under the historical names.
+L2_HDR = _medium.L2_HDR           # the n_frames u16
 # The canonical zero filler frame (a valid DATA DeModFrame with all application fields 0);
 # byte-identical to the C snake_l2.h filler, so a batch decodes the same in both languages.
-_FILLER = wire.encode(0, 0, 0, 0, b"\x00\x00\x00\x00", 0)
-
-
-def l2_capacity(mtu):
-    """Number of DeModFrames that fit one Ethernet payload of the given MTU."""
-    if mtu < L2_HDR:
-        return 0
-    return ((mtu - L2_HDR) // SUPER_LEN) * 2
-
-
-def batch(frames):
-    """Batch a list of 17-byte DeModFrames into one Ethernet payload (bytes)."""
-    n = len(frames)
-    if n > 0xFFFF:
-        raise ValueError("too many frames for one batch")
-    out = bytearray(n.to_bytes(2, "big"))
-    for i in range(0, n, 2):
-        a = frames[i]
-        b = frames[i + 1] if i + 1 < n else _FILLER
-        out += superpack.pack(bytes(a), bytes(b))
-    return bytes(out)
-
-
-def unbatch(buf):
-    """Split an Ethernet payload back into a list of 17-byte DeModFrames (bit-exact)."""
-    if len(buf) < L2_HDR:
-        raise ValueError("short batch")
-    n = int.from_bytes(buf[:2], "big")
-    npairs = (n + 1) // 2
-    if len(buf) < L2_HDR + npairs * SUPER_LEN:
-        raise ValueError("truncated batch")
-    frames = []
-    off = L2_HDR
-    for _ in range(npairs):
-        a, b = superpack.unpack(buf[off:off + SUPER_LEN])
-        off += SUPER_LEN
-        frames.append(a)
-        if len(frames) < n:
-            frames.append(b)
-    return frames
+_FILLER = _medium.L2_FILLER
+l2_capacity = _medium.l2_capacity
+batch = _medium.l2_batch          # frames -> [n u16 BE][SuperPack * ceil(n/2)]
+unbatch = _medium.l2_unbatch      # payload -> frames (bit-exact); ValueError if truncated
 
 
 # ── real AF_PACKET transport (needs CAP_NET_RAW) ──────────────────────────────
@@ -96,6 +63,7 @@ class L2EthTransport(Transport):
         self._sock = None
         self._rx_running = False
         self._rx_thread = None
+        self.invalid_datagrams = 0
 
     def _open(self):
         s = socket.socket(socket.AF_PACKET, socket.SOCK_DGRAM, socket.htons(self._ethertype))
@@ -132,10 +100,12 @@ class L2EthTransport(Transport):
             except OSError:
                 break
             try:
-                for f in unbatch(buf):
-                    self._deliver(f, {"via": "l2eth"})
+                frames = unbatch(buf)
             except ValueError:
+                self.invalid_datagrams += 1
                 continue
+            for f in frames:
+                self._deliver(f, {"via": "l2eth"})
 
     def _stop_recv(self):
         self._rx_running = False
@@ -156,3 +126,8 @@ class L2LoopbackTransport(LoopbackTransport):
         # SuperPack container is transparent to the frame bytes.
         (recovered,) = unbatch(batch([bytes(frame)]))
         self._medium.broadcast(self, recovered)
+
+    def send_batch(self, frames, dest=None):
+        """Ship many frames as ONE modelled Ethernet payload (batch -> unbatch -> wire)."""
+        for f in unbatch(batch([bytes(x) for x in frames])):
+            self._medium.broadcast(self, f)

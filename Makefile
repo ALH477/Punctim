@@ -3,7 +3,7 @@
 # point for setup, certification, tests, docs, and the client (see README.md).
 
 .DEFAULT_GOAL := help
-.PHONY: help setup certify ci-local test docs client clean
+.PHONY: help setup certify io-matrix ci-local test docs client clean
 
 help: ## List the available tasks
 	@echo "Punctim / DCF — make targets:"
@@ -15,7 +15,7 @@ help: ## List the available tasks
 setup: ## Install native dependencies (distro-aware; prompts before installing)
 	./install_deps.sh
 
-certify: ## Regenerate golden vectors + run the wire & audio certs (Python/Rust/C)
+certify: ## Regenerate golden vectors + run the wire, audio, SuperPack, mesh & Medium certs
 	@echo "== wire: verify laws + reference codec selftest =="
 	python3 python/MCP/verify_laws.py /tmp/dcf_gv.json
 	python3 python/MCP/certify_sdk.py --selftest
@@ -49,7 +49,28 @@ certify: ## Regenerate golden vectors + run the wire & audio certs (Python/Rust/
 	cd codec && cargo test --test certify_mesh
 	gcc -std=c11 -I codec C_SDK/tests/test_mesh_certify.c -o /tmp/dcf_meshc && /tmp/dcf_meshc
 	cd go && go test ./mesh/
+	@echo "== Medium (DCF-Medium codecs): regenerate vectors + diff, Rust + C + Go + Node certs =="
+	python3 python/MCP/mediumlab_core.py
+	python3 python/MCP/gen_medium_vectors.py /tmp/dcf_med.json
+	diff /tmp/dcf_med.json Documentation/medium_vectors.json
+	diff /tmp/dcf_med.json python/MCP/medium_vectors.json
+	diff /tmp/medium_vectors.gen.h codec/medium_vectors.gen.h
+	cd codec && cargo test --test certify_medium
+	gcc -std=c11 -I codec C_SDK/tests/test_medium_certify.c -lm -o /tmp/dcf_medc && /tmp/dcf_medc
+	cd go && go test ./medium/
+	node JS/nodejs/test/certify_medium.js
 	@echo "ALL CERTS PASS"
+
+io-matrix: ## Build the punctim CLIs and run the cross-language medium I/O matrix
+	cmake -S C_SDK -B C_SDK/build -DDCF_BUILD_NODE=ON -DDCF_BUILD_EXAMPLES=OFF
+	cmake --build C_SDK/build --target punctim
+	cd codec && cargo build --bin punctim
+	cd go && go build -o bin/punctim ./cmd/punctim
+	@if [ -f hydramodem/dcf-tools/build.sh ]; then \
+		bash hydramodem/dcf-tools/build.sh || \
+			echo "(HydraModem tools not built: the hydra leg will be skipped)"; \
+	fi
+	python3 tests/io_matrix.py
 
 ci-local: ## Run the wire-certify CI workflow locally (host toolchains + nix for the rest)
 	bash .github/ci-local.sh

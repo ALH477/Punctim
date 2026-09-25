@@ -16,8 +16,9 @@
 
 > **Status, honestly.** Punctim is **pre-1.0**. The project does not yet ship
 > "11 production-ready language bindings." What is real today is the **wire
-> quantum** and its cross-language **certificate**, green in CI for a small set of
-> implementations. See the [language status tiers](#language-status) below for
+> quantum** and its cross-language **certificate** (plus, now, the
+> [medium layer](#deterministic-across-mediums) beneath it), attested green locally with
+> `make ci-local` (hosted CI has never run a job). See the [language status tiers](#language-status) below for
 > exactly what is certified, what is design-complete, and what is still an
 > experimental stub. Version 1.0.0 is reserved for when the advertised set is
 > green in CI.
@@ -29,9 +30,76 @@ Punctim is a free and open-source software (FOSS) framework evolved from the DeM
 
 The one invariant that is real and certified today is the **wire quantum**: the 17-byte `DeModFrame`. Everything else — audio, game state, transports — is an *adapter* over it, and the cross-language **certificate** (`Documentation/golden_vectors.json`) is the contract that keeps the implementations byte-identical. The linkable library is **LGPL-3.0**; GPL-3.0 is scoped to the bundled DOOM example only.
 
-The framework is intended to be hardware- and language-agnostic across embedded devices (e.g., Raspberry Pi), cloud servers, and mobile platforms. The breadth of that intent is not the breadth of what ships today — see the status tiers immediately below for the truthful, per-language state. Higher-level framework features (CLI, TUI, AI-driven topology optimization) are **planned**, not present in the current release (see [`Documentation/DCF_CODE_REVIEW.md`](Documentation/DCF_CODE_REVIEW.md), item D1). The mesh *control* layer is a different story, and this section of the README was stale about it: peer-health tracking, RTT grouping, RTT-weighted Dijkstra route selection, master election and failover **ship today** as **DCF-Mesh**, an opt-in adapter that a node runs in `auto`/`master` mode — see [Adapters over the quantum](#adapters-over-the-quantum).
+The framework is intended to be hardware- and language-agnostic across embedded devices (e.g., Raspberry Pi), cloud servers, and mobile platforms. The breadth of that intent is not the breadth of what ships today — see the status tiers immediately below for the truthful, per-language state. Higher-level framework features (a monitoring TUI, AI-driven topology optimization) are **planned**, not present in the current release; a CLI now ships for the medium layer (`punctim`, [below](#deterministic-across-mediums)) (see [`Documentation/DCF_CODE_REVIEW.md`](Documentation/DCF_CODE_REVIEW.md), item D1). The mesh *control* layer is a different story, and this section of the README was stale about it: peer-health tracking, RTT grouping, RTT-weighted Dijkstra route selection, master election and failover **ship today** as **DCF-Mesh**, an opt-in adapter that a node runs in `auto`/`master` mode — see [Adapters over the quantum](#adapters-over-the-quantum).
 
 <img width="3888" height="2208" alt="image" src="https://github.com/user-attachments/assets/1294e4e6-906c-42ef-af0d-c192056803ea" />
+
+## Deterministic across mediums
+
+Punctim is meant to be known as **the protocol that is deterministic across multiple
+mediums**: a computer can take a DCF frame stream from any medium and emit it on any
+other — a `.dcf` file, a pipe, hex text, a UDP datagram, a raw-Ethernet payload, a
+HydraModem or AFSK tone stream — and every implementation writes the same bytes. That is
+a checkable contract, not a slogan. [**DCF-Medium**](Documentation/DCF_MEDIUM_SPEC.md)
+models each medium as a deterministic codec `frames ⇄ representation` under five laws
+(lossless; order-preserving; resync; one frame gate — `0xD3` + version nibble 1 +
+CRC-16/CCITT-FALSE; media never parse the frame), pinned by a **162-case certificate**
+(`Documentation/medium_vectors.json`, seven families). Media ride *beneath* the quantum,
+so the 246-vector wire certificate is untouched.
+
+> **Determinism rule (normative):** *for finite inputs, `punctim io` in any language
+> produces byte-identical output for identical input and URI; `udp:proto` needs `ts=0`
+> (the default).*
+
+The same **`punctim`** tool ships in five languages with one CLI and one set of exit
+codes (0 ok · 1 I/O · 2 usage · 3 medium unsupported in this build · 4 cert failed ·
+5 invalid frame · 6 `--expect` not met): Python `python/punctim.py` (`pip install ./python`
+→ `punctim`), C `C_SDK/node/punctim.c` (CMake target `punctim`), Rust
+`codec/src/bin/punctim.rs` (`cargo build --bin punctim`), Go `go/cmd/punctim`, Node
+`JS/nodejs/bin/punctim.js`. Verbs: `version`, `io`, `encode`, `decode`, `certify` (+ `sim`,
+Python only).
+Media are named by URIs (`SCHEME[:k=v,...]`, grammar in the spec):
+
+```bash
+punctim io --in hex:path=frames.hex --out udp:peer=10.0.0.2:9100        # hex file -> UDP (ProtoMessage type 12)
+punctim io --in hydra:in=/srv/tones --out hex: --expect 3 --seconds 30  # HydraModem WAV dir -> hex on stdout
+punctim io --in udp:dialect=bare,bind=0.0.0.0:9100 --out file:path=rx.dcf --seconds 60
+punctim certify                  # this build's medium codecs vs the 162 vectors (exit 4 on any drift)
+make certify && make io-matrix   # wire/audio/SuperPack/mesh/medium certs, then the cross-language I/O matrix
+```
+
+`make io-matrix` (`tests/io_matrix.py`) runs every writer × reader pair of the five CLIs
+over file, stdio, UDP proto, UDP bare and HydraModem WAV on the 109-frame golden corpus,
+plus a garbage-resync leg; last recorded run: **140 pass, 0 fail**
+([`tests/io_matrix_results.md`](tests/io_matrix_results.md)). `punctim sim` (Python only, stdlib) sizes the
+hardware a system needs: given nodes, candidate media, per-adapter traffic, MAC and a
+latency target, it prints exact rows computed from the certified codecs (airtime,
+fragmentation, Pipe rounds, queue overflow, TDMA slots) beside clearly-labelled modelled
+rows (link budget, energy, hardware class).
+
+| Medium (URI) | Python | C | Rust | Go | Node | C++ | Java | Perl | others (v0.2)¹ |
+|---|---|---|---|---|---|---|---|---|---|
+| `.dcf` file (`file:`) | cert+tool | cert+tool | cert+tool | cert+tool | cert+tool | cert | cert | cert | — |
+| stdio (`stdio:`) | cert+tool | cert+tool | cert+tool | cert+tool | cert+tool | cert | cert | cert | — |
+| hex text (`hex:`) | cert+tool | cert+tool | cert+tool | cert+tool | cert+tool | cert | cert | cert | — |
+| UDP proto (`udp:`) | cert+tool | cert+tool | cert+tool | cert+tool | cert+tool | cert | cert | cert | — |
+| UDP bare (`udp:dialect=bare`) | cert+tool | cert+tool | cert+tool | cert+tool | cert+tool | cert | cert | cert | — |
+| raw Ethernet (`l2eth:`) | cert+tool² | cert | cert | cert | cert | cert | cert | cert | — |
+| in-process (`loop:`) | tool | tool³ | — | — | — | — | — | — | — |
+| HydraModem symbols / WAV (`hydra:`) | cert+tool⁴ | cert+tool⁴ | cert+tool⁴ | cert+tool⁴ | cert+tool⁴ | — | — | — | — |
+| AFSK bits / WAV (`afsk:`) | cert+tool⁵ | cert | cert | cert | cert | — | — | — | — |
+| SDR IQ `.cf32` (`sdr:`) | loop+tool⁵ | — | — | — | — | — | — | — | — |
+| JANUS WAV (`janus:`) | loop+tool⁶ | — | — | — | — | — | — | — | — |
+
+`cert` = byte-certified codec, checked by that language's cert (for `hydra`/`afsk` the
+certificate stops at the symbol / bit stream; the WAV waveform is loopback-tested, like
+Opus). `tool` = that language's `punctim io` speaks the medium live. `loop` =
+loopback-tested only, not byte-certified (`loop+tool`: and `punctim io` speaks it). `—` = not implemented (a Tier-A `punctim`
+exits 3). ¹ Kotlin, Swift, Haskell, Lua, Lisp: medium ports deferred to v0.2; their
+wire codecs stay certified. ² `impl=raw` needs `CAP_NET_RAW`; `impl=loop` is
+privilege-free. ³ In-process only: inside one `punctim io` it is a sink / silent source.
+⁴ `io` runs the HydraModem `frame_tx`/`frame_rx` tools (`hydramodem/dcf-tools/build.sh`),
+exit 3 without them; Python can also load `libhydramodem` in-process (`impl=cffi`, ctypes). ⁵ Needs numpy. ⁶ Needs the GPL janus-c tools (`nix build .#janus-c`).
 
 ## Language status
 
@@ -40,16 +108,24 @@ levels of maturity. A language is only an **advertisable binding** once its
 wire codec is golden-vector-verified in CI. Each language **graduates to
 "Certified" when its `certify-<lang>` CI job goes green** ([`wire-certify.yml`](.github/workflows/wire-certify.yml)).
 
-| Tier | Languages | What it means |
-|------|-----------|---------------|
-| **Certified** | **C** (`C_SDK/`), **Rust** (`codec/`), **Python** (`python/MCP/`, the reference), **Lua** (`GUI/wirelab.lua` + `lua/`), **Go** (`go/`), **Java** (`java/com/demod/dcf/`), **Node.js** (`JS/nodejs/`), **Perl** (`perl/`), **C++** (`cpp/include/dcf/`), **Haskell** (`haskell/`), **Kotlin** (`kotlin/`), **Swift** (`swift/`), **Lisp** (`lisp/`) | Golden-vector wire codec, each certifying all 246 vectors via its `certify-<lang>` CI job (ungated, every push/PR). C/Rust/Python/Lua run without an extra toolchain; the rest use a hosted toolchain (`haskell-actions`, `setup-kotlin`, `swift-actions`, apt `sbcl`). **Go has graduated from a wire codec to a full stdlib-only SDK** — certified wire + game/audio/text adapters and a UDP `DcfNode` (`go/node`), with `certify-go` running `go vet`, `go test ./...`, and `go test -race ./node/`. Lua additionally certifies the audio L2 framing. **Lisp** certifies the full 109 encode + 137 syndrome vectors (and the FEC vector set) by reading the canonical JSON directly through a small in-tree reader — still no Quicklisp — via `lisp/src/{wire,fec}.lisp` under bare SBCL. These are the only implementations you should treat as bindings. |
-| **Experimental — building** | _(none)_ | Every advertised language is Certified above. |
+| Tier | Languages | What it means | Medium-certified ([DCF-Medium](#deterministic-across-mediums)) |
+|------|-----------|---------------|------------------|
+| **Certified** | **C** (`C_SDK/`), **Rust** (`codec/`), **Python** (`python/MCP/`, the reference), **Lua** (`GUI/wirelab.lua` + `lua/`), **Go** (`go/`), **Java** (`java/com/demod/dcf/`), **Node.js** (`JS/nodejs/`), **Perl** (`perl/`), **C++** (`cpp/include/dcf/`), **Haskell** (`haskell/`), **Kotlin** (`kotlin/`), **Swift** (`swift/`), **Lisp** (`lisp/`) | Golden-vector wire codec, each certifying all 246 vectors via its `certify-<lang>` CI job (ungated, every push/PR) — **except Lua**, whose wire codec (`GUI/wirelab.lua`, `lua/`) self-certifies against the CRC anchors and embedded example/adapter vectors only and never reads `golden_vectors.json` ([code review](Documentation/DCF_CODE_REVIEW.md#2026-09-24--dcf-medium-pass-dated-findings)). C/Rust/Python/Lua run without an extra toolchain; the rest use a hosted toolchain (`haskell-actions`, `setup-kotlin`, `swift-actions`, apt `sbcl`). **Go has graduated from a wire codec to a full stdlib-only SDK** — certified wire + game/audio/text adapters and a UDP `DcfNode` (`go/node`), with `certify-go` running `go vet`, `go test ./...`, and `go test -race ./node/`. Lua additionally certifies the audio L2 framing. **Lisp** certifies the full 109 encode + 137 syndrome vectors (and the FEC vector set) by reading the canonical JSON directly through a small in-tree reader — still no Quicklisp — via `lisp/src/{wire,fec}.lisp` under bare SBCL. These are the only implementations you should treat as bindings. | **7/7 families + CLI:** Python, C, Rust, Go, Node · **5/7 (cert only):** C++, Java, Perl (stream, hex, udp_proto, udp_bare, l2eth) · **—:** Kotlin, Swift, Haskell, Lua, Lisp (v0.2) |
+| **Experimental — building** | _(none)_ | Every advertised language is Certified above. | — |
+
+> **Hosted CI, honestly (2026-09-24).** GitHub Actions has never executed a real job on
+> this repository: all 57 `wire-certify.yml` runs (2026-06-10 → 06-21) failed at startup
+> within seconds under an account billing lock, and none has run since (the workflow was
+> also invalid YAML from `70beec5` until it was fixed). Until billing is cleared, "green"
+> means **attested locally** with `make ci-local`, recorded in
+> [`.github/LOCAL_CI_RESULTS.md`](.github/LOCAL_CI_RESULTS.md) — not a hosted run.
 
 > Local pre-verification note: the dev shell ships C/Rust/Python/Go/Lua/Node/Perl/
-> C++ toolchains; Haskell/Kotlin/Swift/Lisp are verified by their hosted CI jobs
-> (and reproducibly via `nix shell nixpkgs#{ghc,kotlin,swift,sbcl}` / `make ci-local`).
-> Swift specifically cannot be pre-verified under the Nix Swift-on-Linux wrapper
-> (no `swift-test` subcommand); the `certify-swift` runner is authoritative.
+> C++ toolchains; Haskell/Kotlin/Swift/Lisp are verified reproducibly via
+> `nix shell nixpkgs#{ghc,kotlin,swift,sbcl}` / `make ci-local` (their hosted CI jobs
+> exist but, per the note above, have never run). Swift specifically cannot be
+> pre-verified under the Nix Swift-on-Linux wrapper (no `swift-test` subcommand); its
+> hosted `certify-swift` job is written but has never executed.
 
 > The C SDK is intentionally narrow: only four modules compile and ship
 > (`dcf_platform`, `dcf_error`, `dcf_ringbuf`, `dcf_connpool`). See
@@ -107,7 +183,7 @@ Present today (certified or shipping):
 - **Adapters over the quantum**: seven payload adapters — DCF-Audio (collaborative audio), DCF-Game (game state/events), DCF-Text (chat / agent-to-agent), DCF-SSTV (still images), DCF-Snake record + DCF-Cue (studio audio snake), and DCF-QKD (key-ID beacon) — each fragmented over ordinary frames, each with its L2 framing byte-certified across languages. Plus the layers that sit above, below and beside the quantum: DCF-Pipe / Pipe-Multi, HydraPack, DCF-Mesh, DCF-SPA, DCF-Steam, DCF-WASM. Full table, including the `seq` split that separates them, in [Adapters over the quantum](#adapters-over-the-quantum). For audio specifically, **only the L2 framing, the PCM-diag codec bytes, and the PM parameter layout are byte-certified — Opus output and PM synthesis audio are NOT byte-certified.**
 - **SuperPack (opt-in, lower-latency for paired sends)**: a container that packs **two** 17-byte frames into **one 32-byte** message under a single joint CRC (`34 → 32` bytes, stronger integrity). When you are already sending frames in pairs it ships them as **one datagram instead of two** — one IP/UDP header, one syscall, one packet — so paired traffic crosses the network with strictly lower per-pair overhead and latency than two separate frames. `unpack` rebuilds both frames bit-exact, so the wire certificate is untouched; **certified byte-for-byte in every wire-codec language**. See [`Documentation/SUPERPACK_SPEC.md`](Documentation/SUPERPACK_SPEC.md).
 - **Mesh nodes in six languages**: Go, Rust, and **C** speak a common **ProtoMessage/UDP** envelope (they mesh with each other); Python and Node.js share a **bare-frame + SuperPack/UDP** dialect; and **C++** is a **gRPC** node (bidirectional `MeshStream` of frames + SuperPacks + adapters, health + reflection). All ship as hermetic Nix-built Docker images (`alh477/dcf-{go,rs,c,cpp,python,nodejs}`) and are exercised together by `docker/mesh-interop-test.sh`.
-- **DCF Modem (C, "modulations across quanta mediums")**: the C node also carries frames over a **Faust-DSP modem** — FSK / OOK / PSK / QAM — across a physical medium (loopback/file now, live audio behind `DCF_MODEM_AUDIO`). The byte↔symbol mapping is **certified across Python/Rust/C**; the waveform is loopback-tested (same policy as DCF-Audio synthesis). See [`Documentation/DCF_MODEM_SPEC.md`](Documentation/DCF_MODEM_SPEC.md).
+- **DCF Modem (C, "modulations across quanta mediums")**: the C node also carries frames over a **Faust-DSP modem** — FSK / OOK / PSK / QAM — across a physical medium (loopback/file only; no live-audio backend was ever built for it — the dead `DCF_MODEM_AUDIO` option was removed, and live acoustic links use HydraModem). The byte↔symbol mapping is **certified across Python/Rust/C**; the waveform is loopback-tested (same policy as DCF-Audio synthesis). See [`Documentation/DCF_MODEM_SPEC.md`](Documentation/DCF_MODEM_SPEC.md).
 - **HydraModem (acoustic M-FSK PHY, `hydramodem/`)**: a self-contained LGPL-3.0 C library (relicensed from Apache-2.0 on integration) that carries the 17-byte frame over **sound** with a real receiver — continuous-phase **M-FSK**, preamble/sync acquisition, **symbol-timing recovery (±3000 ppm)**, soft-Viterbi conv FEC + interleaver, and a streaming RX. A transport *beneath* the quantum (carries the frame opaquely, wire certificate untouched; CRC anchor `0x29B1`). Its **physical layer is authored in Faust** — the CPFSK modulator and quadrature demod bank are the normative `.dsp` — with a **byte-identical C reference DSP** as the default build and a **compiled-Faust backend** (`nix build .#hydramodem-faust`; version-tolerant across **Faust 2.72–2.85**) verified equivalent: cross-decoded both ways and matched over the cable. Its default 1000-baud profile is a near-field/cabled link and its timing recovery handles two interfaces' independent sample clocks — proven over real hardware (two cross-cabled USB interfaces, **PER 0% over 200 frames each way, full-duplex 0 crosstalk**, via `hydramodem/dcf-tools/`). `nix build .#hydramodem`.
 - **Synchronized studio audio snake over cat5e (DCF-Snake)**: a star of source nodes → one **"mixer"** hub over dual cat5e, for studio multitrack capture + low-latency monitoring. Two planes, both adapters over the quantum: a **record plane** carrying the DeMoD **quanta** codec's QSS stream (`CTRL(3)` 5:11, ≤8188 B/msg) and a bidirectional low-latency **PCM cue plane** (`CTRL(3)` 9:7, ≤508 B/block), locked to a `BEACON(2)` grandmaster media clock (spoke PI servo + mixer per-source ASRC). A new **raw-L2 Ethernet transport** (AF_PACKET, custom EtherType, SuperPack-batched) rides beneath — no IP/UDP. **Byte-certified across Python/C/Rust**: both L2 framings, the clock payload, and `unwrap_pid`; **NOT byte-certified** (float, same policy as Opus/PM synthesis): quanta QSS audio, ASRC, PLC, and the cue-mix. quanta shells out as a *subprocess* (`nix build .#quanta`, GPL-3.0) kept out of the LGPL closure. See [`Documentation/DCF_SNAKE_SPEC.md`](Documentation/DCF_SNAKE_SPEC.md).
 - **Sensor telemetry over a wire (DCF-Sense)**: a configurable layer for many sensor nodes → one gateway over a wired audio-band HydraModem link (greenhouses, etc.). One reading = one bare frame (`src_id`=node, 4-byte scaled payload); a configurable **MAC** (`tdma`/`dedicated`/`csma`/`fdma`) handles the shared medium since a PHY has none. An adapter over the quantum (certificate untouched). Runs over real HydraModem (subprocess or in-process ctypes transport), FDMA multiplies capacity, mesh relays via the bridge, and a portable C node decodes in the Python gateway — all at PER 0% on the bench (`python/dcf/sense/`). See [`Documentation/DCF_SENSE_SPEC.md`](Documentation/DCF_SENSE_SPEC.md).
@@ -122,7 +198,7 @@ Planned / in progress (design goals, not the current release):
 - **Modularity & plugins**: standardized APIs and a plugin system for custom extensions — *partial / in progress*.
 - **Transport flexibility**: a compatibility layer for UDP, TCP, WebSocket, gRPC, and custom transports — *in progress*; full cross-language interoperability tracks the [language tiers](#language-status).
 - **AI-driven topology optimization**: using the DCF-Mesh metrics (peer status, RTT groups, route weights) to drive topology decisions automatically — **planned**. The metrics themselves, and the routing/role-assignment algorithms beneath them, ship today (see the shipped list above).
-- **Usability**: CLI for automation and TUI for monitoring — **planned**.
+- **Usability**: a TUI for monitoring — **planned**. (A CLI for automation ships for the medium layer: `punctim`, in five languages.)
 - **Persistence**: **StreamDB** is **Lisp-SDK-only and experimental** (a Rust embedded key-value store via CFFI); extensions to other SDKs are aspirational, not shipping.
 
 ## Adapters over the quantum
@@ -172,7 +248,7 @@ them changes it:
 - **HydraPack — universal serialization.** The one layer above *both* planes: an application value goes in, and either a sequence of 4-byte quanta (at or below a size threshold) or a contiguous byte buffer (above it) comes out, driven by size and schema policy. Declarative schema model, plane-aware emission, no new wire format. Certified C/Rust/Python. [`HYDRAPACK_SPEC.md`](Documentation/HYDRAPACK_SPEC.md)
 - **DCF-Mesh — self-healing.** A `MsgMesh = 11` control adapter: REPORT (node→master) and ROLE (master→node), plus the certified algorithm layer (peer-liveness FSM, RTT grouping, RTT-weighted Dijkstra, route selection, master election). The runtime drives those from live PING/PONG and runs in the **Go, C, Rust and Python** nodes; failover is decentralized (a master going Unreachable triggers local re-election of the lowest-id healthy node). Certified C/Rust/Python/Go. [`DCF_MESH_SPEC.md`](Documentation/DCF_MESH_SPEC.md)
 - **DCF-SPA — single-packet port authorization.** A secondary-channel authenticator that opens mesh data ports for devices on a shared network. It **authenticates and gates; it does not encrypt, and provides no confidentiality** — that boundary is deliberate, and is what keeps it outside ECCN 5A002 and inside the encryption-free posture. [`DCF_SPA_SPEC.md`](Documentation/DCF_SPA_SPEC.md)
-- **DCF-Steam — Steam-compatible transport.** Valve's `ISteamNetworkingSockets` beneath the wire: Steam **P2P** for clients, **dedicated-server hubs** from the Docker images. One API, two backends — open **GNS** (default, hermetic, CI-tested) and proprietary **Steamworks** (opt-in, adds SDR relay/lobbies) — sharing the send/recv/hub path. Transport crypto sits *beneath* the codec; the DCF payload stays plaintext. [`DCF_STEAM_SPEC.md`](Documentation/DCF_STEAM_SPEC.md)
+- **DCF-Steam — Steam-compatible transport.** Valve's `ISteamNetworkingSockets` beneath the wire: Steam **P2P** for clients, **dedicated-server hubs** from the Docker images. One API, two backends — open **GNS** (default, hermetic; loopback-tested locally, not in hosted CI) and proprietary **Steamworks** (opt-in, adds SDR relay/lobbies) — sharing the send/recv/hub path. Transport crypto sits *beneath* the codec; the DCF payload stays plaintext. [`DCF_STEAM_SPEC.md`](Documentation/DCF_STEAM_SPEC.md)
 - **DCF-Control / DCF-Telemetry (draft).** The DeMoD engine's split-link pair — GUI→engine control ops (load an effect, set a parameter, trigger a note) serialised as **DCF-Text**, and the engine→GUI readback (per-slot meters, transport state, optional scope) reusing **DCF-Audio's `CTRL` L2 framing**, lossy by design (latest-wins, no retransmit). They add no new framing of their own. [`DCF_CONTROL_SPEC.md`](Documentation/DCF_CONTROL_SPEC.md) · [`DCF_TELEMETRY_SPEC.md`](Documentation/DCF_TELEMETRY_SPEC.md)
 - **DCF-WASM — browser client.** The certified codec compiled to `wasm32` drives the same comms UI in the browser, shipped as one self-contained `index.html` and reaching the mesh through a stateless WS↔UDP relay (browsers can't open UDP). The codec runs in the browser, not the bridge. [`DCF_WASM_SPEC.md`](Documentation/DCF_WASM_SPEC.md)
 
@@ -382,7 +458,7 @@ print $response->{data}, "\n";
 
 ### Python (gRPC Client)
 ```python
-# python/punctim.py
+# illustrative gRPC client — not a file in the repo (python/punctim.py is the DCF-Medium CLI)
 import grpc
 from punctim.services_pb2_grpc import PunctimServiceStub
 from punctim.messages_pb2 import PunctimMessage
@@ -669,9 +745,11 @@ For master node:
 
 ## Testing
 
-**The certificate is the test that matters.** The cross-language wire/audio/game
-certs are what gate every push (`.github/workflows/wire-certify.yml`); run them
-locally with `make certify` or directly:
+**The certificate is the test that matters.** The cross-language wire/audio/game/medium
+certs are what `.github/workflows/wire-certify.yml` gates every push on — but hosted CI
+has never executed a job (see the [note under Language status](#language-status)), so
+today they are attested locally with `make ci-local`. Run them with `make certify` or
+directly:
 
 ```bash
 python3 python/MCP/verify_laws.py /tmp/gv.json   # Python (reference) — regenerate + verify
@@ -692,6 +770,7 @@ Per-language unit tests (where they exist):
 - **Perl**: `cd perl && prove -l t/` (or `perl Makefile.PL && make test`) — certifies all 246 vectors.
 - **C++**: `g++ -std=c++17 -I cpp/include cpp/tests/certify.cpp -o cert && ./cert` (or `cmake . && ctest`) — certifies all 246 vectors.
 - **Swift**: `cd swift && swift test` — certifies all 246 vectors + SuperPack + FEC (CI job `certify-swift`; the Nix Swift-on-Linux wrapper lacks `swift-test`, so the hosted runner is authoritative locally).
+- **Medium** (DCF-Medium, 162 vectors): `python3 python/punctim.py certify` (or the C/Rust/Go/Node `punctim certify`), `cd codec && cargo test --test certify_medium`, `cd go && go test ./medium/`, `node JS/nodejs/test/certify_medium.js`, `gcc -std=c11 -I codec C_SDK/tests/test_medium_certify.c -lm -o /tmp/medc && /tmp/medc`; C++/Java/Perl certify the five digital families (`cpp/tests/certify_medium.cpp`, `java/com/demod/dcf/MediumCertify.java`, `perl/t/medium.t`). Cross-language interop: `make io-matrix`.
 - **Mesh**: `cd go && go test ./mesh/` (Go), `cd codec && cargo test --test certify_mesh` (Rust), `gcc -std=c11 -I codec C_SDK/tests/test_mesh_certify.c -lm -o /tmp/mc && /tmp/mc` (C), `python3 python/MCP/gen_mesh_vectors.py /tmp/mv.json` (regen + verify laws) — certifies the mesh algorithm layer plus the REPORT/ROLE control bytes. The runtime's *timing* is integration-tested, not vectored.
 - **Integration**: RTT grouping, failover and AUTO/master role assignment are **implemented and integration-tested** in the Go/C/Rust/Python mesh nodes, with the algorithms and control bytes certified (see **Mesh** above). **StreamDB persistence** remains **planned**.
 

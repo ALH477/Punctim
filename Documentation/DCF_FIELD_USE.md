@@ -109,11 +109,13 @@ gating. Design to its constraints, not around them:
 
 What ships today:
 
-- **Acoustic (walkie-talkie audio)** — two **interoperable** modems. The real-time
+- **Acoustic (walkie-talkie audio)** — two modems that share one bit layer. The real-time
   `python/modem/main.py` (JIT Faust FSK DSP) and the pure-numpy `python/modem/acoustic.py`
-  both build the on-air bit stream from one shared module, **`python/modem/acoustic_frame.py`**,
-  and share the same `PROFILES` tones/baud — so a frame sent by either is decodable by the
-  other (verified byte-for-byte). Continuous-phase **AFSK at 300 baud**; the **handheld**
+  both build the on-air bit stream from one shared module, **`python/modem/acoustic_frame.py`**
+  (the certified `afsk_bits` medium family, `Documentation/DCF_MEDIUM_SPEC.md`), and share the
+  same `PROFILES` tones/baud — so they interoperate at the bit layer. `main.py`'s live path
+  still wraps its own 15-byte header + CRC-8 rather than the 17-byte wire quantum, so it is
+  **non-conforming** until it is ported onto `afsk_bits` (`DCF_CODE_REVIEW.md`). Continuous-phase **AFSK at 300 baud**; the **handheld**
   profile pulls both tones to **1200/1800 Hz** (mid-band) with a **240-bit (~800 ms) keyup
   preamble** for AGC settle / squelch open. Payload is `frame + crc8` by default (the
   deployed format) or the certified **RS codeword** with `fec=True`. The numpy modem ships

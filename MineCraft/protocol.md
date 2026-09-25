@@ -1,5 +1,11 @@
 ## 3A. Formal Protocol Specification (Normative)
 
+> **Scope note.** "Normative" here applies only to this Minecraft redstone demo
+> (D17BCP). It is **not** the DCF wire quantum: the frame below has no `0xD3` sync,
+> no version nibble and no CRC-16, so it is non-conforming to
+> [`WIRE_QUANTUM_SPEC.md`](../Documentation/WIRE_QUANTUM_SPEC.md) and uncertified.
+> See [`README.md`](README.md).
+
 ### Status of This Specification
 
 This section defines the **DeMoD 17-Byte Communication Protocol (D17BCP)**.

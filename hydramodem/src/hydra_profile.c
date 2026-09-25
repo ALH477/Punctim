@@ -21,10 +21,14 @@ void hydra_profile_default(hydra_profile *p)
 
 void hydra_profile_aux_cable(hydra_profile *p)
 {
-    /* Aux-cable: wired line-level (3.5mm/TRS). 4x faster than default.
+    /* Aux-cable: wired line-level (3.5mm/TRS). 1.2x the default baud (1200 vs 1000);
+     * with conv FEC one frame is 348 symbols = 0.290 s vs the default's 356 = 0.356 s.
      * Tones 1200/2400 Hz at 1200 baud — orthogonal (both are integer multiples of baud).
      * Short preamble (16 syms) since cable has no AGC settling.
-     * Matches python/modem/acoustic_frame.py "aux-cable" profile behavior. */
+     * NOT the python/modem/acoustic_frame.py "aux-cable" AFSK profile: that one shares
+     * only the 1200 baud and a 16-unit preamble (its tones are 1000/1500 Hz, sync 0x7E,
+     * CRC-8 or RS), so the two do not interoperate — see Documentation/DCF_MEDIUM_SPEC.md
+     * (hydra: vs afsk:). The "4x" often quoted is AFSK aux-cable vs AFSK 300 baud. */
     p->sample_rate   = 48000.0;
     p->baud          = 1200.0;
     p->n_tones       = 2;

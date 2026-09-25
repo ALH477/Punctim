@@ -3,7 +3,11 @@
  * HydraModem. The single-frame counterpart to tx_campaign, used by the DCF `hydra:`
  * transport (which drives HydraModem as a subprocess PHY). Repo glue (DeMoD LLC, LGPL-3.0).
  *
- *   frame_tx <34-hex-char-frame> out.wav [--none|--rep3|--conv]   (default conv)
+ *   frame_tx <34-hex-char-frame> out.wav [--profile default|aux] [--none|--rep3|--conv]
+ *            [--interleave 0|1] [--preamble N] [--base-freq HZ] [--tone-spacing HZ]
+ *            [--baud HZ] [--n-tones N]
+ * Defaults: profile default (2000/3000 Hz, 1000 baud), conv FEC, interleave on. The RX
+ * side must use the same profile/FEC/interleave/tone flags (see frame_profile.h).
  */
 #include "../src/hydramodem.h"
 #include "frame_profile.h"
@@ -25,7 +29,8 @@ static int parse_hex(const char *h, uint8_t *out, int n)
 int main(int argc, char **argv)
 {
     if (argc < 3) {
-        fprintf(stderr, "usage: %s <17-byte-hex> out.wav [--none|--rep3|--conv]\n", argv[0]);
+        fprintf(stderr, "usage: %s <17-byte-hex> out.wav " FRAME_PROFILE_USAGE "\n"
+                        "  defaults: --profile default --conv --interleave 1\n", argv[0]);
         return 2;
     }
     uint8_t frame[HYDRA_DCF_BYTES];

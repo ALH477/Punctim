@@ -82,8 +82,9 @@ static inline bool dcf_superpack_is(const uint8_t *buf, size_t len) {
     return len == DCF_SUPER_LEN && buf[0] == DCF_SYNC_BYTE && buf[1] == DCF_SUPER_SFLAGS;
 }
 
-/* Split a 32-byte SuperPack into two bit-exact 17-byte frames (a[17], b[17]).
- * Returns false on any integrity failure. */
+/* Split a 32-byte SuperPack into two bit-exact 17-byte frames (a[17], b[17]), whatever
+ * their type nibble (0..15 — the type is not part of the frame gate). Returns false on
+ * any integrity failure: exactly the checks of python/MCP/superpack.py:unpack. */
 static inline bool dcf_superpack_unpack(const uint8_t *in, uint8_t *a, uint8_t *b) {
     if (in[0] != DCF_SYNC_BYTE) return false;
     if ((uint8_t)((in[1] & DCF_VERSION_MASK) >> DCF_VERSION_SHIFT) != 1u) return false;
@@ -92,8 +93,11 @@ static inline bool dcf_superpack_unpack(const uint8_t *in, uint8_t *a, uint8_t *
     if (dcf_crc16(in, 30) != stored) return false;
     dcf_superpack_rebuild(in + 2, a);
     dcf_superpack_rebuild(in + 2 + DCF_SUPER_CORE_LEN, b);
-    /* Belt and braces: the rebuilt frames must themselves validate. */
-    return dcf_frame_valid(a) && dcf_frame_valid(b);
+    /* Belt and braces: the rebuilt frames must themselves pass the frame gate — sync +
+     * version nibble 1 + CRC (dcf_frame_valid alone skips the version nibble, so an
+     * inner core with version != 1 would slip through where the references reject it). */
+    uint8_t core[DCF_SUPER_CORE_LEN];
+    return dcf_superpack_core(a, core) && dcf_superpack_core(b, core);
 }
 
 #endif /* DCF_DEMOD_SUPERPACK_H */

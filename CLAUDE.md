@@ -11,9 +11,13 @@ Java/Kotlin, Swift, Node.js, Haskell, and Common Lisp, each in its own top-level
 directory.
 
 The gravitational center of current work is narrow: the **wire quantum** and its
-cross-language certification, now extended with a certified **audio** layer.
+cross-language certification, now extended with a certified **audio** layer and a
+certified **medium** layer (the protocol is *deterministic across mediums*).
 Read these first — they are normative:
 - `Documentation/WIRE_QUANTUM_SPEC.md` — the 17-byte `DeModFrame` wire format.
+- `Documentation/DCF_MEDIUM_SPEC.md` — DCF-Medium: every medium beneath the frame (file,
+  stdio, hex, UDP, raw L2, HydraModem, AFSK, …) as a byte-certified deterministic codec,
+  and the uniform `punctim` CLI (`punctim io` in any language ⇒ byte-identical output).
 - `Documentation/DCF_AUDIO_SPEC.md` — collaborative audio as an adapter over it.
 - `Documentation/DCF_GAME_SPEC.md` — multiplayer game state/events as an adapter
   over it (same fragmentation scheme as audio, on `DATA` frames).
@@ -73,7 +77,10 @@ cd codec && cargo test --test certify              # Rust
 ```
 
 CI: `.github/workflows/wire-certify.yml` runs Python/C/Rust certs on push/PR to
-`main` and diffs regenerated vs committed vectors.
+`main` and diffs regenerated vs committed vectors. **Hosted Actions has never executed a
+real job here** (all 57 runs, 2026-06-10→06-21, died at startup under an account billing
+lock; none since) — until billing is cleared, `make ci-local` + `.github/LOCAL_CI_RESULTS.md`
+is the attested certification path.
 
 > Canonical Python lives in `python/MCP/` (the old `GUI/MCP/*` dangling symlinks
 > were removed). `C_SDK/tests/test_wire_certify.c` is fixed and certifies against
@@ -271,7 +278,9 @@ the quantum an unusually good fit — `key_ID = UUID = 128 bits = 16 bytes = exa
   `python/MCP/qkdlab_core.py` (Python, canonical). Vectors:
   `Documentation/qkd_vectors.json` (+ identical `python/MCP/` copy) and
   `codec/qkd_vectors.gen.h`. CI: `certify-qkd` + `qkd-bridge`.
-- **The bridge runtime** is `python/dcf/qkd/` (**stdlib only**): `etsi014.py` (the
+- **The bridge runtime** is `python/dcf/qkd/` (**stdlib only on the loopback/UDP path**;
+  numpy is needed only by the audio/SDR transports in `python/dcf/transport.py`, imported
+  lazily on first use): `etsi014.py` (the
   ETSI 014 client — status/enc_keys/dec_keys, optional mTLS), `mock_kme.py` (a mock
   KME pair over one shared keystore = the simulated QKD link), `beacon.py` (key_ID
   over any `dcf.transport.Transport`), `sae.py` (`MasterSae`/`SlaveSae`), `demo.py`.
@@ -438,6 +447,75 @@ cd codec && cargo test --test certify_pipemulti                   # Rust
 gcc -std=c11 -I codec C_SDK/tests/test_pipemulti_certify.c -o /tmp/mc && /tmp/mc  # C
 ```
 
+## DCF-Medium (deterministic across mediums)
+
+The layer that makes DCF **deterministic across mediums**: a computer can move a frame
+stream between any two media — any I/O combination — and every implementation writes the
+same bytes. Each medium is a **deterministic codec** `frames ⇄ representation` *beneath*
+the quantum; media carry the 17 bytes opaquely, so the 246-vector certificate and every
+adapter certificate are untouched. Spec: `Documentation/DCF_MEDIUM_SPEC.md` (normative).
+
+- **Laws:** lossless; order-preserving; resync (stream/hex: byte-wise scan, no COBS/SLIP);
+  one **frame gate** = `0xD3` + version nibble 1 + CRC-16/CCITT-FALSE (the type nibble is
+  NOT gated — reserved types 4–15 pass, and the vectors pin 4/8/15); media never parse
+  the frame.
+- **Byte-certified families (162 cases):** `stream` (`file:` `.dcf` / `stdio:`, 11),
+  `hex` (34 lowercase hex + LF, 8), `udp_proto` (ProtoMessage `msg_type` **FRAME = 12**,
+  34 B/datagram, `ts=0` default, 21), `udp_bare` (pairs → 32-B SuperPack, lone frame raw,
+  7), `l2eth` (`[n u16 BE][SuperPack × ⌈n/2⌉]` + zero filler, 5), `hydra_symbols`
+  (HydraModem M-FSK symbol string, 74), `afsk_bits` (python/modem AFSK bit string, 36).
+  **Loopback-tested only:** HydraModem/AFSK WAV, SDR `.cf32`, JANUS WAV, the C DCFM
+  modem. **Deferred (v0.2):** `sdr_bytes`, live tcp/serial/ws, a conforming live-audio
+  port (`python/modem/main.py` sends its own 15-byte frame — non-conforming),
+  `libhydramodem` linked into the C `punctim`, Kotlin/Swift/Haskell/Lua/Lisp ports.
+  `hydra:` and `afsk:` are different media and do **not** interoperate.
+- **`punctim` CLI, identical contract in five languages (Tier A):** Python
+  `python/punctim.py`, C `C_SDK/node/punctim.c` (CMake target `punctim`), Rust
+  `codec/src/bin/punctim.rs`, Go `go/cmd/punctim`, Node `JS/nodejs/bin/punctim.js`. Verbs
+  `version [--json]`, `io --in URI --out URI [--count N] [--seconds S] [--expect N]
+  [--no-validate] [--stats] [--queue N]`, `encode`, `decode`, `certify [--vectors DIR]`,
+  and (Python only) `sim`. Exit 0 ok · 1 I/O · 2 usage · 3 medium unsupported in this
+  build · 4 cert failed · 5 invalid frame · 6 `--expect` not met. URIs
+  `SCHEME[:k=v,...]` (single-sourced in `python/dcf/medium.py:parse_uri`): Python opens
+  every scheme (`afsk:`/`sdr:` need numpy, `janus:` the GPL janus-c tools); C: `file stdio
+  hex udp loop hydra`; Rust/Go/Node: `file stdio hex udp hydra` (the rest exit 3).
+  `hydra:` shells out to `frame_tx`/`frame_rx` (`$HYDRA_TX`/`$HYDRA_RX`/PATH; they take
+  `--profile default|aux`, `--interleave 0|1`, `--preamble N`); Python alone also offers
+  in-process `impl=cffi`.
+- **Determinism rule (normative):** for finite inputs, `punctim io` in any language
+  produces byte-identical output for identical input and URI (`udp:proto` needs `ts=0`,
+  the default). `io` is a single-threaded ordered `reader → gate → writer`; infinite
+  inputs cross a bounded FIFO (`--queue`, default 256, oldest shed).
+- **Tier B (codec + cert, no `io`; the five digital families):** C++
+  `cpp/include/dcf/medium.hpp`, Java `java/com/demod/dcf/Medium.java`, Perl
+  `perl/lib/DCF/Medium.pm`.
+- **References:** `python/MCP/mediumlab_core.py` (canonical, stdlib), `codec/demod_medium.h`
+  (C), `codec/src/medium.rs` (Rust), `go/medium/medium.go` (Go), `JS/nodejs/src/medium.js`
+  (Node); HydraModem ground truth `hydramodem/dcf-tools/hydra_symbols_certify.c` (the 74
+  symbol vectors vs the real `hydra_frame_build` + TX→RX loopback). Vectors:
+  `Documentation/medium_vectors.json` (+ identical `python/MCP/` copy) and
+  `codec/medium_vectors.gen.h`. `MSG_FRAME = 12` is registered in the Go/C/Rust/Python/Lisp
+  nodes. CI jobs `certify-medium` + `io-matrix`.
+- **`punctim sim`** (Python, stdlib, `python/dcf/sim/`, example `tests/sim_example.json`):
+  sizes a system's media and hardware — EXACT rows from the certified codecs (airtime,
+  fragmentation, Pipe rounds, queue overflow, TDMA slots) beside labelled MODEL rows.
+
+```sh
+python3 python/MCP/gen_medium_vectors.py /tmp/mv.json            # regen + verify laws (+ /tmp/medium_vectors.gen.h)
+diff /tmp/mv.json Documentation/medium_vectors.json && diff /tmp/mv.json python/MCP/medium_vectors.json
+diff /tmp/medium_vectors.gen.h codec/medium_vectors.gen.h
+python3 python/punctim.py certify && (cd python && python3 -m unittest tests.test_medium -v)  # Python
+cd codec && cargo test --test certify_medium                     # Rust
+gcc -std=c11 -I codec C_SDK/tests/test_medium_certify.c -lm -o /tmp/medc && /tmp/medc  # C
+cd go && go test ./medium/                                       # Go
+node JS/nodejs/test/certify_medium.js                            # Node
+g++ -std=c++17 -I cpp/include cpp/tests/certify_medium.cpp -o /tmp/cm && /tmp/cm        # C++ (Tier B)
+javac -d /tmp/jm java/com/demod/dcf/{Frame,SuperPack,Medium,MediumCertify}.java && java -cp /tmp/jm com.demod.dcf.MediumCertify  # Java
+cd perl && prove -l t/medium.t                                   # Perl
+cd hydramodem/dcf-tools && ./build.sh && build/hydra_symbols_certify  # symbols vs real C
+make io-matrix                                                   # 5 CLIs, writer x reader (tests/io_matrix_results.md)
+```
+
 ## DCF-Mesh (self-healing redundancy over the wire)
 
 A control adapter (not a new wire format) for self-healing meshes: the payload of a
@@ -541,8 +619,11 @@ certified codec (`../codec/demod_*.h`):
 - **Faust-DSP modem** (`node/dcf_modem.h` + `codec/faust/dcf_modem.dsp`):
   `send-modem`/`recv-modem` carry a frame across a modulation **medium**
   (FSK/OOK/PSK/QAM). The byte↔symbol mapping is certified
-  (`codec/demod_modulation.h`); the waveform is loopback-tested. See
+  (`codec/demod_modulation.h`); the waveform is loopback-tested (file/loopback only —
+  there is no live-audio backend; the dead `DCF_MODEM_AUDIO` option was removed). See
   `Documentation/DCF_MODEM_SPEC.md`.
+- **`punctim`** (`C_SDK/node/punctim.c`, same `DCF_BUILD_NODE` block): the C DCF-Medium CLI
+  (see DCF-Medium above).
 
 The **C++ binding** (`cpp/`) is the **supercharged gRPC node** `dcfcpp`
 (`cpp/src/dcf_node.cpp`, `cpp/proto/dcf.proto`): unary `SendFrame`, bidirectional
@@ -565,8 +646,9 @@ A **transport** under the wire (not a new format): `dcfcpp` also speaks Valve's
 are the Docker containers / runtime. Spec: `Documentation/DCF_STEAM_SPEC.md`.
 
 - **One API, two backends** (same source recompiles): **GNS** — the open
-  GameNetworkingSockets (BSD-3, nixpkgs `gamenetworkingsockets`), default + hermetic,
-  built/tested in CI; **Steamworks** — the proprietary SDK (opt-in, developer-supplied)
+  GameNetworkingSockets (BSD-3, nixpkgs `gamenetworkingsockets`), default + hermetic
+  (`nix build .#dcf-cpp-gns` builds it; `ctest -R gns_loopback` tests it locally — no
+  hosted CI job runs it); **Steamworks** — the proprietary SDK (opt-in, developer-supplied)
   adds SDR relay, lobbies, server browser. Backends differ in ~6 calls behind
   `#if DCF_CPP_STEAM`; the send/recv/hub/framing path is shared, so the GNS build
   exercises the Steam build's wire logic.
@@ -609,6 +691,16 @@ one-shot **and** streaming RX. Two DSP backends behind `src/hydra_dsp.h`: a port
 (`hydra_dsp_ref.c`, default `make`, zero deps) and the compiled Faust backend (`make faust`).
 The default profile (48 kHz, 1000 baud, tones 2000/3000 Hz) is a **near-field / low-reverb /
 cabled** link. Cross-compiles to RISC-V (StarFive JH7110); runs real-time on one U74 core.
+
+Profiles (`hydramodem/src/hydra_profile.c`): **`hydra_profile_default`** = binary FSK,
+24-symbol preamble, sync `0x2DD4`, **conv FEC (K=7 r=½, soft Viterbi) + interleaver ON**
+→ 356 symbols = 0.356 s per frame. **`hydra_profile_aux_cable`** (`frame_tx`/`frame_rx
+--profile aux`) differs only in 1200 baud, tones 1200/2400 Hz and a 16-symbol preamble
+(same sync, same conv FEC + interleaver) → 348 symbols = 0.290 s; it is *not* the Python
+AFSK `aux-cable` profile (tones 1000/1500, sync `0x7E`, CRC-8/RS) and the two do not
+interoperate. **Certification stops at the symbol stream**: the `hydra_symbols` family of
+`medium_vectors.json` (74 cases) is proven against the real `hydra_frame_build` by
+`dcf-tools/hydra_symbols_certify`; the waveform is loopback-tested (see DCF-Medium).
 
 - Upstream sources under `hydramodem/{src,faust,examples,tests,docs}` are unmodified except for
   the license relicense (LICENSE/NOTICE/README/`faust` header → LGPL-3.0); repo glue lives in
@@ -721,11 +813,13 @@ byte-identical to the 246-vector wire certificate + adapter vectors.
 
 | Dir | Build | Test |
 |-----|-------|------|
-| `codec/` (Rust wire+audio) | `cargo build` (`--features opus,pm`) | `cargo test --test certify --test certify_audio` |
+| `codec/` (Rust wire+audio+medium) | `cargo build` (`--features opus,pm`); `cargo build --bin punctim` (`codec/src/bin/punctim.rs`) | `cargo test --test certify --test certify_audio --test certify_medium` |
+| `C_SDK/` (C library + `dcfnode` + `punctim`) | `cmake -B build -DDCF_BUILD_NODE=ON && cmake --build build` (`punctim` from `C_SDK/node/punctim.c`) | `ctest --test-dir build`; `build/punctim certify` |
 | `rust/` (gRPC SDK) | `cargo build` | `cargo test` |
-| `python/` | `pip install -r python/requirements.txt` | `pytest python/tests/` |
-| `python/modem/` (FSK acoustic modem) | — | `python3 main.py --help` (uses `faust_jit.py`) |
-| `go/` | `go build ./...` | `go test ./...` |
+| `python/` | `pip install -r python/requirements.txt` (`pip install ./python` adds the `punctim` script → `python/punctim.py`) | `pytest python/tests/`; `python3 python/punctim.py certify` |
+| `python/modem/` (FSK acoustic modem) | — | `python3 main.py --help` (uses `faust_jit.py`; its 15-byte frame is **non-conforming** — the certified AFSK medium is `afsk:`) |
+| `go/` | `go build ./...` (`go build -o bin/punctim ./cmd/punctim`) | `go test ./...` |
+| `JS/nodejs/` | — (no dependencies; `JS/nodejs/package.json` bin `punctim` → `JS/nodejs/bin/punctim.js`) | `npm --prefix JS/nodejs run certify` (wire, SuperPack, FEC, text, medium); `node JS/nodejs/test/certify_sstv.js` |
 | `lisp/` | load `lisp/src/punctim.lisp` in SBCL (self-certifies on load) | `sbcl --non-interactive --load lisp/src/wire.lisp` |
 | `Documentation/` (Sphinx) | `cd Documentation && pip install -r requirements.txt && make html` | — |
 

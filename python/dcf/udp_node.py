@@ -21,7 +21,10 @@ from .proto import (
     MSG_PONG,
     MSG_MESH,
     MSG_AUDIO,
+    MSG_FRAME,
 )
+
+FRAME_LEN = 17
 
 log = logging.getLogger("dcf.udp")
 
@@ -52,6 +55,10 @@ class DcfNode:
         # Optional MSG_AUDIO tee: on_audio(payload_17b, addr). Used by the radio
         # (dcf_node start --radio) to stream the audio this node receives.
         self.on_audio = None
+        # Optional MSG_FRAME (12) sink: on_frame(frame_17b, addr) — a bare DeModFrame sent
+        # by `punctim io --out udp:` / dcf-bridge (the DCF-Medium udp "proto" dialect).
+        # Without a sink the frame is logged.
+        self.on_frame = None
 
     # ── peer management ──────────────────────────────────────────────────────
     def add_peer(self, peer_id, host, port):
@@ -177,5 +184,12 @@ class DcfNode:
         elif msg.msg_type == MSG_AUDIO:
             if self.on_audio is not None:
                 self.on_audio(msg.payload, addr)
+        elif msg.msg_type == MSG_FRAME:
+            if len(msg.payload) != FRAME_LEN:
+                log.warning("drop MSG_FRAME with %d-byte payload from %s", len(msg.payload), addr)
+            elif self.on_frame is not None:
+                self.on_frame(msg.payload, addr)
+            else:
+                log.info("frame %s from %s:%d", msg.payload.hex(), addr[0], addr[1])
         else:
             log.debug("unhandled msg_type %d from %s", msg.msg_type, addr)

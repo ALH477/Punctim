@@ -7,6 +7,7 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   codec:
@@ -25,11 +26,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Install protoc (tonic-build needs it)
         run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
-      - name: Build + compile tests for the Rust SDK
+      - name: Build + test the Rust SDK
         working-directory: rust
+        # --test-threads=1: the dcf bin's tests each build a DcfNode on the default
+        # UDP port 7777, so running them in parallel races to AddrInUse.
         run: |
           cargo build
-          cargo test --no-run
+          cargo test -- --test-threads=1
 
   python:
     runs-on: ubuntu-latest

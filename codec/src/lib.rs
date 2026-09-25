@@ -8,6 +8,7 @@ pub mod audio;
 pub mod fec;
 pub mod game;
 pub mod hydrapack;
+pub mod medium;
 pub mod mesh;
 pub mod modulation;
 pub mod monitor;

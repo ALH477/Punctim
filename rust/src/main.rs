@@ -37,7 +37,7 @@ use universal_shim::AdaptiveBuffer;
 #[derive(Parser)]
 #[command(name = "dcf")]
 #[command(author = "DeMoD LLC")]
-#[command(version = "2.2.0")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = "DeMoD Communications Framework - Rust Implementation")]
 struct Cli {
     /// Configuration file path
@@ -695,16 +695,18 @@ mod tests {
         assert_eq!(config.grpc_port, 50051);
     }
 
+    // Bind an ephemeral port (0): the default 7777 races between parallel test threads
+    // (and with any node already running on the host).
     #[tokio::test]
     async fn test_node_creation() {
-        let config = DcfConfig::default();
+        let config = DcfConfig { udp_port: 0, ..DcfConfig::default() };
         let node = DcfNode::new(config).unwrap();
         assert!(!node.is_running());
     }
 
     #[tokio::test]
     async fn test_peer_management() {
-        let config = DcfConfig::default();
+        let config = DcfConfig { udp_port: 0, ..DcfConfig::default() };
         let node = DcfNode::new(config).unwrap();
         
         node.add_peer("test-peer", "127.0.0.1", 7778).unwrap();

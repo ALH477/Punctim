@@ -11,6 +11,12 @@ SDR ~kbps, a handheld-acoustic link ~300 baud (~37 B/s). So every transport owns
 buffer decouples a fast source from a slow sink, ``send()`` never blocks the caller, and
 on overflow a drop policy sheds bulk while keeping priority (control/mesh) frames. That
 buffer is the heart of making heterogeneous shapes work.
+
+Every medium's byte/symbol representation is the certified DCF-Medium codec
+(python/MCP/mediumlab_core.py, Documentation/DCF_MEDIUM_SPEC.md); ``dcf.medium`` names
+the media with URIs (``udp:dialect=bare,peer=...``, ``file:path=...``, ``hex:``, ...) and
+``punctim io`` drives them through ``send_now`` (synchronous, never drops). numpy is only
+needed by the AFSK/SDR modems and is imported lazily (``_load_modems``).
 """
 import os
 import re
@@ -29,10 +35,18 @@ for _mcp in (os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "MCP
     if os.path.isdir(_mcp):
         sys.path.insert(0, _mcp)
 import wirelab_core as wire  # noqa: E402
+import superpack  # noqa: E402
+import mediumlab_core as medium_codec  # noqa: E402  (certified DCF-Medium codecs)
 
-from .proto import ProtoMessage, MSG_FRAME
+from .proto import MSG_FRAME, now_micros  # noqa: F401  (MSG_FRAME re-exported)
 
 FRAME_LEN = 17
+
+
+class MediumUnsupported(RuntimeError):
+    """This medium, or one of its options, is not available in this build/environment
+    (missing numpy, HydraModem tools, janus-c, a tool without a flag, ...). The `punctim`
+    CLI maps it to exit code 3 (Documentation/DCF_MEDIUM_SPEC.md)."""
 
 
 def frame_key(frame):
@@ -110,11 +124,26 @@ class Transport(ABC):
         self._q.put((bytes(frame), dest), priority=priority)
         return self._q.dropped == before
 
+    def send_now(self, frame, dest=None):
+        """Transmit synchronously on the caller's thread, bypassing the outbound queue
+        (never drops, never reorders). Used by `punctim io`, whose single-threaded ordered
+        pipeline must not shed frames of a finite input."""
+        self._transmit(bytes(frame), dest)
+        self.sent += 1
+
+    def flush(self):
+        """Emit anything the medium is holding back (e.g. a lone frame waiting for a
+        SuperPack partner). No-op for unbatched media."""
+
     def stop(self):
         self._running = False
-        self._stop_recv()
         if self._sender:
             self._sender.join(timeout=2.0)
+        try:
+            self.flush()
+        except Exception as e:  # pragma: no cover - link errors are per-medium
+            sys.stderr.write(f"[transport {self.name}] flush error: {e}\n")
+        self._stop_recv()
 
     @property
     def backlog(self):
@@ -134,6 +163,7 @@ class Transport(ABC):
         while self._running:
             item = self._q.get()
             if item is None:
+                self._idle()
                 time.sleep(0.002)
                 continue
             frame, dest = item
@@ -153,6 +183,10 @@ class Transport(ABC):
     def _transmit(self, frame, dest):
         ...
 
+    def _idle(self):
+        """Called by the sender loop (and `punctim io`) when nothing is queued — the hook
+        for time-based flushes (the bare-UDP lone-frame timer)."""
+
     def _start_recv(self):
         ...
 
@@ -167,14 +201,38 @@ class LoopbackMedium:
 
     def __init__(self):
         self.ports = []
+        self._lock = threading.Lock()
 
     def attach(self, t):
-        self.ports.append(t)
+        with self._lock:
+            if t not in self.ports:
+                self.ports.append(t)
+
+    def detach(self, t):
+        with self._lock:
+            if t in self.ports:
+                self.ports.remove(t)
 
     def broadcast(self, sender, frame):
-        for p in self.ports:
+        with self._lock:
+            ports = list(self.ports)
+        for p in ports:
             if p is not sender:
                 p._deliver(frame, {"via": "loopback"})
+
+
+_LOOP_MEDIA = {}
+_LOOP_LOCK = threading.Lock()
+
+
+def loop_medium(medium_id="default"):
+    """The process-wide named LoopbackMedium behind the `loop:id=<id>` URI (created on
+    first use), so independently built transports with the same id share one wire."""
+    with _LOOP_LOCK:
+        m = _LOOP_MEDIA.get(medium_id)
+        if m is None:
+            m = _LOOP_MEDIA[medium_id] = LoopbackMedium()
+        return m
 
 
 class LoopbackTransport(Transport):
@@ -186,23 +244,48 @@ class LoopbackTransport(Transport):
     def _transmit(self, frame, dest):
         self._medium.broadcast(self, frame)
 
+    def _start_recv(self):
+        self._medium.attach(self)
+
+    def _stop_recv(self):
+        self._medium.detach(self)
+
 
 # ── file spool (store-and-forward / offline bridging) ─────────────────────────
 class FileTransport(Transport):
-    """Append frames to a .dcf spool (tx) and/or tail one (rx)."""
+    """Append frames to a .dcf spool (tx) and/or read one (rx). The rx side decodes the
+    DCF-Medium `stream` representation with byte-wise resync (StreamScanner), so a spool
+    with garbage, a torn write or a mid-frame start still yields every intact frame.
 
-    def __init__(self, name, out_path=None, in_path=None, poll=0.2, **kw):
+    follow=True (the dcf-bridge default) tails the file for growth forever; follow=False
+    reads it once to EOF (``eof`` is set then). append=True (default) appends to an
+    existing spool; append=False truncates it on the first write."""
+
+    def __init__(self, name, out_path=None, in_path=None, poll=0.2, follow=True,
+                 append=True, **kw):
         super().__init__(name, **kw)
         self._out = out_path
         self._in = in_path
         self._poll = poll
+        self._follow = follow
+        self._append = append
+        self._fh = None
         self._rx_running = False
         self._rx_thread = None
+        self.scanner = medium_codec.StreamScanner()
+        self.eof = threading.Event()
+
+    @property
+    def skipped_bytes(self):
+        return self.scanner.skipped_bytes
 
     def _transmit(self, frame, dest):
-        if self._out:
-            with open(self._out, "ab") as f:
-                f.write(frame)
+        if not self._out:
+            return
+        if self._fh is None:
+            self._fh = open(self._out, "ab" if self._append else "wb")
+        self._fh.write(frame)
+        self._fh.flush()                  # a tailing reader sees whole frames promptly
 
     def _start_recv(self):
         if not self._in:
@@ -220,28 +303,195 @@ class FileTransport(Transport):
                     f.seek(pos)
                     data = f.read()
                     pos = f.tell()
-                for i in range(0, len(data) - FRAME_LEN + 1, FRAME_LEN):
-                    self._deliver(data[i:i + FRAME_LEN])
+                for fr in self.scanner.feed(data):
+                    self._deliver(fr)
             except FileNotFoundError:
                 pass
+            if not self._follow:
+                break
             time.sleep(self._poll)
+        self.eof.set()
 
     def _stop_recv(self):
         self._rx_running = False
+        if self._fh is not None:
+            try:
+                self._fh.close()
+            except OSError:
+                pass
+            self._fh = None
 
 
-# ── UDP (frames wrapped in the ProtoMessage envelope, MSG_FRAME) ──────────────
+class StdioTransport(Transport):
+    """The DCF-Medium `stream` representation on the process's stdin (rx, byte-wise
+    resync) and stdout (tx, raw 17-byte frames) — the `stdio:` medium."""
+
+    def __init__(self, name="stdio", stdin=None, stdout=None, read=True, write=True, **kw):
+        super().__init__(name, **kw)
+        self._in = (stdin if stdin is not None else sys.stdin.buffer) if read else None
+        self._outf = (stdout if stdout is not None else sys.stdout.buffer) if write else None
+        self.scanner = medium_codec.StreamScanner()
+        self.eof = threading.Event()
+        self._rx_thread = None
+
+    @property
+    def skipped_bytes(self):
+        return self.scanner.skipped_bytes
+
+    def _transmit(self, frame, dest):
+        if self._outf is not None:
+            self._outf.write(frame)
+            self._outf.flush()
+
+    def _start_recv(self):
+        if self._in is None:
+            return
+        self._rx_thread = threading.Thread(target=self._reader, name=f"rx-{self.name}",
+                                          daemon=True)
+        self._rx_thread.start()
+
+    def _reader(self):
+        read = getattr(self._in, "read1", self._in.read)
+        try:
+            while self._running:
+                chunk = read(65536)
+                if not chunk:
+                    break
+                for fr in self.scanner.feed(chunk):
+                    self._deliver(fr)
+        except (OSError, ValueError):
+            pass
+        self.eof.set()
+
+
+class HexTransport(Transport):
+    """The DCF-Medium `hex` representation: one frame per line, 34 lowercase hex chars.
+    rx parses lines (CRLF/uppercase/comments/blank accepted, bad lines counted); tx writes
+    lines. With path=None rx is stdin and tx is stdout (the `hex:` medium); with a path,
+    rx reads that file (tailing it when follow=True) and tx writes it (append or truncate).
+    mode picks the directions: "r", "w" or "rw"."""
+
+    def __init__(self, name="hex", path=None, mode="rw", follow=False, append=False,
+                 poll=0.2, **kw):
+        super().__init__(name, **kw)
+        self._path = path
+        self._read = "r" in mode
+        self._write = "w" in mode
+        self._follow = follow
+        self._append = append
+        self._poll = poll
+        self._fh = None
+        self._rx_thread = None
+        self.bad_lines = 0
+        self.eof = threading.Event()
+
+    def _transmit(self, frame, dest):
+        if not self._write:
+            return
+        line = (bytes(frame).hex() + "\n").encode("ascii")
+        if self._path is None:
+            sys.stdout.buffer.write(line)
+            sys.stdout.buffer.flush()
+            return
+        if self._fh is None:
+            self._fh = open(self._path, "ab" if self._append else "wb")
+        self._fh.write(line)
+        self._fh.flush()
+
+    def _start_recv(self):
+        if not self._read:
+            return
+        self._rx_thread = threading.Thread(target=self._reader, name=f"rx-{self.name}",
+                                          daemon=True)
+        self._rx_thread.start()
+
+    def _lines(self, raw):
+        frames, bad = medium_codec.hex_decode(raw.decode("latin-1"))
+        self.bad_lines += bad
+        for fr in frames:
+            self._deliver(fr)
+
+    def _reader(self):
+        try:
+            if self._path is None:
+                for raw in sys.stdin.buffer:
+                    if not self._running:
+                        break
+                    self._lines(raw)
+            else:
+                pos, carry = 0, b""
+                while self._running:
+                    try:
+                        with open(self._path, "rb") as f:
+                            f.seek(pos)
+                            data = f.read()
+                            pos = f.tell()
+                    except FileNotFoundError:
+                        data = b""
+                    buf = carry + data
+                    cut = buf.rfind(b"\n") + 1
+                    if cut:
+                        self._lines(buf[:cut])
+                    carry = buf[cut:]
+                    if not self._follow:
+                        if carry:
+                            self._lines(carry)
+                        break
+                    time.sleep(self._poll)
+        except (OSError, ValueError):
+            pass
+        self.eof.set()
+
+    def _stop_recv(self):
+        if self._fh is not None:
+            try:
+                self._fh.close()
+            except OSError:
+                pass
+            self._fh = None
+
+
+# ── UDP: dialect "proto" (ProtoMessage MSG_FRAME) or "bare" (frame / SuperPack) ─
 class UdpTransport(Transport):
-    """Carry frames as ProtoMessage(MSG_FRAME) datagrams to a set of peers."""
+    """Carry frames over UDP in one of the two DCF-Medium datagram dialects:
 
-    def __init__(self, name="udp", bind=("0.0.0.0", 0), peers=(), rate_bps=10_000_000, **kw):
+    * ``dialect="proto"`` (default): each frame is a 34-byte ProtoMessage(MSG_FRAME=12,
+      seq, ts, len 17, frame) — the binary envelope of the Go/C/Rust/Python mesh nodes.
+      ``seq`` starts at ``seq_start`` (1) and increments per datagram; ``ts="0"`` (default,
+      deterministic) or ``"now"`` (microseconds since the epoch). rx accepts msg_type 12
+      with payload_len 17; other types (adapter envelopes) are ignored.
+    * ``dialect="bare"``: the Node/WASM/matrix-bridge dialect. With ``pair=True`` two
+      consecutive frames travel as one 32-byte SuperPack; a lone frame is flushed raw
+      (17 B) after ``flush_ms`` or at stop/flush. rx unpacks SuperPacks and accepts 17-B
+      frames.
+
+    Undecodable datagrams are counted in ``invalid_datagrams``."""
+
+    def __init__(self, name="udp", bind=("0.0.0.0", 0), peers=(), rate_bps=10_000_000,
+                 dialect="proto", pair=True, flush_ms=20, ts="0", seq_start=1, **kw):
         super().__init__(name, rate_bps=rate_bps, **kw)
+        if dialect not in ("proto", "bare"):
+            raise ValueError(f"udp dialect must be proto|bare, got {dialect!r}")
+        if str(ts) not in ("0", "now"):
+            raise ValueError(f"udp ts policy must be 0|now, got {ts!r}")
         self._bind = bind
         self._peers = [tuple(p) for p in peers]          # [(host, port), ...]
+        self._dialect = dialect
+        self._pair = bool(pair)
+        self._flush_s = max(0.0, float(flush_ms)) / 1000.0
+        self._ts_now = str(ts) == "now"
+        self._seq = int(seq_start) & 0xFFFFFFFF          # next ProtoMessage sequence
+        self._pending = None                             # bare: (frame, dest, t_monotonic)
+        self._plock = threading.Lock()
         self._sock = None
-        self._seq = 0
         self._rx_running = False
         self._rx_thread = None
+        self.invalid_datagrams = 0
+        self.datagrams_sent = 0
+
+    @property
+    def dialect(self):
+        return self._dialect
 
     @property
     def port(self):
@@ -257,13 +507,49 @@ class UdpTransport(Transport):
             self._sock.bind(self._bind)
             self._sock.settimeout(0.3)
 
-    def _transmit(self, frame, dest):
-        self._ensure_sock()
-        self._seq = (self._seq + 1) & 0xFFFFFFFF
-        msg = ProtoMessage(MSG_FRAME, self._seq, frame).serialize()
+    def _send_datagram(self, dg, dest):
         targets = [dest] if dest else self._peers
         for host, port in targets:
-            self._sock.sendto(msg, (host, int(port)))
+            self._sock.sendto(dg, (host, int(port)))
+        self.datagrams_sent += 1
+
+    def _transmit(self, frame, dest):
+        self._ensure_sock()
+        if self._dialect == "proto":
+            seq = self._seq
+            self._seq = (self._seq + 1) & 0xFFFFFFFF
+            ts = now_micros() if self._ts_now else 0
+            self._send_datagram(medium_codec.proto_frame_encode(frame, seq, ts), dest)
+            return
+        # bare dialect: pair consecutive valid frames into one SuperPack datagram
+        if not self._pair or not medium_codec.gate(frame):
+            self.flush()                     # keep order: a held frame goes first
+            self._send_datagram(bytes(frame), dest)
+            return
+        with self._plock:
+            held = self._pending
+            if held is None:
+                self._pending = (bytes(frame), dest, time.monotonic())
+                return
+            self._pending = None
+        if held[1] != dest:                  # different destination: no pairing
+            self._send_datagram(held[0], held[1])
+            with self._plock:
+                self._pending = (bytes(frame), dest, time.monotonic())
+            return
+        self._send_datagram(superpack.pack(held[0], frame), dest)
+
+    def flush(self):
+        with self._plock:
+            held, self._pending = self._pending, None
+        if held is not None:
+            self._ensure_sock()
+            self._send_datagram(held[0], held[1])
+
+    def _idle(self):
+        held = self._pending
+        if held is not None and time.monotonic() - held[2] >= self._flush_s:
+            self.flush()
 
     def _start_recv(self):
         self._ensure_sock()
@@ -280,29 +566,65 @@ class UdpTransport(Transport):
                 continue
             except OSError:
                 break
-            try:
-                msg = ProtoMessage.deserialize(data)
-            except ValueError:
-                continue
-            if msg.msg_type == MSG_FRAME and len(msg.payload) == FRAME_LEN:
-                self._deliver(msg.payload, {"addr": addr})
+            if self._dialect == "proto":
+                try:
+                    msg_type, _, _, payload = medium_codec.proto_decode(data)
+                except ValueError:
+                    self.invalid_datagrams += 1
+                    continue
+                if msg_type != MSG_FRAME:
+                    continue                 # an adapter envelope, not a frame on this medium
+                if len(payload) != FRAME_LEN:
+                    self.invalid_datagrams += 1
+                    continue
+                self._deliver(payload, {"addr": addr})
+            else:
+                frames = medium_codec.bare_decode(data)
+                if not frames:
+                    self.invalid_datagrams += 1
+                    continue
+                for fr in frames:
+                    self._deliver(fr, {"addr": addr})
 
     def _stop_recv(self):
         self._rx_running = False
+        if self._rx_thread:
+            self._rx_thread.join(timeout=1.0)
         if self._sock:
             try:
                 self._sock.close()
             except OSError:
                 pass
+            self._sock = None
 
 
-# ── the modems (audio + SDR), imported tolerant of source/packaged layout ─────
-try:
-    from dcf.modem import acoustic as _acoustic, iq as _iqmod
-except Exception:  # pragma: no cover - source layout
-    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "modem"))
-    import acoustic as _acoustic
-    import iq as _iqmod
+# ── the modems (audio + SDR) need numpy: imported lazily, on first use ────────
+_acoustic = None
+_iqmod = None
+
+
+def _load_modems():
+    """Import python/modem acoustic.py + iq.py (numpy) on first use, tolerant of the
+    source/packaged layouts. Raises MediumUnsupported without numpy, so importing this
+    module (for the UDP/file/hex/stdio/loop/hydra media) never needs numpy."""
+    global _acoustic, _iqmod
+    if _acoustic is not None:
+        return _acoustic, _iqmod
+    try:
+        import numpy  # noqa: F401
+    except ImportError as e:
+        raise MediumUnsupported("the afsk/audio and sdr media need numpy "
+                                "(pip install numpy)") from e
+    try:
+        from dcf.modem import acoustic as a, iq as q
+    except Exception:  # pragma: no cover - source layout
+        mdir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "modem")
+        if mdir not in sys.path:
+            sys.path.insert(0, mdir)
+        import acoustic as a
+        import iq as q
+    _acoustic, _iqmod = a, q
+    return a, q
 
 
 class _DirMedium(Transport):
@@ -374,6 +696,7 @@ class AudioTransport(_DirMedium):
     EXT = ".wav"
 
     def __init__(self, name="audio", profile="handheld", fec=False, **kw):
+        _load_modems()                    # numpy (MediumUnsupported without it)
         super().__init__(name, **kw)
         self._profile, self._fec = profile, fec
 
@@ -394,6 +717,7 @@ class SdrTransport(_DirMedium):
     EXT = ".cf32"
 
     def __init__(self, name="sdr", mod="gfsk", sps=8, **kw):
+        _load_modems()                    # numpy (MediumUnsupported without it)
         super().__init__(name, **kw)
         self._mod, self._sps = mod, sps
 
@@ -476,7 +800,7 @@ class JanusTransport(_DirMedium):
         self._tx = tx_bin or os.environ.get("JANUS_TX") or shutil.which("janus-tx")
         self._rx = rx_bin or os.environ.get("JANUS_RX") or shutil.which("janus-rx")
         if not self._tx or not self._rx:
-            raise RuntimeError(
+            raise MediumUnsupported(
                 "janus-c not found: need janus-tx/janus-rx on PATH or $JANUS_TX/$JANUS_RX. "
                 "Install the GPL-3.0 reference (e.g. `nix build .#janus-c` or "
                 "`nix develop .#janus`). See Documentation/DCF_JANUS_SPEC.md")
@@ -526,31 +850,81 @@ def hydramodem_available():
     return bool(tx and rx)
 
 
+_HYDRA_CAPS = {}
+
+
+def hydra_tool_caps(tool):
+    """The optional flags a frame_tx/frame_rx build understands (from its usage text):
+    a subset of {"--profile", "--interleave", "--preamble"}. Older builds (before the
+    DCF-Medium tool flags) have none of them; the result is cached per binary path."""
+    if tool in _HYDRA_CAPS:
+        return _HYDRA_CAPS[tool]
+    try:
+        res = subprocess.run([tool], capture_output=True, text=True, timeout=10)
+        usage = res.stdout + res.stderr
+    except (OSError, subprocess.TimeoutExpired):
+        usage = ""
+    caps = {f for f in ("--profile", "--interleave", "--preamble") if f in usage}
+    _HYDRA_CAPS[tool] = caps
+    return caps
+
+
+# The `aux` HydraModem profile (hydra_profile_aux_cable): 1200 baud, tones 1200/2400 Hz,
+# 16-symbol preamble, conv + interleave. Applied as explicit tool flags when the tool has
+# no --profile switch.
+HYDRA_AUX_FLAGS = ["--base-freq", "1200", "--tone-spacing", "1200", "--baud", "1200"]
+
+
 class HydraTransport(_DirMedium):
-    """Carry frames over HydraModem via the `frame_tx`/`frame_rx` tools. Raises at
-    construction if they aren't built/on PATH (run hydramodem/dcf-tools/build.sh, then
-    set $HYDRA_TX/$HYDRA_RX or put build/ on PATH)."""
+    """Carry frames over HydraModem via the `frame_tx`/`frame_rx` tools. Raises
+    MediumUnsupported at construction if they aren't built/on PATH (run
+    hydramodem/dcf-tools/build.sh, then set $HYDRA_TX/$HYDRA_RX or put build/ on PATH).
+
+    profile="default"|"aux" picks hydra_profile_default / hydra_profile_aux_cable;
+    interleave=0 disables the coded-bit interleaver (needs a tool with --interleave,
+    else MediumUnsupported); base_freq/tone_spacing/baud/n_tones override the profile's
+    tone plan (FDMA channels)."""
 
     EXT = ".wav"
 
     def __init__(self, name="hydra", fec="conv", tx_bin=None, rx_bin=None,
                  base_freq=None, tone_spacing=None, baud=None, n_tones=None,
-                 rate_bps=8000, **kw):
-        super().__init__(name, rate_bps=rate_bps, **kw)
-        self._tx = tx_bin or os.environ.get("HYDRA_TX") or shutil.which("frame_tx")
-        self._rx = rx_bin or os.environ.get("HYDRA_RX") or shutil.which("frame_rx")
-        if not self._tx or not self._rx:
-            raise RuntimeError(
+                 profile="default", interleave=None, rate_bps=8000, **kw):
+        if profile not in ("default", "aux"):
+            raise ValueError(f"hydra profile must be default|aux, got {profile!r}")
+        if fec not in ("none", "rep3", "conv"):
+            raise ValueError(f"hydra fec must be none|rep3|conv, got {fec!r}")
+        tx = tx_bin or os.environ.get("HYDRA_TX") or shutil.which("frame_tx")
+        rx = rx_bin or os.environ.get("HYDRA_RX") or shutil.which("frame_rx")
+        if not tx or not rx:
+            raise MediumUnsupported(
                 "HydraModem tools not found: build hydramodem/dcf-tools (build.sh) and put "
                 "frame_tx/frame_rx on PATH or in $HYDRA_TX/$HYDRA_RX. See "
                 "Documentation/DCF_SENSE_SPEC.md")
-        self._fec = "--" + fec if fec in ("none", "rep3", "conv") else "--conv"
+        caps = hydra_tool_caps(tx) & hydra_tool_caps(rx)
+        prof = []
+        if profile == "aux":
+            if "--profile" in caps:
+                prof += ["--profile", "aux"]
+            else:
+                prof += list(HYDRA_AUX_FLAGS)
+                if "--preamble" in caps:
+                    prof += ["--preamble", "16"]
+        if interleave is not None and not int(interleave):
+            if "--interleave" not in caps:
+                raise MediumUnsupported(
+                    "hydra: interleave=0 needs frame_tx/frame_rx with --interleave "
+                    "(rebuild hydramodem/dcf-tools)")
+            prof += ["--interleave", "0"]
         # optional FDMA tone-channel profile (per-node distinct frequency band)
-        self._prof = []
         for flag, val in (("--base-freq", base_freq), ("--tone-spacing", tone_spacing),
                           ("--baud", baud), ("--n-tones", n_tones)):
             if val is not None:
-                self._prof += [flag, str(val)]
+                prof += [flag, str(val)]
+        super().__init__(name, rate_bps=rate_bps, **kw)
+        self._tx, self._rx = tx, rx
+        self._fec = "--" + fec
+        self._prof = prof
 
     def _encode_file(self, frame, path):
         subprocess.run([self._tx, bytes(frame).hex(), path, self._fec, *self._prof],
@@ -584,17 +958,24 @@ def hydramodem_cffi_available():
 
 class HydraCffiTransport(_DirMedium):
     """HydraModem via the in-process ctypes binding (no subprocess) — faster than
-    HydraTransport, same WAV-file medium. Accepts the same FDMA profile kwargs. See
-    dcf.hydramodem_cffi (needs libhydramodem.so; $HYDRAMODEM_LIB or hydramodem/build)."""
+    HydraTransport, same WAV-file medium. Accepts the same profile/interleave/FDMA kwargs.
+    See dcf.hydramodem_cffi (needs libhydramodem.so; $HYDRAMODEM_LIB or hydramodem/build);
+    raises MediumUnsupported when the library cannot be loaded."""
 
     EXT = ".wav"
 
     def __init__(self, name="hydra", fec="conv", base_freq=None, tone_spacing=None,
-                 baud=None, n_tones=None, rate_bps=8000, **kw):
+                 baud=None, n_tones=None, profile="default", interleave=None,
+                 rate_bps=8000, **kw):
+        from .hydramodem_cffi import HydraModem, available
+        if not available():
+            raise MediumUnsupported("libhydramodem not loadable (build hydramodem/ or set "
+                                    "$HYDRAMODEM_LIB)")
+        codec = HydraModem(fec=fec, base_freq=base_freq, tone_spacing=tone_spacing,
+                           baud=baud, n_tones=n_tones, profile=profile,
+                           interleave=interleave)
         super().__init__(name, rate_bps=rate_bps, **kw)
-        from .hydramodem_cffi import HydraModem
-        self._codec = HydraModem(fec=fec, base_freq=base_freq, tone_spacing=tone_spacing,
-                                 baud=baud, n_tones=n_tones)
+        self._codec = codec
 
     def _encode_file(self, frame, path):
         self._codec.encode_wav(frame, path)

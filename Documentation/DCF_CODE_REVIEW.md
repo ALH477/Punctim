@@ -42,6 +42,133 @@ review. Below, severity-ordered.
 
 ---
 
+## 2026-09-24 — DCF-Medium pass (dated findings)
+
+Each entry below is dated 2026-09-24 and was verified against the tree on that date.
+Open items are marked *Open*; items fixed in this pass say so.
+
+**R1. Hosted CI has never run a job.** All 57 `.github/workflows/wire-certify.yml` runs on GitHub Actions
+(2026-06-10 → 2026-06-21) failed at startup within seconds under an account billing lock
+— no step ever executed — and no run has been triggered since. The workflow was also
+invalid YAML from commit `70beec5` until this pass fixed it. Every "green in CI" /
+"CI-tested" claim in the tree therefore means *attested locally*: until the owner clears
+billing, `make ci-local` and `.github/LOCAL_CI_RESULTS.md` are the certification path of
+record. New jobs this pass: `certify-medium` and `io-matrix`. *Open (billing).*
+
+**R2. Lua never checks the 246 golden vectors.** `GUI/wirelab.lua` self-certifies on load
+against its own anchors only — `crc16("123456789") = 0x29B1` and one example frame ending
+`…CDA963` — and names `golden_vectors.json` only in a comment; `lua/selftest.lua` checks
+embedded audio example frames plus the same anchor. Nothing in `lua/` or `GUI/` reads the
+JSON, so the README tier table's "each certifying all 246 vectors" overstated Lua
+(corrected there). Fix: a Lua wire cert that parses the JSON, as `lisp/src/wire.lisp`
+does for Lisp. *Open.*
+
+**R3. The generated C headers for text / SSTV / snake omit the largest cases.** The generated
+headers bound a case to `payload[128]` and `frames[33][17]`, so the C certs never see the
+multi-frame rails: `codec/text_vectors.gen.h` carries **7 of 9** framing cases in
+`text_vectors.json` (omits 257 B and the 4092 B max), `codec/sstv_vectors.gen.h` **6 of 9**
+(omits 257, 5000 and the 8188 B max), `codec/snake_vectors.gen.h` **6 of 10** (omits 784,
+1328, 2048 and the 8188 B max); reassembly is complete (4/4 each). The C tests admit it
+("the 4092 B rail is certified by Python + Rust"), but "certified across C/Rust/Python"
+holds for C only up to 124 B. Fix: emit the large cases as per-case arrays. *Open.*
+
+**R4. SuperPack `unpack` type/version-nibble divergence — fixed in this pass (`43bebe0`).**
+The wire gate is sync + version nibble 1 + CRC; the type nibble is not gated (the
+246-vector encode basis carries types 4 and 8). Rust `codec/src/superpack.rs::unpack`
+re-validated the rebuilt inner frames with `Frame::decode` → `FrameType::from_nibble`,
+which rejects type nibbles 4–15 that Python and C accept (and never checked the inner
+version nibble); it now applies the gate directly. C
+`codec/demod_superpack.h::dcf_superpack_unpack` used `dcf_frame_valid`, which skips the
+version nibble; it now re-checks each rebuilt core with `dcf_superpack_core`. Pinned by the
+medium certificate (156 → 162 cases): `udp_bare` `lone_type8` / `pair_type4_type15`,
+`l2eth` `three_frames_with_type8`, and reserved-type cases in stream / hex / udp_proto.
+
+**R5. SuperPack `unpack` elsewhere (read-only audit; not fixed, no local toolchain).**
+(a) Haskell `haskell/src/DCF/Transport/SuperPack.hs::unpackSuper` re-checks with
+`decodeFrame`, whose `nibbleToFrameType` rejects types 4–15 and which never checks the
+version nibble — so `packSuper` (type-agnostic `frameCore`) then `unpackSuper` fails for a
+reserved-type frame. Fix: re-check with `frameCore`. *Open.* (b) Lua
+`lua/dcf_superpack.lua::M.unpack` does not re-check the rebuilt frames at all, so an inner
+version nibble ≠ 1 passes (the CRC is recomputed on rebuild; version edge case only).
+*Open.* (c) Lisp (`unpack-super` → `decode-frame`, `lisp/src/wire.lisp`), Kotlin
+(`SuperPack.unpack` → `Frame.decode`) and Swift (`unpackSuper` → `decode`) check sync +
+version + CRC and ignore the type — matching Python.
+
+**R6. SDK frame decoders diverge from the wire gate (read-only; not fixed).** Rust
+`Frame::decode` (`codec/frame.rs`) rejects types 4–15 via `FrameType::from_nibble`, and
+neither it nor `Frame::is_valid` (length + sync + CRC; any type) checks the version
+nibble. C `dcf_frame_decode` / `dcf_frame_valid` (`codec/demod_frame.h`) check sync + CRC
+only and skip the version nibble. Any SDK path that inspects received frames through them
+drops reserved types (Rust) or accepts a wrong-version frame (Rust, C);
+`codec-wasm/src/lib.rs::decode_frame` inspects through `Frame::decode`, so the browser Wire
+inspector shows a valid type-4..15 frame as rejected. The medium codecs and every
+`punctim` apply the gate directly and are unaffected. *Open.*
+
+**R7. `python/modem/main.py` — the only live audio path — is non-conforming.** It sends its
+own frame: a 15-byte header (`>BIQH`: type u8, seq u32, ts u64, len u16) + N payload bytes
++ CRC-8, with no `0xD3`, no version nibble, no CRC-16, through the shared
+`acoustic_frame.encode_bits` bit layer. Now labelled non-conforming in its docstrings; its
+`crc8` was also mislabelled "CRC-8/MAXIM" (it is the non-reflected poly-0x31 CRC, check
+`0xA2`; MAXIM is reflected, `0xA1`). The port to the 17-byte frame is deferred to v0.2 and
+should target the certified `afsk_bits` codec in `python/MCP/mediumlab_core.py`. Not
+edited here: `Documentation/DCF_FIELD_USE.md` says `python/modem/main.py` and `python/modem/acoustic.py`
+interoperate "byte-for-byte" — true of the bit layer only (the numpy modem decodes 17-byte
+frames, so it cannot decode the live modem's output unless N = 2), and `python/modem/acoustic_frame.py`'s
+module docstring repeats the MAXIM label. *Open (port).*
+
+**R8. Dead `DCF_MODEM_AUDIO` option — removed in this pass.** `option(DCF_MODEM_AUDIO …)` in
+`C_SDK/CMakeLists.txt` was consumed by nothing (no `if()`, no `#ifdef` anywhere) and no
+PortAudio/ALSA backend exists. `DCF_MODEM_SPEC.md`, the README and CLAUDE.md now say the
+C modem has no live-audio path. Still mentioned in the four translated READMEs and a
+comment in `codec/faust/dcf_modem.dsp`.
+
+**R9. HydraModem `aux_cable` comment — corrected in this pass.** `hydramodem/src/hydra_profile.c` called
+the aux profile "4x faster than default" and said it "matches python/modem/acoustic_frame.py
+aux-cable". It is 1.2× the baud (1200 vs 1000 baud; 0.290 s vs 0.356 s per conv-coded
+frame) and shares only baud and preamble length with the AFSK profile (tones, sync, CRC
+and FEC differ; they do not interoperate — `DCF_MODEM_SPEC.md` already said so). The same
+wording remains in `hydramodem/src/hydra_profile.h`. *Open (header comment).*
+
+**R10. Smaller doc corrections in this pass.** `DCF_STEAM_SPEC.md` claimed the GNS backend
+runs in CI — no job builds or tests it (`nix build .#dcf-cpp-gns` builds only; the
+`gns_loopback` ctest runs locally). `lua/dcf_transport.lua` pointed at a nonexistent
+DCF_TALK_SPEC.md — now `DCF_FIELD_USE.md` / `SUPERPACK_SPEC.md` / `DCF_FEC_SPEC.md`
+(`lua/dcf_voice.lua` and `lua/selftest_voice.lua` still cite it). `MineCraft/` now states
+that the datapack is a demonstration emitting no `0xD3` sync / CRC-16 — non-conforming and
+uncertified. `Documentation/index.md` now lists every spec.
+
+**Found by `punctim sim`** (2026-09-24):
+
+**R11. Pipe `lan` profile exceeds a 1500-B MTU.** `PROFILES["lan"]` in
+`python/dcf/pipe/protocol.py` is a 1400-B chunk, nparity 16, W 16. The DCF-FEC wrap makes
+each chunk `feclab_core.encode_message(bytes(1400), 16)` = **1521 B**; + the 6-B data-lane
+header = **1527 B**; + 28 B IPv4/UDP = **1555 B** — so every `lan` chunk IP-fragments on UDP
+(max unfragmented payload 1472 B) and does not fit one raw `l2eth` frame at all. Suggested
+fix (not applied): `chunk_size` 1300 (→ 1419 + 6 = 1425 B), or nparity sized per block so
+the wrapped chunk ≤ 1472 B. *Open.*
+
+**R12. One SSTV image overflows the default outbound queue.** An 8188-B DCF-SSTV image is
+1 + 2047 = **2048** `DATA` frames; `OutboundQueue` in `python/dcf/transport.py` (and
+`punctim io --queue`) defaults to **256**, so one un-paced send sheds frames on any medium
+slower than the producer. Senders must pace; `punctim sim` reports it as an EXACT burst row.
+*Open.*
+
+**DCF-Medium (new module) — status.** Spec `Documentation/DCF_MEDIUM_SPEC.md` (normative)
+and a **162-case certificate** over seven families (stream 11, hex 8, udp_proto 21,
+udp_bare 7, l2eth 5, hydra_symbols 74, afsk_bits 36) in `Documentation/medium_vectors.json`
+(+ the `python/MCP/` copy and `codec/medium_vectors.gen.h`). Five `punctim` CLIs with one
+contract (Python, C, Rust, Go, Node) and three codec-only ports of the five digital
+families (C++, Java, Perl); the HydraModem symbol stream is proven against the real
+`hydra_frame_build`; `make io-matrix` = 140 pass / 0 fail (every writer × reader over
+file, stdio, UDP proto/bare and HydraModem WAV, plus a resync leg). Solid: the codecs and
+the determinism rule for finite inputs. **Deferred (v0.2):** live tcp / serial / ws media;
+a conforming live-audio port (R7); the `sdr_bytes` family (SDR is loopback-tested and
+Python-only); `libhydramodem` linked into the C `punctim` (`hydra:impl=cffi` is
+Python-only); WAV byte-determinism across DSP backends (certification stops at the
+symbol/bit stream); Kotlin/Swift/Haskell/Lua/Lisp medium ports.
+
+---
+
 ## CRITICAL — compile breakers, memory safety, wire correctness
 
 > **Status (v0.3.0): all CRITICAL items below are RESOLVED.** C1–C6 are applied in
