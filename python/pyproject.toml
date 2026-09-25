@@ -57,7 +57,7 @@ py-modules = ["dcf_node", "punctim"]
 packages = [
   "dcf", "dcf.modem", "dcf.MCP",
   # Subpackages: each is importable from-source, so each must also ship in the wheel.
-  "dcf.pipe", "dcf.qkd", "dcf.sense", "dcf.sim", "dcf.spa",
+  "dcf.pipe", "dcf.qkd", "dcf.sense", "dcf.sim", "dcf.spa", "dcf.minecraft",
 ]
 
 [tool.setuptools.package-dir]
@@ -67,4 +67,4 @@ packages = [
 
 [tool.setuptools.package-data]
 # `punctim certify` falls back to the packaged medium certificate when Documentation/ is absent.
-"dcf.MCP" = ["medium_vectors.json"]
+"dcf.MCP" = ["medium_vectors.json", "minecraft_vectors.json"]

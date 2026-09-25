@@ -16,6 +16,8 @@ mirrored by every language's ``punctim``)::
           base_freq=,tone_spacing=,baud=,n_tones=,impl=tool|cffi,tx=,rx=
     afsk:in=DIR,out=DIR,profile=standard|handheld|aux-cable,fec=0|1      (audio: = alias)
     sdr:in=DIR,out=DIR,mod=gfsk    janus:in=DIR,out=DIR,pset=1,fs=48000,pset_file=,tx=,rx=
+    mc:rcon=host:port,pass_file=F|fifo=PATH,log=PATH|bot=ARGV,egress=console|chat,ns=dcf,poll_hz=4
+                                                                (a Minecraft world's register; Python-only)
 
 Every scheme accepts ``name=``. ``|`` separates multiple values (``peer=``). The codecs
 themselves are the certified reference in python/MCP/mediumlab_core.py; this module only
@@ -57,6 +59,7 @@ SCHEMES = {
     "audio": ("in", "out", "profile", "fec"),
     "sdr": ("in", "out", "mod"),
     "janus": ("in", "out", "pset", "fs", "pset_file", "tx", "rx"),
+    "mc": ("rcon", "pass_file", "pass_env", "fifo", "log", "bot", "egress", "ns", "poll_hz"),
 }
 COMMON_KEYS = ("name",)
 AFSK_PROFILE_NAMES = ("standard", "handheld", "aux-cable")
@@ -263,6 +266,12 @@ def make_transport(spec, direction=None):
                                 fs=_int(g("fs", "48000"), "fs"),
                                 pset_file=g("pset_file"), tx_bin=g("tx"), rx_bin=g("rx"))
 
+    if scheme == "mc":
+        # A Minecraft world's DeModFrame register (Documentation/DCF_MINECRAFT_SPEC.md) over
+        # RCON / the console FIFO / a bot helper, or chat-log egress only. Python-only.
+        from .minecraft.factory import make_minecraft
+        return make_minecraft(name, g, direction)
+
     raise UsageError(f"unknown medium {scheme!r}")  # pragma: no cover - parse_uri guards
 
 
@@ -360,6 +369,8 @@ def open_reader(spec):
         return (_StreamReader if scheme == "file" else _HexReader)(fp, owned=bool(path))
     if scheme == "udp" and "bind" not in kw:
         raise UsageError("udp as input needs bind=host:port")
+    if scheme == "mc" and not (kw.get("rcon") or kw.get("fifo") or kw.get("bot") or kw.get("log")):
+        raise UsageError("mc as input needs rcon=, fifo=, bot= or log=")
     if scheme in ("hydra", "afsk", "audio", "sdr", "janus") and not kw.get("in"):
         raise UsageError(f"{scheme} as input needs in=<dir>")
     return _TransportReader(make_transport(spec, "in"))
@@ -469,6 +480,8 @@ def open_writer(spec):
         return (_StreamWriter if scheme == "file" else _HexWriter)(fp, owned=bool(path))
     if scheme == "udp" and not kw.get("peer"):
         raise UsageError("udp as output needs peer=host:port")
+    if scheme == "mc" and not (kw.get("rcon") or kw.get("fifo") or kw.get("bot")):
+        raise UsageError("mc as output needs a console: rcon=, fifo= or bot=")
     if scheme in ("hydra", "afsk", "audio", "sdr", "janus") and not kw.get("out"):
         raise UsageError(f"{scheme} as output needs out=<dir>")
     t = make_transport(spec, "out")

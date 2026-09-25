@@ -2,7 +2,7 @@
 
 **Minecraft Redstone Reference Implementation**
 
-Version 3.1.0 | License: LGPL-3.0 | Minecraft 1.21.x
+Version 3.1.0 | License: LGPL-3.0-only | Minecraft 1.21.x
 
 > **Demonstration only — NOT a DCF wire-quantum implementation.** This datapack's
 > 17-byte frame (`"RDCF"` magic, version `0x4601`, a 1-byte checksum `0x01`) has **no
@@ -12,7 +12,10 @@ Version 3.1.0 | License: LGPL-3.0 | Minecraft 1.21.x
 > `invalid (bad sync byte)`, exit 5). It is not certified against
 > `golden_vectors.json` and is not a binding. "Reference implementation" and
 > "normative" below (and in [`protocol.md`](protocol.md)) describe this redstone demo's
-> own rules, not DCF's.
+> own rules, not DCF's. **The conforming implementation lives in
+> [`../minecraft/`](../minecraft/) (datapack generator, `punctim mc` sidecar, Paper plugin,
+> Fabric mod, Bedrock `/connect` bridge) and is specified by
+> [`../Documentation/DCF_MINECRAFT_SPEC.md`](../Documentation/DCF_MINECRAFT_SPEC.md).**
 
 ---
 
@@ -415,7 +418,7 @@ Duplicate TX/Auth layers at different X offsets. Each channel operates independe
 
 ## License
 
-LGPL-3.0
+LGPL-3.0-only
 
 You may study, modify, and redistribute this implementation provided changes are documented and the license preserved.
 

@@ -1,0 +1,9 @@
+{
+  "name": "dcf-minecraft-bot",
+  "version": "1.0.0",
+  "description": "A Mineflayer operator bot: a JSON-lines console for punctim mc (--bot) on LAN worlds and servers without RCON",
+  "license": "LGPL-3.0-only",
+  "private": true,
+  "bin": {"dcf-bot": "dcf_bot.js"},
+  "dependencies": {"mineflayer": "^4.25.0"}
+}

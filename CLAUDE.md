@@ -176,6 +176,45 @@ gcc -std=c11 -I codec C_SDK/tests/test_text_certify.c -lm -o /tmp/tc && /tmp/tc 
 cd go && go test ./text/                                       # Go
 ```
 
+## DCF-Minecraft (command blocks / redstone / Bedrock ⇄ the wire)
+
+A **conforming DeModFrame register inside a Minecraft world** — not a new wire format. 34
+nibbles as barrel item counts (OUT lanes, comparator strength 0..15; barrel capacity 27×64 =
+1728 so nibble 15 is reachable) and redstone-wire power (IN lanes), latched on a STROBE_IN edge
+into scoreboard words `w0..w5` (3/3/3/3/3/2 bytes, `w5` = CRC), validity judged outside the
+world (ACK/NAK pulses). Spec: `Documentation/DCF_MINECRAFT_SPEC.md`. The old `MineCraft/`
+datapack is a non-conforming demo (kept, banner'd); the real thing is `minecraft/`.
+
+- **Byte-certified** (`Documentation/minecraft_vectors.json` + `python/MCP/` copy, Python
+  `python/MCP/mclab_core.py` and Java `java/com/demod/dcf/McEvent.java` via `MinecraftCertify`):
+  register packing, the signal table, EVENT bodies (tags 1..4 = REDSTONE / BLOCK_SET /
+  CMD_TRIGGER / SCOREBOARD, ≤124 B on DCF-Game EVENT), channels `mc-world`=0xD952 (game),
+  `mc-chat`=0xE624 (text; never share a dst), geometry. Java also gained `Game.java` /
+  `Text.java` (ports of the canonical Python L2 adapters, `GameCertify`/`TextCertify`).
+- **Vanilla:** `minecraft/datapack/gen_datapack.py` (functions `dcf:build build_loopback tx
+  rx_commit tx_from_words selftest …`, self-announcing `tellraw "DCF TX w0..w5"` so a
+  single-player world needs no console) + the sidecar `python/dcf/minecraft/` = `punctim mc`
+  and the **Python-only** `mc:` medium (`rcon=` / `fifo=PATH,log=` / `bot=` Mineflayer /
+  `log=,egress=chat`); ingress = `w0..w5` + `function dcf:rx_commit`, egress = poll
+  `tx_pending`, gate, `ack`, `tx_done`. Bridges to `--peer host:port/proto|/bare`.
+- **Modded:** `minecraft/core` (`DcfUdpNode`, one socket, both dialects, dedup) + Paper plugin
+  (`minecraft/paper`, Java 25, `/dcf tx|frame|event|say|latch|status`, main-thread drain) + Fabric
+  mod (`minecraft/fabric`, 1.21.11, Gradle/Loom only). `minecraft/build.sh` = plain javac.
+- **Bedrock:** Geyser players need nothing; a vanilla Bedrock world uses its own `/connect
+  ws://host:19134` → `punctim mc --bedrock-ws` (`bedrock_ws.py`, stdlib RFC 6455): `say DCF <hex34>`
+  from a command block → frame; inbound → `commandRequest`s.
+- **Tests:** `tests.test_minecraft_{vectors,datapack,sidecar}` + `test_bedrock_ws` (fake server /
+  fake client), `CoreSelfTest`; human-run harnesses `minecraft/tools/{prism_test,devserver_test,
+  real_server_roundtrip}.py` use the user's Prism client / Oligarchy's dev Paper runner. CI
+  `certify-minecraft`.
+
+```sh
+python3 python/MCP/gen_minecraft_vectors.py /tmp/mv.json && diff /tmp/mv.json Documentation/minecraft_vectors.json
+cd python && python3 -m unittest tests.test_minecraft_vectors tests.test_minecraft_datapack tests.test_minecraft_sidecar tests.test_bedrock_ws
+java -cp /tmp/jout com.demod.dcf.MinecraftCertify Documentation/minecraft_vectors.json   # after the certify-java javac line
+minecraft/build.sh && python3 minecraft/tools/devserver_test.py                # real Paper + plugin, headless, as you
+```
+
 ## DCF-SSTV (slow-scan television / still images over the wire)
 
 A fourth adapter over `DeModFrame`, structurally like DCF-Text but tuned for the

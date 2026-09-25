@@ -295,6 +295,7 @@ Single-sourced in `python/dcf/medium.py:parse_uri` and mirrored by every `puncti
 | `audio:` | alias of `afsk:` (historical `dcf-bridge` name) | analog | infinite |
 | `sdr:` | `in=`/`out=` dirs, `mod=` (gfsk) | analog (loopback-tested) | infinite |
 | `janus:` | `in=`/`out=` dirs, `pset=` (1), `fs=` (48000), `pset_file=`, `tx=`/`rx=` | analog (loopback-tested) | infinite |
+| `mc:` | `rcon=host:port`, `pass_file=`, `fifo=PATH`, `log=PATH`, `bot=ARGV`, `egress=console\|chat`, `ns=dcf`, `poll_hz=4` — a Minecraft world's DeModFrame register (`DCF_MINECRAFT_SPEC.md`); **Python-only** (other `punctim`s exit 3) | register | infinite |
 
 Every historical `dcf-bridge -t` string keeps working (`udp:bind=,peer=`, `audio:`,
 `sdr:`, `janus:`, `hydra:`, `file:in=,out=`); a *bridge* `file:` port keeps its

@@ -92,6 +92,7 @@ rows (link budget, energy, hardware class).
 | AFSK bits / WAV (`afsk:`) | cert+tool⁵ | cert | cert | cert | cert | — | — | — | — |
 | SDR IQ `.cf32` (`sdr:`) | loop+tool⁵ | — | — | — | — | — | — | — | — |
 | JANUS WAV (`janus:`) | loop+tool⁶ | — | — | — | — | — | — | — | — |
+| Minecraft register (`mc:`) | loop+tool⁷ | — | — | — | — | — | — | — | — |
 
 `cert` = byte-certified codec, checked by that language's cert (for `hydra`/`afsk` the
 certificate stops at the symbol / bit stream; the WAV waveform is loopback-tested, like
@@ -101,7 +102,7 @@ exits 3). ¹ Kotlin, Swift, Haskell, Lua, Lisp: medium ports deferred to v0.2; t
 wire codecs stay certified. ² `impl=raw` needs `CAP_NET_RAW`; `impl=loop` is
 privilege-free. ³ In-process only: inside one `punctim io` it is a sink / silent source.
 ⁴ `io` runs the HydraModem `frame_tx`/`frame_rx` tools (`hydramodem/dcf-tools/build.sh`),
-exit 3 without them; Python can also load `libhydramodem` in-process (`impl=cffi`, ctypes). ⁵ Needs numpy. ⁶ Needs the GPL janus-c tools (`nix build .#janus-c`).
+exit 3 without them; Python can also load `libhydramodem` in-process (`impl=cffi`, ctypes). ⁵ Needs numpy. ⁶ Needs the GPL janus-c tools (`nix build .#janus-c`). ⁷ A Minecraft world's DeModFrame register via the `punctim mc` sidecar (RCON / console FIFO / Mineflayer bot / chat log) — Python-only; `Documentation/DCF_MINECRAFT_SPEC.md`.
 
 ## Language status
 

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "dcf_minecraft",
+  "version": "${version}",
+  "name": "DCF-Minecraft",
+  "description": "A conforming DeModFrame register in the world, bridged to Punctim UDP peers (Documentation/DCF_MINECRAFT_SPEC.md).",
+  "authors": ["DeMoD LLC"],
+  "contact": {"sources": "https://github.com/ALH477/Punctim"},
+  "license": "LGPL-3.0-only",
+  "environment": "*",
+  "entrypoints": {"main": ["com.demod.dcf.fabric.DcfMod"]},
+  "depends": {"fabricloader": ">=0.18.0", "minecraft": "~1.21.11", "java": ">=21", "fabric-api": "*"}
+}

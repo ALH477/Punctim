@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: LGPL-3.0-only
+// Fabric mod build. Loom 1.18 needs Gradle 9 and a Java-25 JVM to run (the mod itself targets 21)
+// plus network for Minecraft + Yarn: built by hand / CI, not Nix — see minecraft/README.md.
+plugins {
+    id 'fabric-loom' version "${loom_version}"
+    id 'maven-publish'
+}
+
+version = project.mod_version
+group = project.maven_group
+base { archivesName = project.archives_base_name }
+
+repositories { mavenCentral() }
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+}
+
+// The certified codec + the loader-agnostic core are compiled from the repo tree, unmodified.
+sourceSets.main.java.srcDirs += ['../../java', '../core/src']
+sourceSets.main.java.exclude 'com/demod/dcf/Networking.java'
+sourceSets.main.java.exclude 'com/demod/dcf/*Certify.java'
+sourceSets.main.java.exclude 'com/demod/dcf/mc/CoreSelfTest.java'
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") { expand "version": project.version }
+}
+
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+tasks.withType(JavaCompile).configureEach { it.options.release = 21 }

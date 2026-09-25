@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: LGPL-3.0-only
 """
 DeMoD 17-Byte Communication Framework (DCF)
-Minecraft Redstone Reference Implementation — Datapack Generator
+Minecraft Redstone DEMO — Datapack Generator
+
+DEMONSTRATION ONLY — NOT a DCF wire-quantum implementation. The 17-byte pattern below
+("RDCF" magic, version 0x4601, 1-byte checksum 0x01) has no 0xD3 sync, no version nibble
+and no CRC-16/CCITT-FALSE, so it is non-conforming to Documentation/WIRE_QUANTUM_SPEC.md,
+uncertified, and has no input path (TX and Auth are the same baked constant). The
+conforming register — datapack generator, `punctim mc` sidecar, Paper plugin, Fabric mod,
+Bedrock bridge — is minecraft/ (Documentation/DCF_MINECRAFT_SPEC.md).
 
 Version: 3.1.0
-License: LGPL-3.0
+License: LGPL-3.0-only
 Author: DeMoD LLC
 
 This generator creates a complete Minecraft datapack implementing the DCF protocol
@@ -32,7 +40,7 @@ from datetime import datetime
 
 DATAPACK_NAME = "dcf_protocol_v3"
 PACK_FORMAT = 48  # Minecraft 1.21.x
-PACK_DESCRIPTION = "DCF v3.1: 17-Byte Protocol Reference Implementation"
+PACK_DESCRIPTION = "DCF v3.1 redstone DEMO (non-conforming RDCF pattern; see minecraft/ for the real register)"
 
 # World Origin (datapack installs relative to execution position)
 # Recommended: Run from a flat area at Y=4 with ~300 blocks Z clearance

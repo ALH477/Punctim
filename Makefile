@@ -59,6 +59,16 @@ certify: ## Regenerate golden vectors + run the wire, audio, SuperPack, mesh & M
 	gcc -std=c11 -I codec C_SDK/tests/test_medium_certify.c -lm -o /tmp/dcf_medc && /tmp/dcf_medc
 	cd go && go test ./medium/
 	node JS/nodejs/test/certify_medium.js
+	@echo "== Minecraft (DCF-Minecraft register/events): regenerate vectors + diff, Python + Java certs =="
+	python3 python/MCP/mclab_core.py
+	python3 python/MCP/gen_minecraft_vectors.py /tmp/dcf_mc.json
+	diff /tmp/dcf_mc.json Documentation/minecraft_vectors.json
+	diff /tmp/dcf_mc.json python/MCP/minecraft_vectors.json
+	cd python && python3 -m unittest tests.test_minecraft_vectors tests.test_minecraft_datapack
+	mkdir -p /tmp/dcf_jmc && javac -d /tmp/dcf_jmc java/com/demod/dcf/Frame.java java/com/demod/dcf/JsonLite.java java/com/demod/dcf/Game.java java/com/demod/dcf/Text.java java/com/demod/dcf/McEvent.java java/com/demod/dcf/GameCertify.java java/com/demod/dcf/TextCertify.java java/com/demod/dcf/MinecraftCertify.java
+	java -cp /tmp/dcf_jmc com.demod.dcf.GameCertify Documentation/game_vectors.json
+	java -cp /tmp/dcf_jmc com.demod.dcf.TextCertify Documentation/text_vectors.json
+	java -cp /tmp/dcf_jmc com.demod.dcf.MinecraftCertify Documentation/minecraft_vectors.json
 	@echo "== Exsecutor: in-tree DeModFrame codec vs the live certificate =="
 	@echo "   (skips without exsc/fasmg; see exsecutor/README.md)"
 	./exsecutor/certify.sh

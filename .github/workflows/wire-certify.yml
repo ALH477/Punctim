@@ -689,11 +689,61 @@ jobs:
           javac -d /tmp/jout java/com/demod/dcf/Frame.java java/com/demod/dcf/Certify.java \
             java/com/demod/dcf/SuperPack.java java/com/demod/dcf/SuperPackCertify.java \
             java/com/demod/dcf/FEC.java java/com/demod/dcf/FECCertify.java \
-            java/com/demod/dcf/Medium.java java/com/demod/dcf/MediumCertify.java
+            java/com/demod/dcf/Medium.java java/com/demod/dcf/MediumCertify.java \
+            java/com/demod/dcf/JsonLite.java \
+            java/com/demod/dcf/Game.java java/com/demod/dcf/GameCertify.java \
+            java/com/demod/dcf/Text.java java/com/demod/dcf/TextCertify.java \
+            java/com/demod/dcf/McEvent.java java/com/demod/dcf/MinecraftCertify.java
           java -cp /tmp/jout com.demod.dcf.Certify Documentation/golden_vectors.json
           java -cp /tmp/jout com.demod.dcf.SuperPackCertify Documentation/superpack_vectors.json
           java -cp /tmp/jout com.demod.dcf.FECCertify Documentation/fec_vectors.json
           java -cp /tmp/jout com.demod.dcf.MediumCertify Documentation/medium_vectors.json
+          java -cp /tmp/jout com.demod.dcf.GameCertify Documentation/game_vectors.json
+          java -cp /tmp/jout com.demod.dcf.TextCertify Documentation/text_vectors.json
+          java -cp /tmp/jout com.demod.dcf.MinecraftCertify Documentation/minecraft_vectors.json
+
+  certify-minecraft:
+    # DCF-Minecraft: the register/EVENT vectors (Python + Java), the datapack generator, the
+    # punctim mc sidecar (fake server: RCON/FIFO/chat log), the Bedrock /connect bridge, and the
+    # loader-agnostic core + Paper plugin jars via plain javac (the Fabric mod is Gradle-only).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Regenerate minecraft vectors and diff against committed
+        run: |
+          python3 python/MCP/gen_minecraft_vectors.py /tmp/minecraft_vectors.json
+          diff /tmp/minecraft_vectors.json Documentation/minecraft_vectors.json
+          diff /tmp/minecraft_vectors.json python/MCP/minecraft_vectors.json
+          echo "minecraft vectors: committed == regenerated"
+
+      - name: Python — vectors, datapack generator, sidecar (fake server), Bedrock bridge
+        working-directory: python
+        run: |
+          python3 -m unittest tests.test_minecraft_vectors tests.test_minecraft_datapack \
+                              tests.test_minecraft_sidecar tests.test_bedrock_ws -v
+          python3 punctim.py version --json | grep -q '"mc"'
+
+      - name: Set up JDK 21 (core) and 25 (Paper plugin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            21
+            25
+
+      - name: Build the core + Paper plugin jars (javac) and run the core loopback
+        env:
+          PAPER_JDK: ${{ env.JAVA_HOME }}
+        run: |
+          JAVA_HOME="$JAVA_HOME_21_X64" bash minecraft/build.sh
+          unzip -l minecraft/build/dcf-minecraft-paper.jar | grep -q plugin.yml
+          unzip -l minecraft/build/dcf-minecraft-paper.jar | grep -q 'com/demod/dcf/Frame.class'
 
   certify-kotlin:
     runs-on: ubuntu-latest

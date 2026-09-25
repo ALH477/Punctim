@@ -30,8 +30,9 @@ WORKFLOW=.github/workflows/wire-certify.yml
 JOBS=(
   certify-python certify-c c-sdk-unit certify-hydramodem certify-rust spa certify-wasm
   certify-audio certify-game certify-text certify-qkd qkd-bridge certify-sstv certify-snake
-  certify-lua certify-go certify-haskell certify-java certify-kotlin certify-node
+  certify-lua certify-go certify-haskell certify-java certify-minecraft certify-kotlin certify-node
   certify-perl certify-cpp certify-swift certify-lisp certify-medium io-matrix
+  certify-exsecutor
 )
 
 if [ "${1:-}" = "--list" ]; then printf '%s\n' "${JOBS[@]}"; exit 0; fi
@@ -423,6 +424,28 @@ certify-java() {
   java -cp "$WORK/jout" com.demod.dcf.MediumCertify Documentation/medium_vectors.json
 }
 
+certify-minecraft() {
+  need javac jdk; need java jdk
+  step "Regenerate minecraft vectors and diff against committed"
+  python3 python/MCP/gen_minecraft_vectors.py "$WORK/minecraft_vectors.json"
+  diff "$WORK/minecraft_vectors.json" Documentation/minecraft_vectors.json
+  diff "$WORK/minecraft_vectors.json" python/MCP/minecraft_vectors.json
+  step "Python — vectors, datapack generator, sidecar (fake server), punctim mc, Bedrock bridge"
+  (cd python && python3 -m unittest tests.test_minecraft_vectors tests.test_minecraft_datapack \
+      tests.test_minecraft_sidecar tests.test_minecraft_cli tests.test_bedrock_ws -v)
+  python3 python/punctim.py version --json | grep -q '"mc"'
+  step "Build the core + Paper plugin jars (javac) and run the core loopback"
+  # The plugin needs a JDK >= 25 (Paper 26.2's API is Java-25 bytecode): $PAPER_JDK, else a
+  # Nix-store openjdk-25 (build.sh looks for one), else the core alone is built.
+  if [ -n "${PAPER_JDK:-}" ] || ls -d /nix/store/*-openjdk-25* >/dev/null 2>&1; then
+    bash minecraft/build.sh
+    unzip -l minecraft/build/dcf-minecraft-paper.jar | grep -q plugin.yml
+  else
+    echo "no JDK 25 for the Paper plugin; core only"
+    bash minecraft/build.sh --core-only
+  fi
+}
+
 certify-kotlin() {
   need kotlinc kotlin jdk; need java jdk
   step "Certify the Kotlin DeModFrame codec against the golden vectors"
@@ -524,6 +547,15 @@ io-matrix() {
 }
 
 # ══ driver ══════════════════════════════════════════════════════════════════════
+
+certify-exsecutor() {
+  # The in-tree Exsecutor codec vs the live certificate: needs nix (builds .#exsc and
+  # .#fasmg-x86) — SKIP without it, FAIL if the toolchain builds but the codec drifts.
+  have nix || skip_job "no nix to build the Exsecutor toolchain (.#exsc, .#fasmg-x86)"
+  need fasmg fasmg
+  step "Certify the in-tree Exsecutor DeModFrame codec against golden_vectors.json"
+  PUNCTIM_REQUIRE_EXSECUTOR=1 ./exsecutor/certify.sh
+}
 
 record() { # record <PASS|SKIP|FAIL> <job> <detail>
   SUMMARY+=("$1|$2|$3")

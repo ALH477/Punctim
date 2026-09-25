@@ -271,7 +271,7 @@
             # The wheel ships dcf, dcf.modem, dcf.MCP and the dcf.{pipe,qkd,sense,spa}
             # subpackages; prove every one of them imports from the installed layout.
             pythonImportsCheck = [
-              "dcf" "dcf.MCP" "dcf.pipe" "dcf.qkd" "dcf.sense" "dcf.spa"
+              "dcf" "dcf.MCP" "dcf.pipe" "dcf.qkd" "dcf.sense" "dcf.spa" "dcf.minecraft"
             ];
             meta.description = "Python SDK for DCF";
             meta.license = pkgs.lib.licenses.lgpl3Only;
@@ -737,6 +737,98 @@
           # supply that itself instead of inheriting it from the environment —
           # which is the ambient state Exsecutor's own thesis argues against.
           fasmg-x86 = exsecutor.packages.${system}.fasmg-x86;
+
+          # DCF-Minecraft (Documentation/DCF_MINECRAFT_SPEC.md) — LGPL-3.0-only, plain javac.
+          # core: the certified codec + Game/Text/McEvent + the UDP node (Java 21).
+          # paper: the Paper 26.2 plugin — compiled against fixed-output fetches of the Paper
+          # API (MIT) and its Adventure/Guava/BungeeCord signature dependencies, which are
+          # classpath-only and NOT embedded; the jar holds only com.demod.dcf.* classes.
+          # Paper 26.2's API is Java-25 bytecode, hence jdk25 for the plugin only.
+          # datapack: the generated vanilla datapack (data, no code) for <world>/datapacks/dcf.
+          dcf-minecraft-core = pkgs.stdenv.mkDerivation {
+            pname = "dcf-minecraft-core";
+            version = "1.0.0";
+            src = ./.;
+            nativeBuildInputs = [ pkgs.jdk21_headless ];
+            buildPhase = ''
+              runHook preBuild
+              export JAVA_HOME=${pkgs.jdk21_headless}
+              bash minecraft/build.sh --core-only
+              runHook postBuild
+            '';
+            installPhase = ''
+              runHook preInstall
+              install -Dm644 minecraft/build/dcf-minecraft-core.jar $out/share/dcf-minecraft/dcf-minecraft-core.jar
+              runHook postInstall
+            '';
+            meta.description = "DCF-Minecraft core: the certified DeModFrame codec + UDP node for Minecraft integrations";
+            meta.license = pkgs.lib.licenses.lgpl3Only;
+          };
+
+          dcf-minecraft-paper =
+            let
+              paperVersion = "26.2.build.121-stable";   # == Oligarchy's papermc.nix pin
+              paperRepo = "https://repo.papermc.io/repository/maven-public";
+              dep = path: name: hash: pkgs.fetchurl { url = "${paperRepo}/${path}/${name}"; inherit hash; };
+              libs = [
+                (dep "io/papermc/paper/paper-api/${paperVersion}" "paper-api-${paperVersion}.jar" "sha256-/gqgyq3rmCQre4uU1qFfbcRlVX5Hq5B09LAynzpFf4M=")
+                (dep "net/kyori/adventure-api/5.2.0" "adventure-api-5.2.0.jar" "sha256-flL+cZC+Poezs/cXEs+hIxX80nEJ8wKntEDBLwH66Cc=")
+                (dep "net/kyori/adventure-key/5.2.0" "adventure-key-5.2.0.jar" "sha256-AYTRcyAOLu+PvHkfYi0dWP1Fn4kwxha1pP556D7abFU=")
+                (dep "net/kyori/examination-api/1.3.0" "examination-api-1.3.0.jar" "sha256-ySN//ssFQo9u/4YhYkascM4LR7BMCOp8o1Ag/eV/hJI=")
+                (dep "net/kyori/examination-string/1.3.0" "examination-string-1.3.0.jar" "sha256-fQH8JaS7OvDhZiaFRV9FQfv0YmIW6lhG5FXBSR4Va4w=")
+                (dep "net/kyori/option/1.1.0" "option-1.1.0.jar" "sha256-l7abSxff4CIXyRMa00JWTLya69BMdetoljm194/UsRw=")
+                (dep "org/jspecify/jspecify/1.0.0" "jspecify-1.0.0.jar" "sha256-H61ua+dVd4Hk0zcp1Jrhzcj92m/kd7sMxozjUer9+6s=")
+                (dep "com/google/guava/guava/33.6.0-jre" "guava-33.6.0-jre.jar" "sha256-3Fc+H8pP1UVPSl/T19ot8DACh2pBdbr8FKlZgN13E7M=")
+                (dep "org/joml/joml/1.10.8" "joml-1.10.8.jar" "sha256-vxlRAUUXjfgs07037dUUwT9BFTHsVUUpn9Ory8mP58I=")
+                (dep "net/md-5/bungeecord-chat/1.21-R0.2-deprecated+build.21" "bungeecord-chat-1.21-R0.2-deprecated+build.21.jar" "sha256-zpMLPuBIUgoKtTjrjRYnswE2f8GzAINyNTh63tbYm6E=")
+              ];
+            in pkgs.stdenv.mkDerivation {
+              pname = "dcf-minecraft-paper";
+              version = "1.0.0";
+              src = ./.;
+              nativeBuildInputs = [ pkgs.jdk21_headless pkgs.jdk25_headless ];
+              buildPhase = ''
+                runHook preBuild
+                mkdir -p lib
+                ${pkgs.lib.concatMapStringsSep "\n" (j: "ln -s ${j} lib/${j.name}") libs}
+                export JAVA_HOME=${pkgs.jdk21_headless} PAPER_JDK=${pkgs.jdk25_headless}
+                bash minecraft/build.sh --paper-lib "$PWD/lib"
+                runHook postBuild
+              '';
+              installPhase = ''
+                runHook preInstall
+                install -Dm644 minecraft/build/dcf-minecraft-paper.jar $out/share/dcf-minecraft/dcf-minecraft-paper.jar
+                install -Dm644 minecraft/build/dcf-minecraft-core.jar $out/share/dcf-minecraft/dcf-minecraft-core.jar
+                runHook postInstall
+              '';
+              doInstallCheck = true;
+              installCheckPhase = ''
+                ${pkgs.unzip}/bin/unzip -p $out/share/dcf-minecraft/dcf-minecraft-paper.jar plugin.yml | grep -q '^name: DcfMinecraft'
+                ! ${pkgs.unzip}/bin/unzip -l $out/share/dcf-minecraft/dcf-minecraft-paper.jar | grep -qE ' (org/bukkit|net/kyori|io/papermc)/'
+              '';
+              meta.description = "DCF-Minecraft Paper plugin: a conforming DeModFrame register bridged to Punctim UDP peers";
+              meta.license = pkgs.lib.licenses.lgpl3Only;
+            };
+
+          dcf-minecraft-datapack = pkgs.stdenv.mkDerivation {
+            pname = "dcf-minecraft-datapack";
+            version = "1.0.0";
+            src = ./.;
+            nativeBuildInputs = [ pkgs.python3 ];
+            buildPhase = ''
+              runHook preBuild
+              python3 minecraft/datapack/gen_datapack.py --out dcf --origin 0 64 0
+              runHook postBuild
+            '';
+            installPhase = ''
+              runHook preInstall
+              mkdir -p $out/share/dcf-minecraft
+              cp -r dcf $out/share/dcf-minecraft/datapack
+              runHook postInstall
+            '';
+            meta.description = "DCF-Minecraft vanilla datapack (the conforming DeModFrame register) for <world>/datapacks/dcf";
+            meta.license = pkgs.lib.licenses.lgpl3Only;
+          };
 
           # Docs
           dcf-docs = pkgs.stdenv.mkDerivation {

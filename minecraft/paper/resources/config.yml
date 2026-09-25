@@ -1,0 +1,15 @@
+# DcfMinecraft (Paper) - Documentation/DCF_MINECRAFT_SPEC.md
+node-id: "0x00B1"          # src id of frames this server originates
+bind: "0.0.0.0:0"          # UDP socket (one socket, both dialects)
+peers:                     # host:port/proto (dcf_node.py, Go, Rust, C, punctim io) or /bare (Hermes, JS, web)
+  - "127.0.0.1:7801/bare"
+flush-ms: 20               # lone bare frame flush
+world: world
+origin: [0, 64, 0]         # register origin O; lanes at x+2i
+mode: native               # native: the plugin drives the barrels itself | datapack: hand frames to dcf:rx_commit
+namespace: dcf
+pulse-ticks: 4
+watch:                     # report BlockRedstoneEvents in a box as REDSTONE events on mc-world
+  enabled: false
+  min: [0, 0, 0]
+  max: [0, 0, 0]

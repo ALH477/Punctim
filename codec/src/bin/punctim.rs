@@ -591,7 +591,7 @@ fn cmd_decode(argv: &[String]) -> Res<i32> {
 }
 
 // ══ io: medium URIs ══════════════════════════════════════════════════════════
-const SCHEMES: [(&str, &[&str]); 11] = [
+const SCHEMES: [(&str, &[&str]); 12] = [
     ("file", &["path", "mode", "append", "follow", "in", "out"]),
     ("stdio", &[]),
     ("hex", &["path", "mode", "append", "follow"]),
@@ -635,6 +635,10 @@ const SCHEMES: [(&str, &[&str]); 11] = [
     (
         "janus",
         &["in", "out", "pset", "fs", "pset_file", "tx", "rx"],
+    ),
+    (
+        "mc",
+        &["rcon", "pass_file", "pass_env", "fifo", "log", "bot", "egress", "ns", "poll_hz"],
     ),
 ];
 
@@ -1059,6 +1063,12 @@ struct Reader {
 
 fn unsupported_media(u: &Uri, dir: &str) -> Res<()> {
     match u.scheme.as_str() {
+        "mc" => {
+            return Err(Fail::Unsupported(
+                "mc: a Minecraft world's register is a Python-only medium (punctim mc); use python/punctim.py"
+                    .to_string(),
+            ));
+        }
         "afsk" | "audio" | "sdr" | "janus" => {
             if u.g_nonempty(dir).is_none() {
                 return usage(format!(
