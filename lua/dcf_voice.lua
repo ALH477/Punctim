@@ -441,7 +441,7 @@ M.Vad = Vad
 -- Transport and devices are injected, so this runs headless in tests and against
 -- dm.net / dm.audio in demod-ui without changing a line:
 --   send  = function(frames) ... end     -- one call per 20 ms block (batch these
---                                        -- into ONE datagram; see DCF_TALK_SPEC §2.1)
+--                                        -- into ONE datagram; see SUPERPACK_SPEC.md)
 local Voice = {}
 Voice.__index = Voice
 
@@ -579,7 +579,7 @@ end
 
 M.Voice = Voice
 
--- ── Bandwidth model (informative; see DCF_TALK_SPEC.md §2) ──────────────────
+-- ── Bandwidth model (informative; see DCF_AUDIO_SPEC.md "L2 framing") ───────
 --- Wire cost of a codec profile. bytes_per_block -> frames, bytes/s, kbps.
 --- batch=true models one datagram per audio packet (the big win); false models
 --- one datagram per frame. udp_overhead defaults to 28 B (IPv4+UDP).

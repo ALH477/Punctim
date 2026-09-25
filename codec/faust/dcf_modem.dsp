@@ -5,8 +5,8 @@
 // Normative waveform spec for the DCF C-SDK Faust-DSP modem transport. The
 // certified layer is the byte<->symbol Gray mapping (codec/demod_modulation.h,
 // codec/src/modulation.rs, python/MCP/modulationlab_core.py); THIS file defines
-// how a symbol index is rendered onto a carrier for the *audio* medium (the
-// DCF_MODEM_AUDIO build path). The portable C reference (C_SDK/node/dcf_modem.h)
+// how a symbol index is rendered onto a carrier for the *audio* medium (no
+// live-audio backend is wired up yet; see DCF_MODEM_SPEC.md). The portable C reference (C_SDK/node/dcf_modem.h)
 // renders the same designs as sample snippets and recovers them by matched
 // filtering — exact over an ideal (loopback/file) medium. Per DCF-Audio policy,
 // the synthesised waveform is NOT byte-certified across languages; only the

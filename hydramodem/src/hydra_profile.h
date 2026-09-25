@@ -65,9 +65,10 @@ typedef struct {
 void hydra_profile_default(hydra_profile *p);
 
 /* Aux-cable profile: wired line-level connection (3.5mm/TRS).
- *   1200 baud (4x faster than default), tones 1200/2400 Hz (orthogonal at 48 kHz),
+ *   1200 baud (1.2x the default), tones 1200/2400 Hz (orthogonal at 48 kHz),
  *   16-symbol preamble (short — no AGC settling needed on cable), FEC convolutional.
- *   Matches python/modem/acoustic_frame.py "aux-cable" profile behavior. */
+ *   NOT interoperable with python/modem/acoustic_frame.py's "aux-cable" AFSK profile
+ *   (different tones, sync word and FEC): that is the afsk: medium, this is hydra:. */
 void hydra_profile_aux_cable(hydra_profile *p);
 
 /* Compute derived fields and validate. Returns 0 on success, <0 on bad config:

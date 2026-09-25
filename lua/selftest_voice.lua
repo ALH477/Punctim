@@ -133,7 +133,7 @@ for _, f in ipairs(wire) do off:receive(f) end
 chk(off:stats().rejected == #wire, "mistuned peer rejected every frame")
 print("  PASS  mistuned peer rejects the whole stream")
 
--- Law 10: wire-cost model matches DCF_TALK_SPEC.md §2
+-- Law 10: wire-cost model matches DCF_AUDIO_SPEC.md "L2 framing" (1 + ceil(len/4) frames)
 local opus16 = V.wire_cost(40)
 chk(opus16.frames == 11, "Opus 16k = 11 frames/20 ms")
 chk(math.abs(opus16.kbps - 86) < 1.5, ("batched Opus16 %.1f kbps, want ~86"):format(opus16.kbps))
@@ -141,7 +141,7 @@ local unbatched = V.wire_cost(40, { batch = false })
 chk(unbatched.datagrams == 11 and unbatched.kbps > opus16.kbps * 2,
     "one datagram per frame is >2x worse")
 chk(V.wire_cost(8).frames == 3, "Faust-PM = 3 frames")
-print("  PASS  wire-cost model agrees with DCF_TALK_SPEC.md §2")
+print("  PASS  wire-cost model agrees with DCF_AUDIO_SPEC.md L2 framing")
 
 -- Law 11: history — suffix key schema, query by channel and by peer
 local h = H.open({ backend = "memory", autoflush = 0 })
