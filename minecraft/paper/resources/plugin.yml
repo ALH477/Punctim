@@ -1,0 +1,15 @@
+name: DcfMinecraft
+version: 1.0.0
+main: com.demod.dcf.paper.DcfPlugin
+api-version: '1.21'
+description: DCF-Minecraft - a conforming DeModFrame register bridged to Punctim UDP peers (LGPL-3.0-only)
+author: DeMoD LLC
+website: https://github.com/ALH477/Punctim
+commands:
+  dcf:
+    description: DCF-Minecraft - send frames/events, latch the register, status
+    usage: /dcf tx HEX34 | frame TYPE SEQ DST HEX8 | event ... | say TEXT | latch | status
+    permission: dcf.use
+permissions:
+  dcf.use:
+    default: op
