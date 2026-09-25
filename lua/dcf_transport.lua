@@ -48,7 +48,9 @@ M.defaults = {
   strict = false,          -- true: a malformed datagram raises; false: skip + count
 }
 
--- Per-link starting points, matched to the transport tiers in DCF_TALK_SPEC.md.
+-- Per-link starting points. The RF / acoustic link tiers (and why they carry FEC) are
+-- Documentation/DCF_FIELD_USE.md; the batching is SUPERPACK_SPEC.md and the RS parity
+-- DCF_FEC_SPEC.md. lua/dcf_profile.lua maps each deployment profile onto these.
 M.presets = {
   lan      = { batch = "concat",    fec = { enabled = false } },
   wan      = { batch = "superpack", fec = { enabled = false } },

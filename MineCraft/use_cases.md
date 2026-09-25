@@ -1,5 +1,11 @@
 # DeMoD 17-Byte Redstone Framework: Use Cases & Command Block Integrations
 
+> **Scope note.** This addendum extends the Minecraft redstone demo (D17BCP), which is
+> **not** the DCF wire quantum: its 17-byte frame has no `0xD3` sync, no version nibble
+> and no CRC-16, so it is non-conforming to
+> [`WIRE_QUANTUM_SPEC.md`](../Documentation/WIRE_QUANTUM_SPEC.md) and uncertified.
+> See [`README.md`](README.md).
+
 **Version**: 2.1 Extension  
 **Minecraft**: Java 1.21+  
 **Overview**: This addendum expands the pure-redstone DeMoD build into hybrid systems. **Use Cases** showcase real-world MC applications (survival, servers, maps). **Command Block Integrations** layer `/command` logic atop the decoder/shim for dynamic, programmable comms—turning static verification into a full protocol stack. No mods; datapacks optional for functions.

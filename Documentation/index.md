@@ -30,6 +30,13 @@ The 17-byte `DeModFrame` — the one invariant every adapter rides on. Sync byte
 version nibble, CRC-16/CCITT-FALSE.
 ```
 
+```{grid-item-card} 🔀 Deterministic Across Mediums
+:link: DCF_MEDIUM_SPEC
+:link-type: doc
+One frame stream, any I/O — file, pipe, hex, UDP, raw Ethernet, acoustic tones. Every
+`punctim` produces the same bytes, pinned by a 162-case certificate.
+```
+
 ```{grid-item-card} 🕸 Agent-to-Agent
 :link: _include/agent-to-agent
 :link-type: doc
@@ -83,11 +90,39 @@ _include/architecture
 
 WIRE_QUANTUM_SPEC
 wire_quanta_category
+DCF_MEDIUM_SPEC
 DCF_AUDIO_SPEC
 DCF_GAME_SPEC
+DCF_TEXT_SPEC
+DCF_SSTV_SPEC
 DCF_SNAKE_SPEC
+DCF_QKD_SPEC
 SUPERPACK_SPEC
+DCF_PIPE_SPEC
+DCF_PIPE_MULTI_SPEC
+HYDRAPACK_SPEC
+DCF_MESH_SPEC
+DCF_FEC_SPEC
+DCF_MODEM_SPEC
+DCF_SDR_SPEC
+DCF_JANUS_SPEC
+DCF_SENSE_SPEC
+DCF_SPA_SPEC
+DCF_STEAM_SPEC
+DCF_WASM_SPEC
+DCF_CONTROL_SPEC
+DCF_TELEMETRY_SPEC
+DCF_SECURITY_EXPOSURE
 DCF_FIELD_USE
+```
+
+```{toctree}
+:hidden:
+:caption: Guides & design notes
+
+AGENT_CLIENTS
+DCF_RADIO
+DCF_REMOTE_ENGINE
 ```
 
 ```{toctree}
@@ -95,5 +130,6 @@ DCF_FIELD_USE
 :caption: Project
 
 DCF_CODE_REVIEW
+DCF_BACKLOG
 _include/contributing
 ```

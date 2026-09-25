@@ -17,7 +17,7 @@ the backend is chosen at build time. The open and proprietary libraries share th
 
 | Backend | CMake | Library | What you get | Hermetic? |
 |---------|-------|---------|--------------|-----------|
-| **GNS** (default) | `-DDCF_CPP_GNS=ON` | GameNetworkingSockets (BSD-3, nixpkgs) | Dedicated server (`CreateListenSocketIP`), client (`ConnectByIPAddress`), hub forwarding, LAN/direct P2P, custom-signaling P2P | ✅ yes (CI/Docker) |
+| **GNS** (default) | `-DDCF_CPP_GNS=ON` | GameNetworkingSockets (BSD-3, nixpkgs) | Dedicated server (`CreateListenSocketIP`), client (`ConnectByIPAddress`), hub forwarding, LAN/direct P2P, custom-signaling P2P | ✅ yes — built and loopback-tested locally (`cmake … -DDCF_CPP_GNS=ON`, `ctest -R gns_loopback`); `nix build .#dcf-cpp-gns` / `.#docker-dcf-gns` build it hermetically (build only, no test run); **not in hosted CI** |
 | **Steamworks** (priority) | `-DDCF_CPP_STEAM=ON -DDCF_STEAMWORKS_SDK=…` | Proprietary Steamworks SDK | + **SDR relay** (NAT-punch, IP hiding), **lobbies**, **server browser**, Steam auth | ❌ developer-supplied |
 
 Reference: `cpp/include/dcf/{transport,net_steam}.hpp`, `cpp/src/net_steam.cpp`

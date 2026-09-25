@@ -25,7 +25,7 @@ C SDK's networking story alongside the conventional ProtoMessage/UDP transport.
    reference (`C_SDK/node/dcf_modem.h`) renders sample snippets and recovers them by
    matched filtering — **exact over an ideal (loopback/file) medium**, robust under
    mild noise on a real one. The normative audio-band signal design is
-   `codec/faust/dcf_modem.dsp` (the `DCF_MODEM_AUDIO` live path).
+   `codec/faust/dcf_modem.dsp` (the intended live-audio path; not built — see below).
 
 This mirrors DCF-Audio exactly: the L2/mapping layer is the contract; the synthesised
 signal is not certified across languages.
@@ -87,8 +87,10 @@ The modem transport reads/writes a sample stream from a **medium**:
   writes a self-describing capture (`"DCFM" | mod | nbytes | nsamples | fec | f64[]`);
   `recv-modem --medium PATH` demodulates it. A frame pair crosses the "channel"
   byte-exact. Used by the interop test (per modulation).
-- **live audio** (`DCF_MODEM_AUDIO`, default OFF) — a PortAudio/ALSA backend rendering
-  `dcf_modem.dsp` over speaker↔mic, the open-air path of `python/modem/`.
+- **live audio** — **not implemented.** No PortAudio/ALSA backend was ever written for
+  the C node; the `DCF_MODEM_AUDIO` CMake option that advertised one was consumed by
+  nothing and was removed (2026-09-24). Live acoustic links today are HydraModem
+  (`hydra:`) and the Python AFSK modem (`afsk:`) — see `DCF_MEDIUM_SPEC.md`.
 
 The 14-byte medium header is `"DCFM" | mod u8 | nbytes u32 BE | nsamples u32 BE |
 fec u8`, followed by `nsamples` native `f64` samples. The trailing byte is a **0/1 FEC
