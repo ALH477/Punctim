@@ -13,6 +13,24 @@
 > note immediately below is preserved as the historical record of why local
 > attestation was the sole certification path of record up to that point.
 
+> **Update (2026-09-25, DCF-Minecraft branch `feat/dcf-minecraft`):** the new `certify-minecraft`
+> job and the jobs it touches were run locally with `make ci-local` (parity guard OK after adding
+> the previously missing `certify-exsecutor` entry) and the full `make certify` (ALL CERTS PASS):
+>
+> | Job / check | Status | How |
+> |-----|--------|-----|
+> | certify-minecraft | ✅ PASS | vectors regenerated == both committed copies; 5 Python suites (`test_minecraft_{vectors,datapack,sidecar,cli}`, `test_bedrock_ws`, 30 tests, 5/5 repeated runs green); `minecraft/build.sh` core (JDK 21) + Paper plugin (Nix-store JDK 25) jars; `CoreSelfTest` loopback |
+> | certify-java | ✅ PASS | + `GameCertify`, `TextCertify`, `MinecraftCertify` |
+> | certify-medium | ✅ PASS | unchanged codecs; `mc:` now a known scheme (Python-only; C/Rust/Go/Node exit 3, verified per binary) |
+> | certify-exsecutor | ✅ PASS | fasmg from nix; 246/246 |
+> | Fabric mod | ✅ built | Gradle 9.7.1 + JDK 25 (Loom 1.18), Yarn 1.21.11+build.6, jar 65 KB |
+> | Nix | ✅ PASS | `nix build .#dcf-python .#dcf-minecraft-core .#dcf-minecraft-paper .#dcf-minecraft-datapack`; Sphinx docs build (pip venv) links the spec |
+> | Real Paper 26.2 round trip | ✅ PASS | `minecraft/tools/devserver_test.py`: Oligarchy's dev runner (Paper 26.2-121 + Geyser 2.11.2 + Floodgate 2.2.5, headless) with the plugin in datapack mode: `dcf:selftest` → barrels → comparators → wires → latch → plugin → UDP (proto) = golden frame; UDP → plugin → `dcf:rx_commit` → words + barrel 0 verified over the stdin console |
+> | Oligarchy `.#test-minecraft-server` | ✅ PASS | NixOS VM gate (KVM): jars, datapack, rendered config, sidecar unit on the console FIFO, `:19134` listening, every port rule scoped to `wg0` |
+>
+> Human-run, not repeated here: `prism_test.py` on a Prism client (it provisions + tails; the
+> user opens the world), Bedrock `/connect` on a real client.
+
 > **Status note (2026-09-24): hosted GitHub Actions have never executed a real job
 > for this repository.** All 57 `wire-certify.yml` runs (2026-06-10 → 2026-06-21)
 > failed at startup within seconds (an account billing lock; no step ever ran), and

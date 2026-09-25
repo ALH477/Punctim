@@ -42,6 +42,37 @@ review. Below, severity-ordered.
 
 ---
 
+## 2026-09-25 — DCF-Minecraft pass (dated findings)
+
+**What landed.** `minecraft/` + `python/dcf/minecraft/` + `Documentation/DCF_MINECRAFT_SPEC.md`: a
+*conforming* DeModFrame register in a Minecraft world (34 nibbles as barrel item counts / redstone-wire
+power, latched into scoreboard words), driven by a vanilla datapack + the `punctim mc` sidecar (RCON,
+console FIFO, a Mineflayer bot, or a client's chat log), a Paper 26.2 plugin, a Fabric 1.21.11 mod, and
+a bridge for vanilla Bedrock's own `/connect ws://`. The old `MineCraft/` demo (non-conforming "RDCF"
+pattern, no input path, barrel capacity of a dropper) stays as a banner'd historical artifact.
+
+**Byte-certified** (`minecraft_vectors.json`, Python `mclab_core` and Java `McEvent`/`MinecraftCertify`):
+register packing, the 16-value signal table (capacity 1728), words, EVENT bodies (tags 1..4), channels
+(`mc-world` 0xD952, `mc-chat` 0xE624), geometry. Java also gained `Game.java`/`Text.java`, certified
+against the existing game/text vectors — the "no Text/Game adapter in Java" gap is closed.
+
+**Loopback / fake-tested:** the datapack's scoreboard arithmetic (a mcfunction-subset interpreter),
+the sidecar over RCON / FIFO / bot / chat log incl. NAK on a bad CRC and log rotation, `punctim mc`
+end to end with one proto and one bare peer, the Bedrock RFC 6455 bridge with a fake client, the
+UDP node's dual dialect + dedup, and Oligarchy's `.#test-minecraft-server` VM gate (plugin symlink,
+datapack, rendered config, sidecar unit, tunnel-scoped ports).
+
+**Human-run only (never CI):** `minecraft/tools/prism_test.py` (the user's own Prism client; the
+script provisions and tails, it does not launch), `devserver_test.py` (Oligarchy's real Paper stack,
+headless), `real_server_roundtrip.py`. *Open:* whether a Bedrock command block's `/say` reaches
+`/connect` subscribers as `PlayerMessage`, and the client's encrypted-websocket toggle — both need a
+real Bedrock client. *Fixed in this pass:* Minecraft 1.21.11 renamed gamerules to snake_case, which
+rejected the whole `dcf:load` function; the datapack no longer touches gamerules, and its `tellraw`
+component lists are homogeneous so the ≥1.21.5 SNBT text parser accepts them.
+
+**Convention kept:** `mc:` is a *known* medium everywhere — the C/Rust/Go/Node `punctim` parse it and
+exit 3 (Python-only), matching how `janus:`/`sdr:` are handled.
+
 ## 2026-09-24 — DCF-Medium pass (dated findings)
 
 Each entry below is dated 2026-09-24 and was verified against the tree on that date.

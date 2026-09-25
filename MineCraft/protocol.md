@@ -101,7 +101,7 @@ Each symbol occupies exactly one **Frame Window**.
 
 | Property         | Value        |
 | ---------------- | ------------ |
-| Clock period     | 3 game ticks |
+| Clock period     | 4 game ticks |
 | Symbol high time | 2 ticks      |
 | Symbol low time  | 1 tick       |
 
