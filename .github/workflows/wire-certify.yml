@@ -1020,20 +1020,25 @@ jobs:
         with:
           extra_nix_config: "experimental-features = nix-command flakes"
 
+      # certify.sh is self-sufficient given nix and fasmg: it builds the pinned
+      # compiler with `nix build .#exsc` (GPL-3.0-or-later, run as a subprocess,
+      # never linked) and supplies fasmg's $INCLUDE from `.#fasmg-x86` rather than
+      # inheriting it. Nothing from the Exsecutor checkout is needed here — that
+      # checkout exists only for the drift comparison and the upstream suite below.
       - name: Certify the IN-TREE codec against this repo's live certificate
         working-directory: punctim
         env:
           PUNCTIM_REQUIRE_EXSECUTOR: "1"   # a missing toolchain fails here, never skips
         run: |
-          # Builds the pinned exsc via `nix build .#exsc` (GPL, run as a
-          # subprocess, never linked), assembles with fasmg, runs the certifier
-          # and compares against Documentation/golden_vectors.json.
-          nix develop --command bash -c 'FASMG=$(command -v fasmg) ./exsecutor/certify.sh' 2>&1 | tee /tmp/cert.log
+          nix shell nixpkgs#fasmg --command ./exsecutor/certify.sh 2>&1 | tee /tmp/cert.log
           grep -q "certificate: 246/246 vectors" /tmp/cert.log \
             || { echo "::error::in-tree Exsecutor codec did not report 246/246"; exit 1; }
 
+      # `if: always()` so this still reports when the step above fails — without it
+      # a failure upstream of here skips it, and the mutation result goes unseen.
       - name: Upstream entry 23 (mutation + purity checks this repo does not reproduce)
         working-directory: exsecutor
+        if: always()
         continue-on-error: true
         run: |
           nix develop --command bash tests/run.sh 2>&1 | tee /tmp/exs.log | grep -iE "entry23|RESULT" || true

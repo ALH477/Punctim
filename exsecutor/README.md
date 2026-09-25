@@ -53,12 +53,23 @@ The compile unit is **order-sensitive**: declaration, then codec, then driver.
 
 ## Toolchain
 
-Certifying needs the `exsc` compiler, which this repo does not ship. `certify.sh`
-takes it from `$EXSC`, or `exsc` on `PATH`, or builds the pinned upstream one with
-`nix build .#exsc`; it also needs `fasmg` to assemble `exsc`'s output. Without
-them it **skips** (exit 0) so a plain checkout still runs every other
-certification — except under `PUNCTIM_REQUIRE_EXSECUTOR=1`, which CI sets so a
-missing toolchain fails loudly instead of silently passing.
+Certifying needs the `exsc` compiler, which this repo does not ship, and `fasmg`
+to assemble what `exsc` emits. The only thing you must provide is **fasmg**:
+
+```sh
+nix shell nixpkgs#fasmg --command ./exsecutor/certify.sh
+```
+
+`certify.sh` supplies the rest itself — it takes `exsc` from `$EXSC`, or `PATH`,
+or builds the pinned upstream one with `nix build .#exsc`, and it sets fasmg's
+`$INCLUDE` from `nix build .#fasmg-x86` rather than inheriting it. That last part
+matters: without it the assemble step dies on `source file 'format/format.inc'
+not found`, and depending on the caller's environment for it would be precisely
+the ambient state Exsecutor exists to avoid.
+
+Missing any of that, it **skips** (exit 0) so a plain checkout still runs every
+other certification — except under `PUNCTIM_REQUIRE_EXSECUTOR=1`, which CI sets
+so a missing toolchain fails loudly instead of silently passing.
 
 ## Licensing — an exception to the exception
 

@@ -55,6 +55,20 @@ fi
 FASMG="${FASMG:-$(command -v fasmg || true)}"
 usable "$FASMG" || skip "no usable fasmg (set \$FASMG); it assembles exsc's output"
 
+# fasmg locates the x86 macro package through $INCLUDE. Supply it rather than
+# inherit it: without this the assemble step dies on "source file
+# 'format/format.inc' not found", and depending on the caller's environment for
+# it is exactly the ambient state Exsecutor exists to avoid.
+if [ -z "${INCLUDE:-}" ] || [ ! -d "${INCLUDE:-/nonexistent}" ]; then
+  if command -v nix >/dev/null 2>&1 \
+     && nix build "$ROOT#fasmg-x86" --no-link --print-out-paths >"$WORK/inc" 2>"$WORK/inclog"; then
+    INCLUDE="$(cat "$WORK/inc")"
+    export INCLUDE
+  else
+    skip "no \$INCLUDE for fasmg's macro package and could not build .#fasmg-x86"
+  fi
+fi
+
 VEC="${PUNCTIM_GOLDEN_VECTORS:-$ROOT/Documentation/golden_vectors.json}"
 [ -f "$VEC" ] || { echo "FAIL: no certificate at $VEC" >&2; exit 1; }
 export PUNCTIM_GOLDEN_VECTORS="$VEC"

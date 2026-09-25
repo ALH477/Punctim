@@ -732,6 +732,12 @@
           # is vendored here. See Documentation/DCF_EXSECUTOR.md and LICENSING.md.
           exsc = exsecutor.packages.${system}.exsc;
 
+          # The fasmg-x86 macro package exsc's emitted assembly includes. fasmg
+          # finds it through $INCLUDE, so exposing it lets exsecutor/certify.sh
+          # supply that itself instead of inheriting it from the environment —
+          # which is the ambient state Exsecutor's own thesis argues against.
+          fasmg-x86 = exsecutor.packages.${system}.fasmg-x86;
+
           # Docs
           dcf-docs = pkgs.stdenv.mkDerivation {
             pname = "dcf-docs";
