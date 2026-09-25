@@ -70,6 +70,45 @@ own Nix derivation, `nix build .#quanta`, kept out of every LGPL package's closu
 binaries at runtime (`$QUANTA_STREAM`/`$QUANTA_STREAM_DECODE`), so the LGPL library never
 depends on GPL code.
 
+## Exsecutor — GPL-3.0-or-later + §7 exceptions, vendored in the *other* direction
+
+[Exsecutor](https://github.com/ALH477/exsecutor) (`exsc` compiler; same author,
+DeMoD LLC) implements the DeModFrame wire codec as a conformance entry
+(`entry23`) and certifies it against `Documentation/golden_vectors.json`. See
+[`Documentation/DCF_EXSECUTOR.md`](Documentation/DCF_EXSECUTOR.md) for the full
+binding writeup.
+
+Exsecutor is licensed **GPL-3.0-or-later** with §7 additional permissions
+(`LICENSE.EXCEPTION`, v2.0): **Exception A** covers *compiler output* — "You have
+permission to propagate Compiler Output under terms of your choosing," modelled on
+the GCC Runtime Library Exception, the FAUST notice, and the Bison parser
+exception — so anything `exsc` compiles (including the entry-23 codec) carries no
+GPL propagation obligation of its own. **Exception B** is a per-file exception
+covering designated runtime files linked into a compiled program.
+
+The dependency direction here is the **reverse** of the janus-c and quanta
+boundaries above. Those two are cases of *this* LGPL-3.0-only tree shelling out to
+a separate GPL-3.0-or-later binary at runtime. Exsecutor does the opposite: it is a
+**separate GPL-3.0 repository that vendors a copy of this repo's certificate**
+(`golden_vectors.json` and `WIRE_QUANTUM_SPEC.md`, verified byte-identical as of
+2026-09-25) as reference data, and certifies its own independent codec
+implementation against it. Consequently:
+
+- **Nothing is vendored or linked in either direction.** `exsc` is never invoked,
+  shelled out to, or shipped by anything in this tree; no Exsecutor source or
+  binary is present here.
+- Because of Exception A, even Exsecutor's own compiled test binary carries no GPL
+  propagation obligation — but the question is moot for this repo regardless,
+  since nothing here links against or redistributes it.
+- The only thing that crosses the boundary is **data, one way**: Exsecutor's
+  `entry23` vendors this repo's certificate and spec as read-only reference
+  material with sha256 provenance recorded upstream. This repo does not vendor
+  anything from Exsecutor.
+- A `certify-exsecutor` CI job (`.github/workflows/wire-certify.yml`) checks out
+  both repos to catch drift between this repo's `golden_vectors.json` and
+  Exsecutor's vendored copy — it verifies the *data* stays in sync, not a build or
+  license dependency.
+
 ## HydraModem — LGPL-3.0-only
 
 The [`hydramodem/`](hydramodem/) directory is a self-contained acoustic M-FSK modem that carries
