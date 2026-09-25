@@ -1,0 +1,247 @@
+// SPDX-License-Identifier: LGPL-3.0-only
+// Copyright (C) 2026 DeMoD LLC.
+//
+// RELICENSED SOURCE — an exception to LICENSE.EXCEPTION.
+//
+// This file originates in the Exsecutor repository (github.com/ALH477/exsecutor,
+// GPL-3.0-or-later plus the GPLv3 §7 additional permissions in its
+// LICENSE.EXCEPTION) as tests/conformance/entry23/probatio.exsc. DeMoD LLC is
+// the sole copyright holder of both Exsecutor and Punctim and, on that basis,
+// additionally licenses THIS COPY under LGPL-3.0-only so that it can live inside
+// Punctim's linkable tree. A sole copyright holder may license their own work
+// under more than one licence; this is that, not a conversion of the original.
+//
+// Why a new grant was needed. LICENSE.EXCEPTION carries two §7 permissions:
+// Exception A covers compiler OUTPUT, Exception B covers designated runtime
+// files linked into a program. Neither reaches compiler-INPUT source such as
+// this. So this is a third, narrower carve-out — an exception to the exception —
+// scoped exactly to the files in this directory.
+//
+// It changes nothing upstream: the Exsecutor original remains GPL-3.0-or-later,
+// and no other Exsecutor source is relicensed by implication. See LICENSING.md
+// and Documentation/DCF_EXSECUTOR.md.
+//
+// entry23/probatio.exsc -- the driver for spec §14 entry 23, and the only
+// file of the unit that names `Mundus`. It writes the certificate stream of
+// docs/design/wire-codec.md section 6 to standard output, raw, one byte per
+// `Scriptor.scribe_octeto` call, and tests/run.sh's cert branch compares it,
+// section by section, with what entry23/expecta.py builds from
+// vendor/hydramesh-wire/golden_vectors.json:
+//
+//   §  bytes          content
+//   1  109 x 17       `obsigna` of each encode-basis input: all zero, then
+//                     input bit i = 0..107 set
+//   2  137 x 2        `syndroma` of the zero word, then of the word with wire
+//                     bit i = 0..135 set; each big-endian
+//   3  2 + 2 + 17     CRC("123456789"), CRC of fifteen zero bytes, the sealed
+//                     example frame
+//   4  109 + 109      `lege` of each section-1 frame; then 1 for each whose
+//                     free fields read back equal to its input
+//   5  136            `lege` of the example frame with wire bit i flipped
+//
+// Sections 1 and 2 are the certificate (246 vectors); 3-5 are anchors and
+// laws. No vector is written in this file: every input is derived from its
+// bit index, as the certificate's generator derives it (HydraMesh's
+// verify_laws.py). The two numberings differ, and each walk below says
+// which it is. Neither needs a variable shift count or a division: a
+// one-hot value is walked with `sursum 1` or `deorsum 1`, and the bits it
+// pushes past the width are discarded (spec §5.4), so no walk needs a mask.
+//
+// `initium` returns 0 when every one of the 2,502 calls wrote exactly one
+// byte, 1 otherwise. What the bytes ARE is the harness's to judge.
+//
+// The helpers write no `poscit`: they are private, so their rows are
+// inferred from their bodies (spec §4.1 rule 5), and the authority they
+// write with is the `Scriptor` `initium` hands them. Declaring `poscit
+// sicut s` on a helper that calls another such helper is refused today,
+// EXS-E0421, which spec §4.2 says it should not be -- a checker defect,
+// recorded as docs/design/wire-codec.md finding 9.
+
+// ---- writing -----------------------------------------------------------
+
+functio scribe_quantum(s: Scriptor, w: acies<u8, 17>) -> mensura {
+    mutabilis n: mensura = 0;
+    per i in 0..17 {
+        n = n + s.scribe_octeto(w[i]);
+    }
+    redde n;
+}
+
+// Big-endian through the `Syndroma` view: the order is the field's (D2).
+functio scribe_u16(s: Scriptor, v: u16) -> mensura {
+    firma b = Syndroma { valor: v } sicut acies<u8, 2>;
+    mutabilis n: mensura = s.scribe_octeto(b[0]);
+    n = n + s.scribe_octeto(b[1]);
+    redde n;
+}
+
+// ---- sections 1 and 4: the encode basis ----------------------------------
+
+// What the walk writes for one input frame `f`, per `modus`:
+//   0  the sealed frame's 17 bytes                              (section 1)
+//   1  `lege` of the sealed frame, one byte                      (section 4)
+//   2  1 if the six free fields, read back through the bytes, are `f`'s
+//      and 0 otherwise -- decode after encode is the identity    (section 4)
+functio tracta(s: Scriptor, modus: u8, f: DeModFrame) -> mensura {
+    firma w = obsigna(f) sicut acies<u8, 17>;
+    si modus eq 0 {
+        redde scribe_quantum(s, w);
+    }
+    si modus eq 1 {
+        redde s.scribe_octeto(lege(w));
+    }
+    firma d = w sicut DeModFrame;
+    mutabilis idem: u8 = 1;
+    si d.genus ne f.genus { idem = 0; }
+    si d.numerus ne f.numerus { idem = 0; }
+    si d.fons ne f.fons { idem = 0; }
+    si d.meta ne f.meta { idem = 0; }
+    si d.onus ne f.onus { idem = 0; }
+    si d.tempus ne f.tempus { idem = 0; }
+    redde s.scribe_octeto(idem);
+}
+
+// The 109 encode-basis inputs, in the certificate's order: the all-zero
+// input, then input bit i = 0..107 set. The input bits number the 108 free
+// bits LSB-FIRST WITHIN EACH FIELD, fields in declaration order: bits 0-3
+// are `genus` bits 0-3, 4-19 `numerus`, 20-35 `fons`, 36-51 `meta`, 52-83
+// `onus` (bit b of the u32 whose big-endian bytes are the payload), 84-107
+// `tempus`. "Bit b of a field" is the field's value `1 sursum b`, so each
+// field's walk starts at 1 and moves one place toward significance a step.
+functio ambula(s: Scriptor, modus: u8) -> mensura {
+    mutabilis n: mensura = tracta(s, modus, vacuum());
+
+    mutabilis t: u4 = 1;                       // input bits 0..3
+    per i in 0..4 {
+        mutabilis f = vacuum();
+        f.genus = t;
+        n = n + tracta(s, modus, f);
+        t = t sursum 1;
+    }
+    mutabilis q: u16 = 1;                      // input bits 4..19
+    per i in 0..16 {
+        mutabilis f = vacuum();
+        f.numerus = q;
+        n = n + tracta(s, modus, f);
+        q = q sursum 1;
+    }
+    q = 1;                                     // input bits 20..35
+    per i in 0..16 {
+        mutabilis f = vacuum();
+        f.fons = q;
+        n = n + tracta(s, modus, f);
+        q = q sursum 1;
+    }
+    q = 1;                                     // input bits 36..51
+    per i in 0..16 {
+        mutabilis f = vacuum();
+        f.meta = q;
+        n = n + tracta(s, modus, f);
+        q = q sursum 1;
+    }
+    mutabilis o: u32 = 1;                      // input bits 52..83
+    per i in 0..32 {
+        mutabilis f = vacuum();
+        f.onus = o;
+        n = n + tracta(s, modus, f);
+        o = o sursum 1;
+    }
+    mutabilis h: u24 = 1;                      // input bits 84..107
+    per i in 0..24 {
+        mutabilis f = vacuum();
+        f.tempus = h;
+        n = n + tracta(s, modus, f);
+        h = h sursum 1;
+    }
+    redde n;
+}
+
+// ---- sections 2 and 5: the wire bits -------------------------------------
+
+// For wire bit i = 0..135 of `basis`, in order: flip it with `aut`, write
+// what `modus` asks of the word, flip it back. The wire bits number
+// MSB-FIRST ACROSS THE WIRE: bit i is byte i / 8 under the mask
+// `0x80 deorsum (i mod 8)`, so the mask starts at 0x80 in each byte and
+// moves one place away from significance a step.
+//   0  `syndroma` of the word, two bytes big-endian              (section 2)
+//   1  `lege` of the word, one byte                              (section 5)
+functio verte(s: Scriptor, modus: u8, basis: acies<u8, 17>) -> mensura {
+    mutabilis w = basis;
+    mutabilis n: mensura = 0;
+    per j in 0..17 {
+        mutabilis m: u8 = 0x80;
+        per k in 0..8 {
+            w[j] = w[j] aut m;
+            si modus eq 0 {
+                n = n + scribe_u16(s, syndroma(w));
+            } aliter {
+                n = n + s.scribe_octeto(lege(w));
+            }
+            w[j] = w[j] aut m;
+            m = m deorsum 1;
+        }
+    }
+    redde n;
+}
+
+// ---- section 3: the anchors ----------------------------------------------
+
+// The vendored spec's example frame: CTRL, sequence 0x1234, from node 1 to
+// broadcast, payload DEADBEEF, timestamp AB12CD. Many bits set in every
+// field, so it is the non-basis point at which the codec's affinity is
+// spot-checked (wire-codec.md section 5). `signum`, `versio` and `cursus`
+// are zero here: sealing is what writes them.
+functio exemplum() -> DeModFrame {
+    redde obsigna(DeModFrame {
+        signum: 0,
+        versio: 0,
+        genus: 3,
+        numerus: 0x1234,
+        fons: 1,
+        meta: 0xffff,
+        onus: 0xdeadbeef,
+        tempus: 0xab12cd,
+        cursus: 0
+    });
+}
+
+functio ancorae(s: Scriptor) -> mensura {
+    // "123456789" is the bytes 0x31..0x39 at the front of a 17-byte buffer
+    mutabilis t = vacuum() sicut acies<u8, 17>;
+    mutabilis c: u8 = 0x31;
+    per i in 0..9 {
+        t[i] = c;
+        c = c + 1;
+    }
+    mutabilis n: mensura = scribe_u16(s, redundantia(t, 9));
+    n = n + scribe_u16(s, redundantia(vacuum() sicut acies<u8, 17>, 15));
+    n = n + scribe_quantum(s, exemplum() sicut acies<u8, 17>);
+    redde n;
+}
+
+// ---- the stream ------------------------------------------------------------
+
+publica functio initium(m: Mundus) -> u8 {
+    firma a = m.ambitus();
+    sub ambitus = a;
+    firma s = Scriptor.ad_exitum(a);
+
+    // 1: the encode basis
+    mutabilis n: mensura = ambula(s, 0);
+    // 2: the syndrome basis -- the zero word, then each wire bit
+    firma nihil = vacuum() sicut acies<u8, 17>;
+    n = n + scribe_u16(s, syndroma(nihil));
+    n = n + verte(s, 0, nihil);
+    // 3: the anchors
+    n = n + ancorae(s);
+    // 4: decode verdicts, then round-trip flags, of the section-1 frames
+    n = n + ambula(s, 1);
+    n = n + ambula(s, 2);
+    // 5: the decode order, on every single-bit corruption of the example
+    n = n + verte(s, 1, exemplum() sicut acies<u8, 17>);
+
+    si n ne 2502 {
+        redde 1;
+    }
+    redde 0;
+}

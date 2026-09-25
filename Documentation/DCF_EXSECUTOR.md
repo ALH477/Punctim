@@ -146,18 +146,20 @@ into a hard failure on this repo's own pull requests.
   `make certify`, `make ci-local`, and every `certify-<lang>` job in
   `wire-certify.yml` for the languages that live in this tree run exactly as they
   did before this binding existed.
-- Exsecutor is **not** part of the [Certified-tier language table](../README.md#language-status)
-  in the sense the 13 languages listed there are — it is not built, run, or tested
-  by this repo's own toolchain: there is no in-tree codec source and no in-tree
-  certification script, and the codec is never compiled by a Punctim build. (This
-  flake does re-expose the upstream compiler as `nix build .#exsc`, for convenience
-  and to pin a version — but that builds the *compiler*, not the binding.) The
-  binding is verified **upstream**, in Exsecutor's own repository and dev shell;
-  this repo's `certify-exsecutor` job runs that upstream suite and gates on its
-  result rather than reproducing it.
-- `exsc` is a compiler, invoked only in the Exsecutor repo. It is never shelled out
-  to at runtime by any Punctim node, unlike the janus-c or quanta subprocess
-  dependencies.
+- The binding **is** in-tree and certified here — `exsecutor/certify.sh` compiles
+  `exsecutor/*.exsc` and checks the result against this repo's live
+  `Documentation/golden_vectors.json` (246/246), which is the CI gate. What it is
+  *not* is self-contained: certifying it needs a **`GPL-3.0-or-later` compiler**
+  that this repo does not ship, so the job builds the pinned upstream `exsc` via
+  `nix build .#exsc`. Without that toolchain `certify.sh` **skips** rather than
+  fails, so a plain checkout with no Nix still runs every other certification.
+- `exsc` is **not** relicensed and **not** linked — it is run as a separate
+  process at *certification* time only, the same boundary as janus-c and quanta.
+  No Punctim node shells out to it at runtime; nothing ships it.
+- The relicensing is narrow and does not reach upstream. Only the files in
+  `exsecutor/` carry the `LGPL-3.0-only` grant; their Exsecutor originals stay
+  `GPL-3.0-or-later`. See [`LICENSING.md`](../LICENSING.md) — "an exception to the
+  exception."
 - Nothing about this binding touches the 246-vector certificate itself, the wire
   format, or any adapter. It is a second, independent set of eyes on the same
   17-byte layout — proof that the certificate is reproducible from a completely

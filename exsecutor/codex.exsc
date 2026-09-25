@@ -1,0 +1,119 @@
+// SPDX-License-Identifier: LGPL-3.0-only
+// Copyright (C) 2026 DeMoD LLC.
+//
+// RELICENSED SOURCE — an exception to LICENSE.EXCEPTION.
+//
+// This file originates in the Exsecutor repository (github.com/ALH477/exsecutor,
+// GPL-3.0-or-later plus the GPLv3 §7 additional permissions in its
+// LICENSE.EXCEPTION) as tests/conformance/entry23/codex.exsc. DeMoD LLC is the
+// sole copyright holder of both Exsecutor and Punctim and, on that basis,
+// additionally licenses THIS COPY under LGPL-3.0-only so that it can live inside
+// Punctim's linkable tree. A sole copyright holder may license their own work
+// under more than one licence; this is that, not a conversion of the original.
+//
+// Why a new grant was needed. LICENSE.EXCEPTION carries two §7 permissions:
+// Exception A covers compiler OUTPUT, Exception B covers designated runtime
+// files linked into a program. Neither reaches compiler-INPUT source such as
+// this. So this is a third, narrower carve-out — an exception to the exception —
+// scoped exactly to the files in this directory.
+//
+// It changes nothing upstream: the Exsecutor original remains GPL-3.0-or-later,
+// and no other Exsecutor source is relicensed by implication. See LICENSING.md
+// and Documentation/DCF_EXSECUTOR.md.
+//
+// entry23/codex.exsc -- the DeModFrame codec, written in Exsecutor. Pure: no
+// `poscit` anywhere, no `initium`, nothing that could reach a capability.
+// Spec §14 entry 23 certifies it against vendor/hydramesh-wire's 246 golden
+// vectors; docs/design/wire-codec.md sections 5-6 are its design.
+//
+// `DeModFrame` is not declared here. The compilation unit is the entry-23
+// fixture, then this file, then probatio.exsc (tests/run.sh's cert branch,
+// in the directive's order), so the declaration being certified is the
+// fixture's -- spec §5.2's worked example, verbatim.
+//
+// There is no mask and no byte swap below, and no bitwise and or or. The
+// declaration states every width and every byte order once, and a field
+// access is the machinery: reading `f.versio` is the shift and the nibble
+// mask, reading `f.cursus` is the big-endian 16-bit load, writing
+// `g.cursus = c` is the big-endian store (spec §5.2, D2 of the design). What
+// is left is the CRC's polynomial division, which is `aut` (exclusive or)
+// and a shift by one.
+
+// A big-endian u16 as two bytes: the byte order is in the type (D2), so
+// writing one is a one-field struct and a cast (D4), not a pair of shifts.
+@transitus
+publica structura Syndroma {
+    valor: u16:maior
+}
+
+// CRC-16/CCITT-FALSE over b[0..n): init 0xFFFF, polynomial 0x1021, no
+// reflection, no final xor. `c sursum 1` discards the bit shifted past the
+// top (spec §5.4), which is why there is no `& 0xFFFF`; `c ge 0x8000` reads
+// that bit before it goes. The two arms differ by a constant `aut`, so the
+// whole step is `(c sursum 1) aut (top(c) * 0x1021)` -- linear in `c`, and
+// the CRC affine, which is what the certificate's theorem requires of an
+// implementation (wire-codec.md section 5).
+publica functio redundantia(b: acies<u8, 17>, n: mensura) -> u16 {
+    mutabilis c: u16 = 0xffff;
+    per i in 0..n {
+        c = c aut ((b[i] sicut u16) sursum 8);
+        per k in 0..8 {
+            si c ge 0x8000 {
+                c = (c sursum 1) aut 0x1021;
+            } aliter {
+                c = c sursum 1;
+            }
+        }
+    }
+    redde c;
+}
+
+// The affine validity map: zero iff the stored CRC matches bytes 0..14.
+// `.cursus` is `u16:maior` in the declaration and reads as a u16.
+publica functio syndroma(w: acies<u8, 17>) -> u16 {
+    firma f = w sicut DeModFrame;
+    redde redundantia(w, 15) aut f.cursus;
+}
+
+// Seal: the six free fields (`genus` .. `tempus`) as given; the sync byte,
+// the version and the CRC written, whatever `f` held in them. It takes and
+// returns a frame rather than six scalars because six scalars and the hidden
+// result pointer are seven words, one more than a call passes (wire-codec.md
+// finding 8). `mutabilis g = f` is a copy (spec §5.2): `f` is not written.
+publica functio obsigna(f: DeModFrame) -> DeModFrame {
+    mutabilis g = f;
+    g.signum = 0xd3;
+    g.versio = 1;
+    g.cursus = redundantia(g sicut acies<u8, 17>, 15);
+    redde g;
+}
+
+// The all-zero frame, which every basis input starts from. A struct literal
+// names every field (spec §8.6); nothing is zero-filled behind the reader.
+publica functio vacuum() -> DeModFrame {
+    redde DeModFrame {
+        signum: 0,
+        versio: 0,
+        genus: 0,
+        numerus: 0,
+        fons: 0,
+        meta: 0,
+        onus: 0,
+        tempus: 0,
+        cursus: 0
+    };
+}
+
+// Read: 0 valid, 1 bad sync, 2 bad version, 3 bad CRC, tested in that order.
+// The vendored spec's validity rule is an unordered "iff" and certifies only
+// the verdict; the order is the reference implementation's
+// (wirelab_core.py's decode), which is why stream sections 4 and 5 are
+// reported apart from the 246. There is no length verdict: the parameter's
+// type is the length.
+publica functio lege(w: acies<u8, 17>) -> u8 {
+    firma f = w sicut DeModFrame;
+    si f.signum ne 0xd3 { redde 1; }
+    si f.versio ne 1 { redde 2; }
+    si syndroma(w) ne 0 { redde 3; }
+    redde 0;
+}

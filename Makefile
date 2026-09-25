@@ -59,6 +59,9 @@ certify: ## Regenerate golden vectors + run the wire, audio, SuperPack, mesh & M
 	gcc -std=c11 -I codec C_SDK/tests/test_medium_certify.c -lm -o /tmp/dcf_medc && /tmp/dcf_medc
 	cd go && go test ./medium/
 	node JS/nodejs/test/certify_medium.js
+	@echo "== Exsecutor: in-tree DeModFrame codec vs the live certificate =="
+	@echo "   (skips without exsc/fasmg; see exsecutor/README.md)"
+	./exsecutor/certify.sh
 	@echo "ALL CERTS PASS"
 
 io-matrix: ## Build the punctim CLIs and run the cross-language medium I/O matrix

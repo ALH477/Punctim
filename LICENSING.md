@@ -86,28 +86,45 @@ exception — so anything `exsc` compiles (including the entry-23 codec) carries
 GPL propagation obligation of its own. **Exception B** is a per-file exception
 covering designated runtime files linked into a compiled program.
 
-The dependency direction here is the **reverse** of the janus-c and quanta
-boundaries above. Those two are cases of *this* LGPL-3.0-only tree shelling out to
-a separate GPL-3.0-or-later binary at runtime. Exsecutor does the opposite: it is a
-**separate GPL-3.0 repository that vendors a copy of this repo's certificate**
-(`golden_vectors.json` and `WIRE_QUANTUM_SPEC.md`, verified byte-identical as of
-2026-09-25) as reference data, and certifies its own independent codec
-implementation against it. Consequently:
+### The relicensed codec — an exception to the exception
 
-- **Nothing is vendored or linked in either direction.** `exsc` is never invoked,
-  shelled out to, or shipped by anything in this tree; no Exsecutor source or
-  binary is present here.
-- Because of Exception A, even Exsecutor's own compiled test binary carries no GPL
-  propagation obligation — but the question is moot for this repo regardless,
-  since nothing here links against or redistributes it.
-- The only thing that crosses the boundary is **data, one way**: Exsecutor's
-  `entry23` vendors this repo's certificate and spec as read-only reference
-  material with sha256 provenance recorded upstream. This repo does not vendor
-  anything from Exsecutor.
-- A `certify-exsecutor` CI job (`.github/workflows/wire-certify.yml`) checks out
-  both repos to catch drift between this repo's `golden_vectors.json` and
-  Exsecutor's vendored copy — it verifies the *data* stays in sync, not a build or
-  license dependency.
+The codec itself now lives in this tree, at [`exsecutor/`](exsecutor/):
+`demodframe.exsc` (the `DeModFrame` declaration), `codex.exsc` (the codec),
+`probatio.exsc` (the driver) and `expecta.py` (the comparator). **Those files are
+`LGPL-3.0-only`**, by an explicit additional grant recorded in each file's header.
+
+DeMoD LLC is the **sole copyright holder of both Exsecutor and Punctim**, and a
+sole copyright holder may license their own work under more than one licence. So
+this is dual-licensing of specific files, not a conversion: the Exsecutor
+originals (`tests/conformance/entry23/…`) remain `GPL-3.0-or-later`, and **no
+other Exsecutor source is relicensed by implication.**
+
+A new grant was needed because neither existing exception reaches this case.
+Exception A covers compiler **output**; Exception B covers designated **runtime
+files** linked into a compiled program. Compiler *input* source — which is what
+`codex.exsc` is — falls under neither. Hence a third, deliberately narrow
+carve-out, scoped to exactly the files in `exsecutor/`: **an exception to the
+exception.**
+
+### The compiler stays outside
+
+`exsc` itself is **not** relicensed and is **never linked**. It is a
+`GPL-3.0-or-later` compiler invoked as a **separate process** by
+`exsecutor/certify.sh`, built from the pinned upstream flake as `nix build .#exsc`
+and kept out of every LGPL closure — precisely the janus-c and quanta boundary
+above. Exception A independently guarantees that whatever `exsc` emits carries no
+GPL obligation, so both the input (by the grant above) and the output (by
+Exception A) are unencumbered.
+
+Data still crosses in the other direction too: Exsecutor vendors this repo's
+`golden_vectors.json` and `WIRE_QUANTUM_SPEC.md` as read-only reference material
+with sha256 provenance recorded upstream.
+
+The `certify-exsecutor` CI job (`.github/workflows/wire-certify.yml`) therefore
+does three things: it certifies the **in-tree** codec against this repo's live
+`Documentation/golden_vectors.json` (246/246, the gate), it warns if the in-tree
+files drift from the Exsecutor originals, and it runs the upstream suite for the
+mutation and purity checks this repo does not reproduce.
 
 ## HydraModem — LGPL-3.0-only
 

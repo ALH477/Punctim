@@ -1,0 +1,99 @@
+// SPDX-License-Identifier: LGPL-3.0-only
+// Copyright (C) 2026 DeMoD LLC.
+//
+// RELICENSED SOURCE — an exception to LICENSE.EXCEPTION.
+//
+// This file originates in the Exsecutor repository (github.com/ALH477/exsecutor,
+// GPL-3.0-or-later plus the GPLv3 §7 additional permissions in its
+// LICENSE.EXCEPTION) as
+// tests/conformance/entry23_demodframe_golden_vectors.exsc. DeMoD LLC is the
+// sole copyright holder of both Exsecutor and Punctim and, on that basis,
+// additionally licenses THIS COPY under LGPL-3.0-only so that it can live inside
+// Punctim's linkable tree. A sole copyright holder may license their own work
+// under more than one licence; this is that, not a conversion of the original.
+//
+// Why a new grant was needed. LICENSE.EXCEPTION carries two §7 permissions:
+// Exception A covers compiler OUTPUT, Exception B covers designated runtime
+// files linked into a program. Neither reaches compiler-INPUT source such as
+// this. So this is a third, narrower carve-out — an exception to the exception —
+// scoped exactly to the files in this directory.
+//
+// It changes nothing upstream: the Exsecutor original remains GPL-3.0-or-later,
+// and no other Exsecutor source is relicensed by implication. See LICENSING.md
+// and Documentation/DCF_EXSECUTOR.md.
+//
+// This file holds the `DeModFrame` declaration that the codec is certified
+// against; upstream it is the §14 entry-23 fixture. Its original header follows.
+//
+// §14 entry 23 -- `DeModFrame` encode/decode against ALL 246 vectors of
+// `vendor/hydramesh-wire/golden_vectors.json` -- byte-identical to every
+// one of them. DIFFERENT IN KIND from every other entry (§14 says so
+// itself): the other 23 are cases this project wrote for itself; this one
+// is an EXTERNAL CERTIFICATE this project must satisfy. Under the
+// certificate's own theorem (`vendor/hydramesh-wire/golden_vectors.json`'s
+// "theorem" field, confirmed by reading the file directly: encode is
+// affine over GF(2)^108 -> GF(2)^136 and the validity syndrome is affine
+// GF(2)^136 -> GF(2)^16), matching all 246 vectors -- 109 in
+// `encode_basis`, 137 in `syndrome_basis`, confirmed by counting the file's
+// own arrays, not assumed from the "246" figure alone -- is equivalent to
+// agreeing with the reference implementation on all 2^108 frames GIVEN
+// THAT THE CODEC IS AFFINE (bit placement plus a CRC). That premise is
+// argued from reading entry23/codex.exsc (docs/design/wire-codec.md
+// section 5), not measured; the example frame in the stream's third
+// section is one non-basis spot check of it, not a proof.
+//
+// §5.2's own worked example, verbatim:
+//
+//   @transitus
+//   publica structura DeModFrame {
+//       signum:  u8               // 0xD3, the first validity gate
+//       versio:  u4               // packs MSB-first with genus
+//       genus:   u4               // frame type
+//       numerus: u16:maior
+//       fons:    u16:maior
+//       meta:    u16:maior
+//       onus:    u32:maior
+//       tempus:  u24:maior        // 24-bit microsecond offset
+//       cursus:  u16:maior        // CRC-16/CCITT-FALSE over bytes 0..14
+//   }
+//
+// This is the SAME declaration §5.2 attributes to `prototypes/wire/`
+// checking its reading of the format against the same 246 vectors before
+// attempting it. `prototypes/README.md` is explicit that nothing under
+// `prototypes/` may become a build or test dependency ("Never shipped.
+// Never on the build closure... may be referenced from Makefile, the Nix
+// build, or compiler/, or otherwise become a build or test dependency"),
+// so `prototypes/wire/wire_probe.py` is read for context ONLY (it is a
+// design probe, not this suite's reference) and is never invoked from
+// run_conformance_tests.
+//
+// RUN. The codec is written in Exsecutor: entry23/codex.exsc (pure -- no
+// `poscit`, no `initium`) and entry23/probatio.exsc (the `initium` driver,
+// the only file naming `Mundus`), compiled as ONE unit with this file first,
+// so the declaration being certified is the one below, §5.2's verbatim.
+// tests/run.sh's cert branch (cert_entry23) compiles, assembles and runs the
+// unit, audits the binary (`write` and `exit_group` only), and compares the
+// 2,502-byte stream it writes, section by section, with what
+// entry23/expecta.py builds from the vendored JSON: sections 1-2 are the
+// 246 certificate vectors, 3 the anchors, 4-5 the laws
+// (docs/design/wire-codec.md section 6). Then three mechanical mutants --
+// polynomial 0x1021 -> 0x1020, `numerus: u16:minor`, `versio`/`genus`
+// swapped -- must each fail at the vector section 6.1 names. The mutants of
+// this declaration are applied to a COPY of this file; the two lines they
+// match (`    numerus: u16:maior`, and `versio`/`genus` adjacent) are
+// load-bearing for the harness, which fails loudly if either moves.
+
+@transitus
+publica structura DeModFrame {
+    signum:  u8
+    versio:  u4
+    genus:   u4
+    numerus: u16:maior
+    fons:    u16:maior
+    meta:    u16:maior
+    onus:    u32:maior
+    tempus:  u24:maior
+    cursus:  u16:maior
+}
+
+// TEST: entry=23 shape=cert status=run sources=entry23/codex.exsc,entry23/probatio.exsc
