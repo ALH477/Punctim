@@ -652,7 +652,7 @@ def _parser():
         description="Size the medium and hardware a DCF system needs: exact airtime / duty "
                     "cycle / queue / MAC / Pipe plan from the certified codecs, plus modelled "
                     "link budgets, energy and a hardware-class recommendation.",
-        epilog="media: hydra:[profile=default|aux,fec=none|rep3|conv,baud=,n_tones=,...] "
+        epilog="media: hydra:[profile=default|aux|melody|chime|nocturne|bass|duet,fec=none|rep3|conv,baud=,n_tones=,...] "
                "afsk:[profile=handheld|standard|aux-cable,fec=0|1] udp:proto|bare[,link=wifi] "
                "l2eth:[mtu=1500] or a link name: " + " ".join(MEDIA) + ".  "
                "exit: 0 ok, 1 I/O error, 2 bad input.")

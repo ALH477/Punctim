@@ -161,7 +161,7 @@ DCF medium tool (Go): move DeModFrames between any two media, deterministically
 
 media: file:path=,append=,follow=,mode=  stdio:  hex:[path=]
        udp:dialect=proto|bare,bind=,peer=a|b,pair=1,flush_ms=20,ts=0|now,seq_start=1
-       hydra:in=DIR,out=DIR,profile=default|aux,fec=none|rep3|conv,interleave=0|1,
+       hydra:in=DIR,out=DIR,profile=default|aux|melody|chime|nocturne|bass,fec=none|rep3|conv,interleave=0|1,
              base_freq=,tone_spacing=,baud=,n_tones=,tx=,rx=
        (l2eth: loop: afsk: audio: sdr: janus: -> exit 3 in this build)
 exit: 0 ok, 1 I/O, 2 usage, 3 medium unsupported, 4 cert failed, 5 invalid frame,
@@ -612,7 +612,7 @@ var schemeKeys = map[string][]string{
 	"udp":   {"dialect", "bind", "peer", "pair", "flush_ms", "ts", "seq_start"},
 	"l2eth": {"if", "ethertype", "dst", "mtu", "impl", "id", "flush_ms"},
 	"loop":  {"id"},
-	"hydra": {"in", "out", "profile", "fec", "interleave", "base_freq", "tone_spacing", "baud",
+	"hydra": {"in", "out", "profile", "fec", "interleave", "base_freq", "tone_spacing", "flush_ms", "baud",
 		"n_tones", "impl", "tx", "rx"},
 	"afsk":  {"in", "out", "profile", "fec"},
 	"audio": {"in", "out", "profile", "fec"},
@@ -841,9 +841,18 @@ func hydraConfig(u uri) (*hydraConf, error) {
 	if err != nil {
 		return nil, err
 	}
-	profile, err := uriChoice(u.get("profile", "default"), "profile", "default", "aux")
+	profile, err := uriChoice(u.get("profile", "default"), "profile", "default", "aux",
+		"melody", "chime", "nocturne", "bass", "duet")
 	if err != nil {
 		return nil, err
+	}
+	// The musical tone-table profiles (hydramodem/docs/MUSIC.md) pass to the tools as
+	// --profile NAME; their pitches come from the tone table, so the linear tone-plan
+	// overrides are usage errors. The duet (two frames per WAV) is Python-only.
+	music := profile == "melody" || profile == "chime" || profile == "nocturne" || profile == "bass"
+	if music && (u.has("base_freq") || u.has("tone_spacing") || u.has("n_tones")) {
+		return nil, usagef("hydra: base_freq/tone_spacing/n_tones do not apply to a musical " +
+			"profile (its pitches come from the tone table)")
 	}
 	interleaveOff := false
 	if u.has("interleave") {
@@ -876,6 +885,9 @@ func hydraConfig(u uri) (*hydraConf, error) {
 	} else if im == "cffi" {
 		return nil, unsupportedf("hydra:impl=cffi (in-process libhydramodem) is Python-only; use impl=tool")
 	}
+	if profile == "duet" {
+		return nil, unsupportedf("hydra:profile=duet (two frames per WAV) is Python-only")
+	}
 	c.tx = u.get("tx", "")
 	if c.tx == "" {
 		c.tx = os.Getenv("HYDRA_TX")
@@ -896,6 +908,13 @@ func hydraConfig(u uri) (*hydraConf, error) {
 	}
 	txc, rxc := hydraToolCaps(c.tx), hydraToolCaps(c.rx)
 	both := func(f string) bool { return txc[f] && rxc[f] }
+	if music {
+		if !both("--profile") {
+			return nil, unsupportedf("hydra: profile=%s needs frame_tx/frame_rx with --profile "+
+				"(rebuild hydramodem/dcf-tools)", profile)
+		}
+		c.prof = append(c.prof, "--profile", profile)
+	}
 	if profile == "aux" {
 		if both("--profile") {
 			c.prof = append(c.prof, "--profile", "aux")

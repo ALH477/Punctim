@@ -48,7 +48,11 @@ static inline void hydra_rx_step(hydra_rx_dsp *d, FAUSTFLOAT *in, FAUSTFLOAT *ou
 
 hydra_rx_dsp *hydra_rx_dsp_create(const hydra_profile *p)
 {
-    hydra_rx_dsp *d = (hydra_rx_dsp *)calloc(1, sizeof *d);
+    hydra_rx_dsp *d;
+    /* the compiled bank hard-codes a LINEAR tone plan; a musical tone table
+     * (hydra_profile_music) needs the C reference RX (default `make`). */
+    if (p->tone_mult[0] > 0) return NULL;
+    d = (hydra_rx_dsp *)calloc(1, sizeof *d);
     if (!d) return NULL;
     d->dsp = newhydrarx();
     if (!d->dsp) { free(d); return NULL; }

@@ -23,6 +23,11 @@ WARN      ?= -Wall -Wextra
 ARCHFLAGS ?=
 CFLAGS    ?= $(CSTD) $(OPT) $(WARN) $(ARCHFLAGS) -Isrc
 LDLIBS    ?= -lm
+# No FMA contraction, whatever CFLAGS says: the musical transmitter's output is
+# a normative function of its sine table and a fixed order of IEEE-754 double
+# operations (docs/MUSIC.md), and a fused multiply-add on RISC-V/AArch64 would
+# change the last bit. x86-64 baseline has no FMA, so there nothing changes.
+override CFLAGS += -ffp-contract=off
 
 # install layout
 PREFIX     ?= /usr/local
@@ -58,7 +63,7 @@ FAUST_OBJ := $(OBJ)/hydra_dsp_faust_tx.o $(OBJ)/hydra_dsp_faust_rx.o
 # public headers (umbrella + the component headers it includes)
 PUBHDR := src/hydramodem.h src/hydra_profile.h src/hydra_modem.h src/wav.h
 
-TESTS    := test_unit test_fuzz test_stream test_channel test_loopback
+TESTS    := test_unit test_fuzz test_stream test_channel test_loopback test_music
 TESTBIN  := $(addprefix $(BUILD)/,$(TESTS))
 EXAMPLES := $(BUILD)/tx_demo $(BUILD)/rx_demo
 

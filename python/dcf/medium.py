@@ -12,7 +12,7 @@ mirrored by every language's ``punctim``)::
     udp:dialect=proto|bare,bind=host:port,peer=h:p|h:p,pair=1,flush_ms=20,ts=0|now,seq_start=1
     l2eth:if=eth0,ethertype=0x88B5,dst=ff:ff:ff:ff:ff:ff,mtu=1500,impl=raw|loop[,id=]
     loop:id=NAME                                                in-process broadcast
-    hydra:in=DIR,out=DIR,profile=default|aux,fec=none|rep3|conv,interleave=0|1,
+    hydra:in=DIR,out=DIR,profile=default|aux|melody|chime|nocturne|bass|duet,flush_ms=20,fec=none|rep3|conv,interleave=0|1,
           base_freq=,tone_spacing=,baud=,n_tones=,impl=tool|cffi,tx=,rx=
     afsk:in=DIR,out=DIR,profile=standard|handheld|aux-cable,fec=0|1      (audio: = alias)
     sdr:in=DIR,out=DIR,mod=gfsk    janus:in=DIR,out=DIR,pset=1,fs=48000,pset_file=,tx=,rx=
@@ -53,7 +53,7 @@ SCHEMES = {
     "udp": ("dialect", "bind", "peer", "pair", "flush_ms", "ts", "seq_start"),
     "l2eth": ("if", "ethertype", "dst", "mtu", "impl", "id", "flush_ms"),
     "loop": ("id",),
-    "hydra": ("in", "out", "profile", "fec", "interleave", "base_freq", "tone_spacing",
+    "hydra": ("in", "out", "profile", "fec", "interleave", "base_freq", "tone_spacing", "flush_ms",
               "baud", "n_tones", "impl", "tx", "rx"),
     "afsk": ("in", "out", "profile", "fec"),
     "audio": ("in", "out", "profile", "fec"),
@@ -235,7 +235,7 @@ def make_transport(spec, direction=None):
     if scheme == "hydra":
         opts = dict(out_dir=g("out"), in_dir=g("in"),
                     fec=_choice(g("fec", "conv"), "fec", ("none", "rep3", "conv")),
-                    profile=_choice(g("profile", "default"), "profile", ("default", "aux")),
+                    profile=_choice(g("profile", "default"), "profile", T.HYDRA_PROFILES),
                     interleave=None if g("interleave") is None
                     else int(_bool(g("interleave"), "interleave")))
         for k, conv in (("base_freq", _num), ("tone_spacing", _num), ("baud", _num),
@@ -243,6 +243,18 @@ def make_transport(spec, direction=None):
             if g(k) is not None:
                 v = conv(g(k), k)
                 opts[k] = int(v) if isinstance(v, float) and v.is_integer() else v
+        if opts["profile"] in T.HYDRA_MUSIC_PROFILES and any(
+                g(k) is not None for k in ("base_freq", "tone_spacing", "n_tones")):
+            raise UsageError("hydra: base_freq/tone_spacing/n_tones do not apply to a musical "
+                             "profile (its pitches come from the tone table)")
+        if opts["profile"] == "duet":
+            fixed = [k for k in ("fec", "interleave", "base_freq", "tone_spacing", "baud",
+                                 "n_tones") if g(k) is not None]
+            if fixed:
+                raise UsageError("hydra: profile=duet fixes its tone plan and FEC; "
+                                 f"{', '.join(fixed)} do not apply")
+        if g("flush_ms") is not None:
+            opts["flush_ms"] = _int(g("flush_ms"), "flush_ms")
         impl = _choice(g("impl", "tool"), "impl", ("tool", "cffi"))
         if impl == "cffi":
             return T.HydraCffiTransport(name, **opts)

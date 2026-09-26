@@ -57,6 +57,21 @@ int hydra_modem_rx_ex(const hydra_profile *p,
                       uint8_t payload_out[HYDRA_DCF_BYTES],
                       hydra_rx_diag *diag);
 
+/* ---- polyphony (hydra_profile.h: hydra_profile_duet, hydra_poly_check) ----
+ * TX: one frame per voice, summed into one burst; voices must pass
+ * hydra_poly_check (initialised musical profiles, one baud, disjoint tones,
+ * gains summing to <= 1). Shorter voices enter later by whole symbols so all
+ * end together. Caller frees *audio_out.
+ * RX: decodes each voice from the same audio with its own profile; returns the
+ * number of voices recovered (status_out[v], if given, is each one's
+ * hydra_status), or -1 on bad arguments. */
+int hydra_modem_tx_poly(const hydra_profile *voices, int nvoices,
+                        const uint8_t payloads[][HYDRA_DCF_BYTES],
+                        float **audio_out, size_t *nsamp_out);
+int hydra_modem_rx_poly(const hydra_profile *voices, int nvoices,
+                        const float *audio, size_t nsamp,
+                        uint8_t payloads_out[][HYDRA_DCF_BYTES], int status_out[]);
+
 /* ---------------------------- RECEIVE (streaming) ------------------------ */
 typedef struct hydra_rx hydra_rx;
 

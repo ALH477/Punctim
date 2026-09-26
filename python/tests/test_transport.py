@@ -124,6 +124,28 @@ class TestTransports(unittest.TestCase):
             self.skipTest("libhydramodem (ctypes) not available")
         self._dir_roundtrip(T.HydraCffiTransport, {}, timeout=10.0)
 
+    def test_hydra_music_dir_roundtrip(self):
+        # The musical tone-table profiles (hydramodem/docs/MUSIC.md), both PHY paths.
+        # chime is the shortest musical frame (1.78 s of audio).
+        if T.hydramodem_available():
+            self._dir_roundtrip(T.HydraTransport, {"profile": "chime"}, timeout=30.0)
+        if T.hydramodem_cffi_available():
+            self._dir_roundtrip(T.HydraCffiTransport, {"profile": "chime"}, timeout=30.0)
+        if not (T.hydramodem_available() or T.hydramodem_cffi_available()):
+            self.skipTest("HydraModem not built")
+
+    def test_hydra_duet_pair_roundtrip(self):
+        # Polyphony: two frames in one WAV (melody + bass voices), in-process.
+        if not T.hydramodem_cffi_available():
+            self.skipTest("libhydramodem (ctypes) not available")
+        from dcf.hydramodem_cffi import HydraDuet
+        a = FRAME
+        b = bytes(x ^ 0x5A for x in FRAME)
+        path = os.path.join(tempfile.mkdtemp(), "duet.wav")
+        d = HydraDuet()
+        d.encode_pair_wav(a, b, path)
+        self.assertEqual(d.decode_pair_wav(path), (a, b))
+
     def test_janus_dir_roundtrip(self):
         # STANAG-4748 via the GPL janus-c reference (optional dep). The 17-byte
         # frame rides as JANUS cargo; subprocess encode+decode is slow, so allow

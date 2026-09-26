@@ -25,6 +25,10 @@
 
 #define HYDRA_MAXTONES 64
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 /* Symbol-timing loop tuning (see docs/RECEIVER.md). These were tuned jointly to
  * pass both the clock-offset sweep (>= +/-3000 ppm) and the AWGN sweep (100% to
  * -6 dB) at once; change them together, not in isolation.
@@ -55,6 +59,71 @@ const char *hydra_strerror(int s)
 
 /* ============================== TRANSMIT ================================== */
 
+/* ------------------------- musical synthesis (exact) -------------------------
+ * A musical profile's tones and drone partials are integer harmonics of the
+ * baud, so each completes a whole number of cycles in L = samples_per_symbol
+ * samples: every phase the transmitter ever needs is k/L of a cycle for an
+ * integer k. The musical path therefore keeps phase as an INTEGER counter
+ * mod L (no accumulated f/fs rounding) and reads one quarter-wave sine table,
+ * so the waveform is a pure function of that table -- which is what lets an
+ * independent port (exsecutor/examples/hydramodem/melos*.exsc) reproduce the
+ * WAV byte for byte. The raised-cosine ramp over R samples is cos(2 pi (2i+1)
+ * / 4R), the same table at period 4R; with the presets' 10 ms ramp at 25 baud,
+ * 4R == L and it is literally the same table.
+ *
+ * qsin(N, k) = sin(2 pi k / N), 0 <= k < N, N % 4 == 0: computed by libm only
+ * on the first quarter (k <= N/4) and folded by symmetry elsewhere, so the
+ * table is exactly odd and quarter-symmetric. */
+static double qsin(long N, long k)
+{
+    long q = N / 4;
+    if (k > 2 * q) return -qsin(N, k - 2 * q);
+    if (k > q)     k = 2 * q - k;
+    if (k == 0)    return 0.0;
+    return sin((2.0 * M_PI * (double)k) / (double)N);
+}
+
+/* Render the span (pre-roll + body + post-roll) of a musical profile into
+ * out[0 .. ramp+body+ramp). Order of the double operations is normative: the
+ * port repeats it exactly. */
+static void music_render(const hydra_profile *p, const uint8_t *symbols, size_t nsym,
+                         size_t ramp, float *out)
+{
+    long   L = p->samples_per_symbol, R = (long)ramp, a = 0;
+    long   b[HYDRA_MUSIC_MAX_DRONES], h[HYDRA_MUSIC_MAX_DRONES];
+    int    k, nd = 0;
+    size_t body = nsym * (size_t)L, span = ramp + body + ramp, i;
+    double gd;
+
+    for (k = 0; k < HYDRA_MUSIC_MAX_DRONES; ++k)
+        if (p->drone_mult[k] > 0) { h[nd] = p->drone_mult[k]; b[nd] = 0; ++nd; }
+    gd = p->tx_gain - (double)nd * p->drone_gain;
+
+    for (i = 0; i < span; ++i) {
+        size_t s = (i < ramp) ? 0
+                 : (i >= ramp + body) ? nsym - 1
+                 : (i - ramp) / (size_t)L;
+        double v, e = 1.0;
+        /* data carrier: phase advanced BEFORE the output (hydra_dsp_ref.c) */
+        a += p->tone_mult[symbols[s]];
+        if (a >= L) a -= L;
+        v = gd * qsin(L, a);
+        /* drones: sample i sits at phase h*i, walked */
+        for (k = 0; k < nd; ++k) {
+            v = v + p->drone_gain * qsin(L, b[k]);
+            b[k] += h[k];
+            if (b[k] >= L) b[k] -= L;
+        }
+        if (i < ramp)
+            e = 0.5 - 0.5 * qsin(4 * R, (2 * (long)i + 1 + R) % (4 * R));
+        else if (i >= ramp + body)
+            e = 0.5 + 0.5 * qsin(4 * R, (2 * (long)(i - ramp - body) + 1 + R) % (4 * R));
+        /* `+=`: a single voice renders into zeros, so this is (float)(e*v)
+         * exactly; polyphony sums its voices here (float adds, voice order). */
+        out[i] += (float)(e * v);
+    }
+}
+
 int hydra_modem_tx(const hydra_profile *p,
                    const uint8_t payload[HYDRA_DCF_BYTES],
                    float **audio_out, size_t *nsamp_out)
@@ -63,41 +132,54 @@ int hydra_modem_tx(const hydra_profile *p,
     float        *freq    = NULL;
     float        *audio   = NULL;
     hydra_tx_dsp *tx      = NULL;
-    size_t        nsym = 0, spp, body, lead, tail, total, i;
+    size_t        nsym = 0, spp, body, ramp, lead, tail, total, i;
     long          s;
     int           rc;
 
     if (!p || !payload || !audio_out || !nsamp_out) return HYDRA_ERR_ARG;
 
     spp  = (size_t)p->samples_per_symbol;
-    lead = (size_t)(0.02 * p->sample_rate);     /* 20 ms silence each side */
+    /* Optional attack/release (musical profiles): the first tone is pre-rolled
+     * and the last post-rolled for `ramp` samples under a raised cosine,
+     * OUTSIDE the symbol body -- no data symbol is attenuated, and the
+     * pre-roll is the same tone as preamble symbol 0, so acquisition is
+     * unaffected. */
+    ramp = (size_t)(p->ramp_ms * 1e-3 * p->sample_rate + 0.5);
+    lead = (size_t)(0.02 * p->sample_rate) + ramp;   /* 20 ms silence each side */
     tail = lead;
 
     symbols = (uint8_t *)malloc(p->total_syms);
     if (!symbols) { rc = HYDRA_ERR_ALLOC; goto done; }
 
     rc = hydra_frame_build(p, payload, symbols, p->total_syms, &nsym);
-    if (rc != 0) { rc = HYDRA_ERR_ARG; goto done; }
+    if (rc != 0 || nsym == 0) { rc = HYDRA_ERR_ARG; goto done; }
 
     body  = nsym * spp;
     total = lead + body + tail;
-
-    freq  = (float *)malloc(body  * sizeof *freq);
     audio = (float *)calloc(total, sizeof *audio);   /* guards start at 0 */
-    if (!freq || !audio) { rc = HYDRA_ERR_ALLOC; goto done; }
+    if (!audio) { rc = HYDRA_ERR_ALLOC; goto done; }
 
-    for (s = 0; s < (long)nsym; ++s) {
-        double f = hydra_tone_freq(p, symbols[s]);
-        for (i = 0; i < spp; ++i)
-            freq[(size_t)s * spp + i] = (float)f;
+    if (p->tone_mult[0] > 0) {
+        /* Musical: exact integer-phase synthesis, drones and ramp included
+         * (docs/MUSIC.md). The DSP backend is not used: its oscillator
+         * accumulates f/fs in floating point, which is the drift this avoids. */
+        music_render(p, symbols, nsym, ramp, audio + lead - ramp);
+    } else {
+        /* Linear: the historical path, unchanged (ramp_ms is 0 here unless a
+         * caller set it, in which case the pre/post-roll is silence). */
+        freq = (float *)malloc(body * sizeof *freq);
+        if (!freq) { rc = HYDRA_ERR_ALLOC; goto done; }
+        for (s = 0; s < (long)nsym; ++s) {
+            double f = hydra_tone_freq(p, symbols[s]);
+            for (i = 0; i < spp; ++i)
+                freq[(size_t)s * spp + i] = (float)f;
+        }
+        tx = hydra_tx_dsp_create(p->sample_rate);
+        if (!tx) { rc = HYDRA_ERR_ALLOC; goto done; }
+        hydra_tx_dsp_process(tx, freq, audio + lead, (int)body);
+        for (i = 0; i < body; ++i)
+            audio[lead + i] *= (float)p->tx_gain;
     }
-
-    tx = hydra_tx_dsp_create(p->sample_rate);
-    if (!tx) { rc = HYDRA_ERR_ALLOC; goto done; }
-    hydra_tx_dsp_process(tx, freq, audio + lead, (int)body);
-
-    for (i = 0; i < body; ++i)
-        audio[lead + i] *= (float)p->tx_gain;
 
     *audio_out = audio;
     *nsamp_out = total;
@@ -110,6 +192,70 @@ done:
     free(audio);
     hydra_tx_dsp_destroy(tx);
     return rc;
+}
+
+/* ================================ POLYPHONY ================================ */
+
+int hydra_modem_tx_poly(const hydra_profile *voices, int nvoices,
+                        const uint8_t payloads[][HYDRA_DCF_BYTES],
+                        float **audio_out, size_t *nsamp_out)
+{
+    uint8_t *symbols[HYDRA_POLY_MAX_VOICES] = { NULL };
+    size_t   nsym[HYDRA_POLY_MAX_VOICES], body_max = 0, spp, ramp, lead, total;
+    float   *audio = NULL;
+    int      v, rc;
+
+    if (!voices || !payloads || !audio_out || !nsamp_out) return HYDRA_ERR_ARG;
+    if (hydra_poly_check(voices, nvoices) != 0) return HYDRA_ERR_ARG;
+
+    spp  = (size_t)voices[0].samples_per_symbol;
+    ramp = (size_t)(voices[0].ramp_ms * 1e-3 * voices[0].sample_rate + 0.5);
+    lead = (size_t)(0.02 * voices[0].sample_rate) + ramp;   /* as hydra_modem_tx */
+
+    for (v = 0; v < nvoices; ++v) {
+        symbols[v] = (uint8_t *)malloc(voices[v].total_syms);
+        if (!symbols[v]) { rc = HYDRA_ERR_ALLOC; goto done; }
+        if (hydra_frame_build(&voices[v], payloads[v], symbols[v],
+                              voices[v].total_syms, &nsym[v]) != 0 || nsym[v] == 0) {
+            rc = HYDRA_ERR_ARG; goto done;
+        }
+        if (nsym[v] * spp > body_max) body_max = nsym[v] * spp;
+    }
+    total = lead + body_max + lead;
+    audio = (float *)calloc(total, sizeof *audio);
+    if (!audio) { rc = HYDRA_ERR_ALLOC; goto done; }
+
+    /* Right-aligned: a shorter voice enters later by WHOLE symbols, so every
+     * voice's symbol boundaries fall on one grid -- the condition for the
+     * voices to be orthogonal -- and all of them end together. */
+    for (v = 0; v < nvoices; ++v) {
+        size_t offset = body_max - nsym[v] * spp;
+        music_render(&voices[v], symbols[v], nsym[v], ramp, audio + lead + offset - ramp);
+    }
+
+    *audio_out = audio;
+    *nsamp_out = total;
+    audio = NULL;
+    rc = HYDRA_OK;
+done:
+    for (v = 0; v < HYDRA_POLY_MAX_VOICES; ++v) free(symbols[v]);
+    free(audio);
+    return rc;
+}
+
+int hydra_modem_rx_poly(const hydra_profile *voices, int nvoices,
+                        const float *audio, size_t nsamp,
+                        uint8_t payloads_out[][HYDRA_DCF_BYTES], int status_out[])
+{
+    int v, ok = 0;
+    if (!voices || !audio || !payloads_out || nvoices < 1 ||
+        nvoices > HYDRA_POLY_MAX_VOICES) return -1;
+    for (v = 0; v < nvoices; ++v) {
+        int st = hydra_modem_rx(&voices[v], audio, nsamp, payloads_out[v]);
+        if (status_out) status_out[v] = st;
+        if (st == HYDRA_OK) ++ok;
+    }
+    return ok;
 }
 
 /* ===================== RECEIVE: integrate-and-dump core =================== */
@@ -240,8 +386,13 @@ static int decode_window(const hydra_profile *p, const float *audio, size_t nsam
                 pf_symbol_energies(&pf, o + k * (long)L, L, E);
                 if (argmax_d(E, N) == known[k]) ++score;
             }
+            /* The plateau is the FIRST run of best-scoring origins: an origin
+             * more than one symbol past its start belongs to another burst (a
+             * streaming window may hold the next frame's prefix too, and both
+             * then score in full). One burst's plateau is never wider than a
+             * symbol, so for a single burst this is the old first..last. */
             if (score > best_score) { best_score = score; o_first = o; o_last = o; }
-            else if (score == best_score) { o_last = o; }
+            else if (score == best_score && o <= o_first + (long)L) { o_last = o; }
         }
         best_o = (o_first + o_last) / 2;
     }
@@ -417,14 +568,70 @@ void hydra_rx_reset(hydra_rx *rx)
     rx->state = ST_SEARCH; rx->collected = 0; rx->quiet_run = 0;
 }
 
+static int rx_step(hydra_rx *rx, float sample);
+
+/* Decode the collected window. On success only the samples through the frame's
+ * end (origin + body + release ramp) are consumed; the rest -- which, for bursts
+ * sent back to back, holds the start of the NEXT frame -- is replayed through
+ * the segmenter. Discarding the whole window, as this did before, lost every
+ * other frame of a back-to-back stream whenever the window outran one burst
+ * (measured: 1 of 4 melody frames at a 60 ms gap). A failed window is still
+ * discarded whole. */
 static int rx_try_decode(hydra_rx *rx)
 {
     uint8_t payload[HYDRA_DCF_BYTES];
     hydra_rx_diag diag;
+    size_t collected = rx->collected, end, i;
+    int frames = 0;
     memset(&diag, 0, sizeof diag);
-    if (decode_window(&rx->p, rx->buf, rx->collected, payload, &diag) == HYDRA_OK) {
-        if (rx->cb) rx->cb(payload, &diag, rx->user);
-        return 1;
+    rx->state = ST_SEARCH; rx->collected = 0; rx->quiet_run = 0;
+    if (decode_window(&rx->p, rx->buf, collected, payload, &diag) != HYDRA_OK)
+        return 0;
+    if (rx->cb) rx->cb(payload, &diag, rx->user);
+    frames = 1;
+    end = (size_t)diag.frame_origin + rx->body_len
+        + (size_t)(rx->p.ramp_ms * 1e-3 * rx->p.sample_rate + 0.5);
+    if (end < collected) {
+        /* replay in place: a replayed sample is written at an index no greater
+         * than the one it is read from, so reads never see their own writes */
+        for (i = end; i < collected; ++i)
+            frames += rx_step(rx, rx->buf[i]);
+    }
+    return frames;
+}
+
+/* One sample through the energy segmenter. */
+static int rx_step(hydra_rx *rx, float sample)
+{
+    double ax = fabs((double)sample);
+    double on_thr  = (6.0 * rx->noise > 0.02) ? 6.0 * rx->noise : 0.02;
+    double off_thr = (3.0 * rx->noise > 0.01) ? 3.0 * rx->noise : 0.01;
+
+    if (rx->state == ST_SEARCH) {
+        rx->noise += 0.001 * (ax - rx->noise);
+        if (ax > on_thr) {
+            rx->state = ST_COLLECT;
+            rx->collected = 0;
+            rx->quiet_run = 0;
+            rx->buf[rx->collected++] = sample;
+        }
+        return 0;
+    }
+    /* ST_COLLECT */
+    if (rx->collected < rx->cap)
+        rx->buf[rx->collected++] = sample;
+    rx->quiet_run = (ax < off_thr) ? rx->quiet_run + 1 : 0;
+
+    if (rx->collected >= rx->frame_len || rx->collected >= rx->cap)
+        return rx_try_decode(rx);
+    if (rx->quiet_run > 3u * (size_t)rx->p.samples_per_symbol) {
+        /* burst ended (sustained silence). If at least a whole frame body was
+         * captured, decode it -- a lone frame is followed only by its own
+         * trailing guard, never reaching frame_len. A shorter burst was a false
+         * trigger and is dropped. */
+        if (rx->collected >= rx->body_len)
+            return rx_try_decode(rx);
+        rx->state = ST_SEARCH; rx->collected = 0; rx->quiet_run = 0;
     }
     return 0;
 }
@@ -433,40 +640,8 @@ int hydra_rx_push(hydra_rx *rx, const float *samples, size_t n)
 {
     size_t i;
     int    frames = 0;
-
     if (!rx || (!samples && n)) return HYDRA_ERR_ARG;
-
-    for (i = 0; i < n; ++i) {
-        double ax = fabs((double)samples[i]);
-        double on_thr  = (6.0 * rx->noise > 0.02) ? 6.0 * rx->noise : 0.02;
-        double off_thr = (3.0 * rx->noise > 0.01) ? 3.0 * rx->noise : 0.01;
-
-        if (rx->state == ST_SEARCH) {
-            rx->noise += 0.001 * (ax - rx->noise);
-            if (ax > on_thr) {
-                rx->state = ST_COLLECT;
-                rx->collected = 0;
-                rx->quiet_run = 0;
-                rx->buf[rx->collected++] = samples[i];
-            }
-        } else { /* ST_COLLECT */
-            if (rx->collected < rx->cap)
-                rx->buf[rx->collected++] = samples[i];
-            rx->quiet_run = (ax < off_thr) ? rx->quiet_run + 1 : 0;
-
-            if (rx->collected >= rx->frame_len || rx->collected >= rx->cap) {
-                frames += rx_try_decode(rx);
-                rx->state = ST_SEARCH; rx->collected = 0; rx->quiet_run = 0;
-            } else if (rx->quiet_run > 3u * (size_t)rx->p.samples_per_symbol) {
-                /* burst ended (sustained silence). If at least a whole frame
-                 * body was captured, decode it -- a lone frame is followed only
-                 * by its own trailing guard, never reaching frame_len. A shorter
-                 * burst was a false trigger and is dropped. */
-                if (rx->collected >= rx->body_len)
-                    frames += rx_try_decode(rx);
-                rx->state = ST_SEARCH; rx->collected = 0; rx->quiet_run = 0;
-            }
-        }
-    }
+    for (i = 0; i < n; ++i)
+        frames += rx_step(rx, samples[i]);
     return frames;
 }

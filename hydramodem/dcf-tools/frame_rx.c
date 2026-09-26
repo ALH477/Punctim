@@ -4,7 +4,7 @@
  * single-frame counterpart to rx_campaign, used by the DCF `hydra:` transport.
  * Repo glue (DeMoD LLC, LGPL-3.0).
  *
- *   frame_rx in.wav [--profile default|aux] [--none|--rep3|--conv] [--interleave 0|1]
+ *   frame_rx in.wav [--profile default|aux|melody|chime|nocturne|bass] [--none|--rep3|--conv] [--interleave 0|1]
  *            [--preamble N] [--base-freq HZ] [--tone-spacing HZ] [--baud HZ] [--n-tones N]
  * All flags must match the TX side (defaults: profile default, conv FEC, interleave on).
  */

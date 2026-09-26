@@ -45,5 +45,5 @@ docker run --rm -v "$PWD:/m" alh477/hydramodem frame_rx /m/f.wav
 Specs: [`HydraModem`](https://github.com/ALH477/Punctim/blob/main/hydramodem/README.md) ·
 [`DCF_SENSE_SPEC.md`](https://github.com/ALH477/Punctim/blob/main/Documentation/DCF_SENSE_SPEC.md).
 
-Tags: `latest`, `0.3.0` (image); HydraModem component v1.0.0. License: **LGPL-3.0-only**.
+Tags: `latest`, `0.3.0` (image); HydraModem component v2.0.0. License: **LGPL-3.0-only**.
 Source & full docs: https://github.com/ALH477/Punctim

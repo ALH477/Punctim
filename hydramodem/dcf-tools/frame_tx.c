@@ -3,7 +3,7 @@
  * HydraModem. The single-frame counterpart to tx_campaign, used by the DCF `hydra:`
  * transport (which drives HydraModem as a subprocess PHY). Repo glue (DeMoD LLC, LGPL-3.0).
  *
- *   frame_tx <34-hex-char-frame> out.wav [--profile default|aux] [--none|--rep3|--conv]
+ *   frame_tx <34-hex-char-frame> out.wav [--profile default|aux|melody|chime|nocturne|bass] [--none|--rep3|--conv]
  *            [--interleave 0|1] [--preamble N] [--base-freq HZ] [--tone-spacing HZ]
  *            [--baud HZ] [--n-tones N]
  * Defaults: profile default (2000/3000 Hz, 1000 baud), conv FEC, interleave on. The RX
@@ -15,17 +15,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int parse_hex(const char *h, uint8_t *out, int n)
-{
-    if ((int)strlen(h) != 2 * n) return -1;
-    for (int i = 0; i < n; ++i) {
-        unsigned v;
-        if (sscanf(h + 2 * i, "%2x", &v) != 1) return -1;
-        out[i] = (uint8_t)v;
-    }
-    return 0;
-}
-
 int main(int argc, char **argv)
 {
     if (argc < 3) {
@@ -34,7 +23,7 @@ int main(int argc, char **argv)
         return 2;
     }
     uint8_t frame[HYDRA_DCF_BYTES];
-    if (parse_hex(argv[1], frame, HYDRA_DCF_BYTES)) {
+    if (frame_parse_hex(argv[1], frame, HYDRA_DCF_BYTES)) {
         fprintf(stderr, "bad hex (need %d bytes / %d hex chars)\n",
                 (int)HYDRA_DCF_BYTES, 2 * (int)HYDRA_DCF_BYTES);
         return 2;

@@ -519,7 +519,7 @@ adapter certificate are untouched. Spec: `Documentation/DCF_MEDIUM_SPEC.md` (nor
   every scheme (`afsk:`/`sdr:` need numpy, `janus:` the GPL janus-c tools); C: `file stdio
   hex udp loop hydra`; Rust/Go/Node: `file stdio hex udp hydra` (the rest exit 3).
   `hydra:` shells out to `frame_tx`/`frame_rx` (`$HYDRA_TX`/`$HYDRA_RX`/PATH; they take
-  `--profile default|aux`, `--interleave 0|1`, `--preamble N`); Python alone also offers
+  `--profile default|aux|melody|chime|nocturne|bass`, `--interleave 0|1`, `--preamble N`); Python alone also offers
   in-process `impl=cffi`.
 - **Determinism rule (normative):** for finite inputs, `punctim io` in any language
   produces byte-identical output for identical input and URI (`udp:proto` needs `ts=0`,
@@ -730,6 +730,21 @@ one-shot **and** streaming RX. Two DSP backends behind `src/hydra_dsp.h`: a port
 (`hydra_dsp_ref.c`, default `make`, zero deps) and the compiled Faust backend (`make faust`).
 The default profile (48 kHz, 1000 baud, tones 2000/3000 Hz) is a **near-field / low-reverb /
 cabled** link. Cross-compiles to RISC-V (StarFive JH7110); runs real-time on one U74 core.
+
+**Musical profiles** (HydraModem 2.0.0, `hydramodem/docs/MUSIC.md`): `hydra_profile_music` /
+`--profile melody|chime|nocturne|bass` (`hydra:profile=` in all five `punctim` CLIs, byte-identical —
+io-matrix leg `hydra-melody`) put the M-FSK tones on a just-intonation scale drawn from the baud's harmonic
+series, which is orthogonal by construction. Adds a Gray degree map, a tonic/octave preamble, an
+orthogonal drone, and an attack/release outside the symbol body. Slow (25–100 baud, 1.8–5 s/frame)
+with ~14 dB more AWGN margin; loopback-tested (`tests/test_music.c`), not certified.
+`bass` (D2 B2 D3 A3, 75–225 Hz) and **polyphony**: `hydra_modem_tx_poly`/`_rx_poly` sum up to 4
+frames into one burst, one voice each (disjoint 25 Hz-grid tones on one symbol grid ⇒ orthogonal);
+`hydra_profile_duet` = melody + bass, two frames in 7.18 s, the acoustic SuperPack
+(`dcf-tools/poly_tx`/`poly_rx`, Python `HydraDuet`, and `punctim io` via
+`hydra:profile=duet`, which pairs consecutive frames like `udp:dialect=bare`, Python only). The Exsecutor port
+(`exsecutor/examples/hydramodem/{melos,bassus,bicinium}*.exsc`) is byte-identical for `melody`,
+`bass` and the duet, and `auditus*.exsc` there is a receiver for all three (HydraModem's
+`decode_window` with a sliding-DFT acquisition), matching `frame_rx`/`poly_rx` verdicts.
 
 Profiles (`hydramodem/src/hydra_profile.c`): **`hydra_profile_default`** = binary FSK,
 24-symbol preamble, sync `0x2DD4`, **conv FEC (K=7 r=½, soft Viterbi) + interleaver ON**

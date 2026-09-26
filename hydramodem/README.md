@@ -233,12 +233,16 @@ src/
   hydra_modem.[ch]      end-to-end TX/RX: one-shot + streaming, timing, sync
   wav.[ch]              minimal mono 16-bit WAV I/O for demos
 examples/  tx_demo.c, rx_demo.c
-tests/     test_unit.c, test_loopback.c, test_fuzz.c, test_stream.c, test_channel.c
+tests/     test_unit.c, test_loopback.c, test_fuzz.c, test_stream.c, test_channel.c,
+           test_music.c
 docs/      RECEIVER.md  (acquisition + timing-recovery design notes)
+           MUSIC.md     (musical profiles: just-intonation M-FSK, drone, envelope)
 ```
 
 See **BUILD.md** for the Faust compile commands, JH7110 cross-compilation, and
-the profile-matching requirement; **docs/RECEIVER.md** for the receiver design.
+the profile-matching requirement; **docs/RECEIVER.md** for the receiver design;
+**docs/MUSIC.md** for the musical profiles (`--profile melody|chime|nocturne|bass`)
+and the two-frame `duet` (`dcf-tools/poly_tx`/`poly_rx`).
 
 ## License
 

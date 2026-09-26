@@ -5,7 +5,8 @@
 EXACT is whatever follows from the byte-certified medium codecs in
 python/MCP/mediumlab_core.py (Documentation/DCF_MEDIUM_SPEC.md):
 
-  hydra:  total_syms / baud seconds per frame   (hydra_profile(): preamble + sync + FEC'd data)
+  hydra:  total_syms / baud seconds per frame   (hydra_profile(): preamble + sync + FEC'd data;
+          a musical profile adds its two 10 ms ramps, and a duet carries 2 frames per burst)
   afsk:   n_bits / baud seconds per frame       (afsk_bits_encode(): preamble + 0x7E + body)
   udp:    ProtoMessage 34 B per frame (dialect=proto), or a 32 B SuperPack per pair / 17 B
           lone frame (dialect=bare) -- plus 28 B IPv4+UDP per datagram
@@ -143,6 +144,19 @@ class Medium:
         return {"kind": self.kind, "scheme": self.scheme}
 
 
+# The musical presets (hydramodem/src/hydra_profile.c, hydra_profile_music): name ->
+# (baud, n_tones). All share preamble 12, sync 0x2DD4, conv + interleave, and a 10 ms
+# raised-cosine ramp sounded before the first and after the last symbol. The symbol
+# count depends only on those fields, so a linear profile with the same ones gives it
+# exactly; the tone table (which the count does not see) is not modelled.
+HYDRA_MUSIC = {"melody": (25.0, 8), "chime": (100.0, 4), "nocturne": (25.0, 8),
+               "bass": (25.0, 4)}
+HYDRA_MUSIC_RAMP_S = 0.010
+# The duet (hydra_profile_duet): a melody voice and a bass voice in one burst as long as
+# the bass voice, i.e. two frames per burst.
+HYDRA_DUET_VOICES = ("melody", "bass")
+
+
 class Hydra(Medium):
     kind, exact_time, shared, frame_only, scheme = "analog", True, True, True, "hydra"
     hw = "sbc-1core"
@@ -154,6 +168,22 @@ class Hydra(Medium):
         for k in ("fec", "interleave", "baud", "n_tones", "base_freq", "tone_spacing"):
             if k in kw:
                 ov[k] = kw[k]
+        self.voices = 1
+        self.ramp_s = 0.0
+        if name == "duet":
+            if ov:
+                raise SimUsage(f"{key}: profile=duet fixes its tone plan and FEC; "
+                               f"{'/'.join(ov)} do not apply")
+            name, self.voices = "bass", 2      # the burst is as long as the bass voice
+        if name in HYDRA_MUSIC:
+            bad = [k for k in ("n_tones", "base_freq", "tone_spacing") if k in ov]
+            if bad:
+                raise SimUsage(f"{key}: profile={name} is a musical tone table; "
+                               f"{'/'.join(bad)} do not apply (baud= moves tempo and pitch)")
+            baud, nt = HYDRA_MUSIC[name]
+            ov.setdefault("baud", baud)
+            ov.update(n_tones=nt, preamble_syms=12)
+            self.ramp_s = HYDRA_MUSIC_RAMP_S
         try:
             if "interleave" in ov:
                 ov["interleave"] = int(_bool(ov["interleave"], "interleave"))
@@ -162,16 +192,22 @@ class Hydra(Medium):
                     ov[k] = float(ov[k])
             if "n_tones" in ov:
                 ov["n_tones"] = int(ov["n_tones"])
-            self.p = M.hydra_profile(name, **ov)
+            if self.ramp_s:
+                # the tones sit on the baud's harmonics: base/spacing = baud keeps
+                # hydra_profile_init's integer-cycle check satisfied at any baud
+                ov.update(base_freq=ov["baud"], tone_spacing=ov["baud"])
+            self.p = M.hydra_profile("default", **ov) if self.ramp_s else M.hydra_profile(name, **ov)
         except ValueError as e:
             raise SimUsage(f"{key}: {e}") from None
         p = self.p
+        self.profile = kw.get("profile", "default")
         self.fec = M.FEC_BY_ID[p["fec_mode"]]
         self.unit, self.count, self.rate = "symbols", p["total_syms"], p["baud"]
-        self.t_frame = self.count / self.rate
+        self.t_burst = self.count / self.rate + 2 * self.ramp_s
+        self.t_frame = self.t_burst / self.voices
         self.bps = FRAME_BITS / self.t_frame
         # the one profiled configuration (default: 1000 baud 2-FSK, 24 preamble symbols)
-        self.profiled = (name == "default" and p["baud"] == 1000.0 and p["n_tones"] == 2
+        self.profiled = (self.profile == "default" and p["baud"] == 1000.0 and p["n_tones"] == 2
                          and p["preamble_syms"] == 24)
         self.hw_note = HW_CLASSES["sbc-1core"][1] + (
             "" if p["baud"] <= 1000.0 and p["n_tones"] == 2 else
@@ -187,13 +223,18 @@ class Hydra(Medium):
 
     def describe(self):
         p = self.p
-        return (f"{self.count} symbols ({p['preamble_syms']} preamble + {p['sync_syms']} sync + "
-                f"{p['data_syms']} data, fec={self.fec}) / {self.rate:g} baud "
-                f"= {self.t_frame:.4f} s/frame")
+        s = (f"{self.count} symbols ({p['preamble_syms']} preamble + {p['sync_syms']} sync + "
+             f"{p['data_syms']} data, fec={self.fec}) / {self.rate:g} baud")
+        if self.ramp_s:
+            s += f" + 2 x {self.ramp_s * 1000:g} ms ramp"
+        if self.voices > 1:
+            s += f" = {self.t_burst:.4f} s/burst of {self.voices} frames"
+        return s + f" = {self.t_frame:.4f} s/frame"
 
     def json(self):
         p = self.p
-        return {"kind": self.kind, "scheme": self.scheme, "profile": p["name"],
+        return {"kind": self.kind, "scheme": self.scheme, "profile": self.profile,
+                "frames_per_burst": self.voices, "ramp_s": self.ramp_s,
                 "fec": self.fec, "interleave": p["interleave"], "n_tones": p["n_tones"],
                 "unit": self.unit, "units_per_frame": self.count, "baud": self.rate,
                 "preamble_syms": p["preamble_syms"], "sync_syms": p["sync_syms"],

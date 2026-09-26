@@ -75,7 +75,7 @@ DCF medium tool: move DeModFrames between any two media, deterministically
 
 media (this build): file:path=,append=,follow=,mode=  stdio:  hex:[path=,append=,follow=]
   udp:dialect=proto|bare,bind=,peer=a|b,pair=1,flush_ms=20,ts=0|now,seq_start=1
-  hydra:in=DIR,out=DIR,profile=default|aux,fec=none|rep3|conv,interleave=0|1,
+  hydra:in=DIR,out=DIR,profile=default|aux|melody|chime|nocturne|bass,fec=none|rep3|conv,interleave=0|1,
         base_freq=,tone_spacing=,baud=,n_tones=,impl=tool,tx=,rx=
   (loop: l2eth: afsk: audio: sdr: janus: -> exit 3 in the Rust build)
 exit: 0 ok, 1 I/O, 2 usage, 3 medium unsupported, 4 cert failed, 5 invalid frame,
@@ -622,6 +622,7 @@ const SCHEMES: [(&str, &[&str]); 12] = [
             "interleave",
             "base_freq",
             "tone_spacing",
+            "flush_ms",
             "baud",
             "n_tones",
             "impl",
@@ -869,9 +870,20 @@ fn hydra_tool(u: &Uri) -> Res<HydraTool> {
     let profile = choice(
         u.g("profile").unwrap_or("default"),
         "profile",
-        &["default", "aux"],
+        &["default", "aux", "melody", "chime", "nocturne", "bass", "duet"],
     )?
     .to_string();
+    // The musical tone-table profiles (hydramodem/docs/MUSIC.md) pass to the tools as
+    // --profile NAME; their pitches come from the tone table, so the linear tone-plan
+    // overrides are usage errors. The duet (two frames per WAV) is Python-only.
+    let music = ["melody", "chime", "nocturne", "bass"].contains(&profile.as_str());
+    if music && ["base_freq", "tone_spacing", "n_tones"].iter().any(|k| u.g(k).is_some()) {
+        return Err(Fail::Usage(
+            "hydra: base_freq/tone_spacing/n_tones do not apply to a musical profile (its \
+             pitches come from the tone table)"
+                .into(),
+        ));
+    }
     let interleave = match u.g("interleave") {
         None => None,
         Some(v) => Some(uri_bool(v, "interleave")?),
@@ -893,6 +905,11 @@ fn hydra_tool(u: &Uri) -> Res<HydraTool> {
     if imp == "cffi" {
         return Err(Fail::Unsupported(
             "hydra:impl=cffi is the Python in-process binding; use impl=tool".into(),
+        ));
+    }
+    if profile == "duet" {
+        return Err(Fail::Unsupported(
+            "hydra:profile=duet (two frames per WAV) is Python-only".into(),
         ));
     }
     let find = |key: &str, env: &str, bin: &str| -> Option<PathBuf> {
@@ -923,6 +940,15 @@ fn hydra_tool(u: &Uri) -> Res<HydraTool> {
         .copied()
         .collect();
     let mut prof: Vec<String> = Vec::new();
+    if music {
+        if !caps.contains("--profile") {
+            return Err(Fail::Unsupported(format!(
+                "hydra: profile={profile} needs frame_tx/frame_rx with --profile (rebuild \
+                 hydramodem/dcf-tools)"
+            )));
+        }
+        prof.extend(["--profile".to_string(), profile.clone()]);
+    }
     if profile == "aux" {
         if caps.contains("--profile") {
             prof.extend(["--profile".to_string(), "aux".to_string()]);
