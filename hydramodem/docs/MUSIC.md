@@ -194,8 +194,10 @@ fraction, so it drifts over 240,000 samples):
   with 10 ms, `4R = L = 1920`, so it is the same table.
 - The library is built with `-ffp-contract=off`, so no FMA can change a bit.
 
-`exsecutor/examples/hydramodem/melos*.exsc` is an independent port held to
-this byte for byte.
+`exsecutor/examples/hydramodem/{melos,bassus,bicinium}*.exsc` is an independent port
+held to this byte for byte (melody, bass and the duet), and `auditus*.exsc` there is
+an independent receiver held to `frame_rx`/`poly_rx`'s verdicts on clean, noisy and
+clock-shifted input.
 
 ## Known limits
 
