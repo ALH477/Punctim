@@ -869,6 +869,11 @@ def hydra_tool_caps(tool):
     return caps
 
 
+# The musical tone-table HydraModem profiles (hydra_profile_music presets): M-FSK on a
+# just-intonation scale built from the baud's harmonic series. See hydramodem/docs/MUSIC.md.
+HYDRA_MUSIC_PROFILES = ("melody", "chime", "nocturne")
+HYDRA_PROFILES = ("default", "aux") + HYDRA_MUSIC_PROFILES
+
 # The `aux` HydraModem profile (hydra_profile_aux_cable): 1200 baud, tones 1200/2400 Hz,
 # 16-symbol preamble, conv + interleave. Applied as explicit tool flags when the tool has
 # no --profile switch.
@@ -881,6 +886,8 @@ class HydraTransport(_DirMedium):
     hydramodem/dcf-tools/build.sh, then set $HYDRA_TX/$HYDRA_RX or put build/ on PATH).
 
     profile="default"|"aux" picks hydra_profile_default / hydra_profile_aux_cable;
+    "melody"|"chime"|"nocturne" pick the musical tone-table profiles (need a
+    frame_tx/frame_rx with --profile);
     interleave=0 disables the coded-bit interleaver (needs a tool with --interleave,
     else MediumUnsupported); base_freq/tone_spacing/baud/n_tones override the profile's
     tone plan (FDMA channels)."""
@@ -890,8 +897,8 @@ class HydraTransport(_DirMedium):
     def __init__(self, name="hydra", fec="conv", tx_bin=None, rx_bin=None,
                  base_freq=None, tone_spacing=None, baud=None, n_tones=None,
                  profile="default", interleave=None, rate_bps=8000, **kw):
-        if profile not in ("default", "aux"):
-            raise ValueError(f"hydra profile must be default|aux, got {profile!r}")
+        if profile not in HYDRA_PROFILES:
+            raise ValueError(f"hydra profile must be {'|'.join(HYDRA_PROFILES)}, got {profile!r}")
         if fec not in ("none", "rep3", "conv"):
             raise ValueError(f"hydra fec must be none|rep3|conv, got {fec!r}")
         tx = tx_bin or os.environ.get("HYDRA_TX") or shutil.which("frame_tx")
@@ -903,6 +910,12 @@ class HydraTransport(_DirMedium):
                 "Documentation/DCF_SENSE_SPEC.md")
         caps = hydra_tool_caps(tx) & hydra_tool_caps(rx)
         prof = []
+        if profile in HYDRA_MUSIC_PROFILES:
+            if "--profile" not in caps:
+                raise MediumUnsupported(
+                    f"hydra: profile={profile} needs frame_tx/frame_rx with --profile "
+                    "(rebuild hydramodem/dcf-tools)")
+            prof += ["--profile", profile]
         if profile == "aux":
             if "--profile" in caps:
                 prof += ["--profile", "aux"]

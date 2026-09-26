@@ -195,6 +195,12 @@ symbol zero-padded. Profiles (user fields of `hydra_profile_default` /
 | `default` | 48000 | 1000 | 2 | 2000 | 1000 | 24 | 0x2DD4 | conv | 1 |
 | `aux` | 48000 | 1200 | 2 | 1200 | 1200 | 16 | 0x2DD4 | conv | 1 |
 
+The musical profiles (`melody`/`chime`/`nocturne`, `hydra_profile_music`) change only the
+symbol → frequency map (a just-intonation tone table on the baud's harmonics) and the
+tempo; the symbol stream is built by the same `hydra_frame_build`, but their 4/8-tone,
+12-symbol-preamble parameters are **not** among the certified cases (see
+`hydramodem/docs/MUSIC.md`).
+
 (The default profile ships **conv FEC + interleave on**; an old header comment claiming
 "FEC off" was stale.) Derived fields, exactly as `hydra_profile_init`:
 `data_bits = 152` (17 + 2 bytes); `coded_bits` = 152 (none) / 456 (rep3) / 316 (conv =
@@ -290,7 +296,7 @@ Single-sourced in `python/dcf/medium.py:parse_uri` and mirrored by every `puncti
 | `udp:` | `dialect=proto\|bare` (proto), `bind=host:port` (0.0.0.0:0; required as input), `peer=host:port\|…` (required as output; legacy `id@host:port` accepted), `pair=0\|1` (1), `flush_ms=` (20), `ts=0\|now` (0), `seq_start=` (1) | datagram | infinite |
 | `l2eth:` | `if=` (—), `ethertype=` (0x88B5), `dst=` MAC (ff:ff:ff:ff:ff:ff), `mtu=` (1500), `impl=raw\|loop` (raw if `if=` given, else loop), `id=` (l2eth; loop bus), `flush_ms=` (20) | datagram | infinite |
 | `loop:` | `id=` (default) | datagram | infinite |
-| `hydra:` | `in=`/`out=` dirs, `profile=default\|aux` (default), `fec=none\|rep3\|conv` (conv), `interleave=0\|1` (1), `base_freq=`, `tone_spacing=`, `baud=`, `n_tones=` (from the profile), `impl=tool\|cffi` (tool), `tx=`/`rx=` (`$HYDRA_TX`/`$HYDRA_RX`/PATH `frame_tx`/`frame_rx`) | analog | infinite |
+| `hydra:` | `in=`/`out=` dirs, `profile=default\|aux` (default; Python also `melody\|chime\|nocturne`, the musical tone-table profiles — `hydramodem/docs/MUSIC.md`, loopback-tested, not certified), `fec=none\|rep3\|conv` (conv), `interleave=0\|1` (1), `base_freq=`, `tone_spacing=`, `baud=`, `n_tones=` (from the profile), `impl=tool\|cffi` (tool), `tx=`/`rx=` (`$HYDRA_TX`/`$HYDRA_RX`/PATH `frame_tx`/`frame_rx`) | analog | infinite |
 | `afsk:` | `in=`/`out=` dirs, `profile=standard\|handheld\|aux-cable` (handheld), `fec=0\|1` (0) | analog | infinite |
 | `audio:` | alias of `afsk:` (historical `dcf-bridge` name) | analog | infinite |
 | `sdr:` | `in=`/`out=` dirs, `mod=` (gfsk) | analog (loopback-tested) | infinite |

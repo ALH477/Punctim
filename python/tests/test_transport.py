@@ -124,6 +124,16 @@ class TestTransports(unittest.TestCase):
             self.skipTest("libhydramodem (ctypes) not available")
         self._dir_roundtrip(T.HydraCffiTransport, {}, timeout=10.0)
 
+    def test_hydra_music_dir_roundtrip(self):
+        # The musical tone-table profiles (hydramodem/docs/MUSIC.md), both PHY paths.
+        # chime is the shortest musical frame (1.78 s of audio).
+        if T.hydramodem_available():
+            self._dir_roundtrip(T.HydraTransport, {"profile": "chime"}, timeout=30.0)
+        if T.hydramodem_cffi_available():
+            self._dir_roundtrip(T.HydraCffiTransport, {"profile": "chime"}, timeout=30.0)
+        if not (T.hydramodem_available() or T.hydramodem_cffi_available()):
+            self.skipTest("HydraModem not built")
+
     def test_janus_dir_roundtrip(self):
         # STANAG-4748 via the GPL janus-c reference (optional dep). The 17-byte
         # frame rides as JANUS cargo; subprocess encode+decode is slow, so allow

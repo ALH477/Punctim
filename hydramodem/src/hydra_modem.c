@@ -25,6 +25,10 @@
 
 #define HYDRA_MAXTONES 64
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 /* Symbol-timing loop tuning (see docs/RECEIVER.md). These were tuned jointly to
  * pass both the clock-offset sweep (>= +/-3000 ppm) and the AWGN sweep (100% to
  * -6 dB) at once; change them together, not in isolation.
@@ -63,41 +67,74 @@ int hydra_modem_tx(const hydra_profile *p,
     float        *freq    = NULL;
     float        *audio   = NULL;
     hydra_tx_dsp *tx      = NULL;
-    size_t        nsym = 0, spp, body, lead, tail, total, i;
+    size_t        nsym = 0, spp, body, ramp, span, lead, tail, total, i;
     long          s;
-    int           rc;
+    int           rc, k, ndrone = 0;
+    double        data_gain, dstep[HYDRA_MUSIC_MAX_DRONES];
 
     if (!p || !payload || !audio_out || !nsamp_out) return HYDRA_ERR_ARG;
 
     spp  = (size_t)p->samples_per_symbol;
-    lead = (size_t)(0.02 * p->sample_rate);     /* 20 ms silence each side */
+    /* Optional attack/release: the first tone is pre-rolled and the last tone
+     * post-rolled for `ramp` samples under a raised-cosine envelope, OUTSIDE the
+     * symbol body -- no data symbol is attenuated, and the pre-roll is the same
+     * tone as preamble symbol 0, so acquisition is unaffected. ramp_ms == 0
+     * (every linear profile) renders exactly the historical waveform. */
+    ramp = (size_t)(p->ramp_ms * 1e-3 * p->sample_rate + 0.5);
+    lead = (size_t)(0.02 * p->sample_rate) + ramp;   /* 20 ms silence each side */
     tail = lead;
 
     symbols = (uint8_t *)malloc(p->total_syms);
     if (!symbols) { rc = HYDRA_ERR_ALLOC; goto done; }
 
     rc = hydra_frame_build(p, payload, symbols, p->total_syms, &nsym);
-    if (rc != 0) { rc = HYDRA_ERR_ARG; goto done; }
+    if (rc != 0 || nsym == 0) { rc = HYDRA_ERR_ARG; goto done; }
 
     body  = nsym * spp;
+    span  = ramp + body + ramp;
     total = lead + body + tail;
 
-    freq  = (float *)malloc(body  * sizeof *freq);
+    freq  = (float *)malloc(span  * sizeof *freq);
     audio = (float *)calloc(total, sizeof *audio);   /* guards start at 0 */
     if (!freq || !audio) { rc = HYDRA_ERR_ALLOC; goto done; }
 
+    for (i = 0; i < ramp; ++i) {
+        freq[i]               = (float)hydra_tone_freq(p, symbols[0]);
+        freq[ramp + body + i] = (float)hydra_tone_freq(p, symbols[nsym - 1]);
+    }
     for (s = 0; s < (long)nsym; ++s) {
         double f = hydra_tone_freq(p, symbols[s]);
         for (i = 0; i < spp; ++i)
-            freq[(size_t)s * spp + i] = (float)f;
+            freq[ramp + (size_t)s * spp + i] = (float)f;
     }
 
     tx = hydra_tx_dsp_create(p->sample_rate);
     if (!tx) { rc = HYDRA_ERR_ALLOC; goto done; }
-    hydra_tx_dsp_process(tx, freq, audio + lead, (int)body);
+    hydra_tx_dsp_process(tx, freq, audio + lead - ramp, (int)span);
 
-    for (i = 0; i < body; ++i)
-        audio[lead + i] *= (float)p->tx_gain;
+    /* Drone partials (musical profiles only): steady tones at integer harmonics
+     * of the baud that are NOT data tones. For any two such frequencies the
+     * cross term integrates to zero over any window of one symbol, whatever its
+     * start, so the accompaniment is invisible to every correlator on the grid
+     * and during the acquisition scan. The data carrier gives up the drones'
+     * share of the amplitude so the peak stays <= tx_gain. */
+    for (k = 0; k < HYDRA_MUSIC_MAX_DRONES; ++k)
+        if (p->drone_mult[k] > 0)
+            dstep[ndrone++] = (double)p->drone_mult[k] * p->baud / p->sample_rate;
+    data_gain = p->tx_gain - (double)ndrone * p->drone_gain;
+
+    for (i = 0; i < span; ++i) {
+        double v = data_gain * (double)audio[lead - ramp + i], env = 1.0;
+        for (k = 0; k < ndrone; ++k) {
+            double ph = dstep[k] * (double)i;
+            v += p->drone_gain * sin(2.0 * M_PI * (ph - floor(ph)));
+        }
+        if (i < ramp)
+            env = 0.5 - 0.5 * cos(M_PI * ((double)i + 0.5) / (double)ramp);
+        else if (i >= ramp + body)
+            env = 0.5 + 0.5 * cos(M_PI * ((double)(i - ramp - body) + 0.5) / (double)ramp);
+        audio[lead - ramp + i] = (float)(env * v);
+    }
 
     *audio_out = audio;
     *nsamp_out = total;

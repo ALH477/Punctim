@@ -25,7 +25,17 @@ class _Profile(C.Structure):
         ("lp_cut", C.c_double), ("data_bits", C.c_size_t), ("coded_bits", C.c_size_t),
         ("interleave_stride", C.c_int), ("sync_syms", C.c_size_t),
         ("data_syms", C.c_size_t), ("total_syms", C.c_size_t),
+        # musical tone map (appended in hydra_profile.h; HYDRA_MUSIC_MAX_TONES=16,
+        # HYDRA_MUSIC_MAX_DRONES=2). The C constructors write these, so the binding
+        # must reserve them even when only linear profiles are used.
+        ("tone_mult", C.c_int * 16), ("drone_mult", C.c_int * 2),
+        ("drone_gain", C.c_double), ("ramp_ms", C.c_double),
     ]
+
+
+# The musical tone-table profiles (hydra_profile_music presets, hydramodem/docs/MUSIC.md).
+MUSIC_PROFILES = ("melody", "chime", "nocturne")
+PROFILES = ("default", "aux") + MUSIC_PROFILES
 
 
 def _find_lib():
@@ -33,7 +43,7 @@ def _find_lib():
     if p and os.path.exists(p):
         return p
     here = os.path.dirname(os.path.abspath(__file__))
-    for cand in ("libhydramodem.so", "libhydramodem.so.1", "libhydramodem.so.1.0.0"):
+    for cand in ("libhydramodem.so", "libhydramodem.so.2", "libhydramodem.so.2.0.0"):
         f = os.path.abspath(os.path.join(here, "..", "..", "hydramodem", "build", cand))
         if os.path.exists(f):
             return f
@@ -103,8 +113,17 @@ class HydraModem:
                 p.baud, p.base_freq, p.tone_spacing, p.preamble_syms = 1200.0, 1200.0, 1200.0, 16
         elif profile == "default":
             lib.hydra_profile_default(C.byref(p))
+        elif profile in MUSIC_PROFILES:
+            fn = getattr(lib, "hydra_profile_" + profile, None)
+            if fn is None:
+                raise ValueError(f"libhydramodem predates the {profile!r} profile; rebuild it")
+            fn.argtypes = [C.POINTER(_Profile)]
+            fn(C.byref(p))
+            if base_freq is not None or tone_spacing is not None or n_tones is not None:
+                raise ValueError("base_freq/tone_spacing/n_tones do not apply to a musical "
+                                 "profile (its pitches come from the tone table)")
         else:
-            raise ValueError(f"unknown HydraModem profile {profile!r} (default|aux)")
+            raise ValueError(f"unknown HydraModem profile {profile!r} ({'|'.join(PROFILES)})")
         p.fec_mode = _FEC.get(fec, 2)
         if interleave is not None: p.interleave = 1 if int(interleave) else 0
         if preamble_syms is not None: p.preamble_syms = int(preamble_syms)

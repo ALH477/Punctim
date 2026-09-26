@@ -3,7 +3,7 @@
  * HydraModem. The single-frame counterpart to tx_campaign, used by the DCF `hydra:`
  * transport (which drives HydraModem as a subprocess PHY). Repo glue (DeMoD LLC, LGPL-3.0).
  *
- *   frame_tx <34-hex-char-frame> out.wav [--profile default|aux] [--none|--rep3|--conv]
+ *   frame_tx <34-hex-char-frame> out.wav [--profile default|aux|melody|chime|nocturne] [--none|--rep3|--conv]
  *            [--interleave 0|1] [--preamble N] [--base-freq HZ] [--tone-spacing HZ]
  *            [--baud HZ] [--n-tones N]
  * Defaults: profile default (2000/3000 Hz, 1000 baud), conv FEC, interleave on. The RX

@@ -420,6 +420,26 @@ class TestTransports(unittest.TestCase):
                              out_dir=d)
         self.assertEqual(t._prof, ["--profile", "aux", "--interleave", "0"])
 
+    def test_hydra_music_profiles_need_profile_flag(self):
+        d = tempfile.mkdtemp()
+        old = os.path.join(d, "frame_tx_old")
+        with open(old, "w") as fh:
+            fh.write("#!/bin/sh\necho 'usage: frame_tx <hex> out.wav [--none|--rep3|--conv]' >&2\n"
+                     "exit 2\n")
+        os.chmod(old, os.stat(old).st_mode | stat.S_IEXEC)
+        with self.assertRaises(T.MediumUnsupported):   # no silent fallback to linear FSK
+            T.HydraTransport("h", tx_bin=old, rx_bin=old, profile="melody", out_dir=d)
+        new = os.path.join(d, "frame_tx_new")
+        with open(new, "w") as fh:
+            fh.write("#!/bin/sh\necho 'usage: frame_tx <hex> out.wav [--profile default|aux|"
+                     "melody|chime|nocturne] [--interleave 0|1] [--preamble N]' >&2\nexit 2\n")
+        os.chmod(new, os.stat(new).st_mode | stat.S_IEXEC)
+        for prof in T.HYDRA_MUSIC_PROFILES:
+            t = T.HydraTransport("h", tx_bin=new, rx_bin=new, profile=prof, out_dir=d)
+            self.assertEqual(t._prof, ["--profile", prof])
+        with self.assertRaises(medium.UsageError):
+            medium.make_transport("hydra:out=%s,profile=bogus" % d, "out")
+
     def test_missing_optional_media_are_unsupported(self):
         if not (T.hydramodem_available()):
             with self.assertRaises(T.MediumUnsupported):

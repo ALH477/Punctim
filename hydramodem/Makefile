@@ -58,7 +58,7 @@ FAUST_OBJ := $(OBJ)/hydra_dsp_faust_tx.o $(OBJ)/hydra_dsp_faust_rx.o
 # public headers (umbrella + the component headers it includes)
 PUBHDR := src/hydramodem.h src/hydra_profile.h src/hydra_modem.h src/wav.h
 
-TESTS    := test_unit test_fuzz test_stream test_channel test_loopback
+TESTS    := test_unit test_fuzz test_stream test_channel test_loopback test_music
 TESTBIN  := $(addprefix $(BUILD)/,$(TESTS))
 EXAMPLES := $(BUILD)/tx_demo $(BUILD)/rx_demo
 

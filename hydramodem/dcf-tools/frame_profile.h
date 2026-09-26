@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 /* dcf-tools/frame_profile.h -- shared CLI -> hydra_profile parsing for frame_tx/frame_rx.
- * Named profile (default|aux), FEC mode, interleaver on/off, preamble length and FDMA
+ * Named profile (default|aux|melody|chime|nocturne), FEC mode, interleaver on/off, preamble length and FDMA
  * tone-channel overrides (so each node can sit on a distinct frequency band of the line).
  * Repo glue (DeMoD LLC, LGPL-3.0). */
 #ifndef DCF_FRAME_PROFILE_H
@@ -14,7 +14,7 @@
  * transport (python/dcf/transport.py hydra_tool_caps) probes the usage text for
  * "--profile" / "--interleave" / "--preamble", so keep those spellings here. */
 #define FRAME_PROFILE_USAGE \
-    "[--profile default|aux] [--none|--rep3|--conv] [--interleave 0|1] [--preamble N]\n" \
+    "[--profile default|aux|melody|chime|nocturne] [--none|--rep3|--conv] [--interleave 0|1] [--preamble N]\n" \
     "        [--base-freq HZ] [--tone-spacing HZ] [--baud HZ] [--n-tones N]"
 
 /* Strict decimal int parse: whole string, no trailing junk. Returns 0 ok, -1 bad. */
@@ -31,7 +31,11 @@ static int frame_profile_int(const char *s, long lo, long hi, int *out)
  *   --profile default|aux         base profile: hydra_profile_default() (2000/3000 Hz,
  *                                 1000 baud, 24-sym preamble) or hydra_profile_aux_cable()
  *                                 (1200/2400 Hz, 1200 baud, 16-sym preamble); both conv +
- *                                 interleave. Applied FIRST (re-defaults the profile), so
+ *                                 interleave. melody|chime|nocturne are the musical
+ *                                 tone-table profiles (hydra_profile_music, docs/MUSIC.md);
+ *                                 --base-freq/--tone-spacing/--n-tones are rejected
+ *                                 for them; --baud moves tempo and pitch together.
+ *                                 Applied FIRST (re-defaults the profile), so
  *                                 it may appear anywhere and never clobbers the overrides.
  *   --none|--rep3|--conv          FEC mode
  *   --interleave 0|1              coded-bit block interleaver off/on
@@ -46,11 +50,19 @@ static int frame_profile_args(hydra_profile *p, int argc, char **argv, int start
     /* pass 1: the named base profile (last one wins), so overrides are order-independent */
     for (int i = start; i < argc; ++i) {
         if (strcmp(argv[i], "--profile") != 0) continue;
-        if (i + 1 >= argc) { fprintf(stderr, "--profile needs default|aux\n"); return -1; }
+        if (i + 1 >= argc) {
+            fprintf(stderr, "--profile needs default|aux|melody|chime|nocturne\n"); return -1;
+        }
         const char *name = argv[++i];
-        if      (!strcmp(name, "default")) hydra_profile_default(p);
-        else if (!strcmp(name, "aux"))     hydra_profile_aux_cable(p);
-        else { fprintf(stderr, "bad --profile: %s (default|aux)\n", name); return -1; }
+        if      (!strcmp(name, "default"))  hydra_profile_default(p);
+        else if (!strcmp(name, "aux"))      hydra_profile_aux_cable(p);
+        else if (!strcmp(name, "melody"))   hydra_profile_melody(p);
+        else if (!strcmp(name, "chime"))    hydra_profile_chime(p);
+        else if (!strcmp(name, "nocturne")) hydra_profile_nocturne(p);
+        else {
+            fprintf(stderr, "bad --profile: %s (default|aux|melody|chime|nocturne)\n", name);
+            return -1;
+        }
     }
     /* pass 2: everything else overrides the base profile */
     for (int i = start; i < argc; ++i) {
@@ -70,6 +82,12 @@ static int frame_profile_args(hydra_profile *p, int argc, char **argv, int start
                 fprintf(stderr, "bad --preamble: %s (N >= 0)\n", argv[i]); return -1;
             }
             p->preamble_syms = v;
+        }
+        else if (p->tone_mult[0] > 0 && (!strcmp(argv[i], "--base-freq") ||
+                 !strcmp(argv[i], "--tone-spacing") || !strcmp(argv[i], "--n-tones"))) {
+            /* a musical profile's pitches come from its tone table, not a linear
+             * plan; --baud is still honoured (tempo and pitch scale together) */
+            fprintf(stderr, "%s does not apply to a musical --profile\n", argv[i]); return -1;
         }
         else if (!strcmp(argv[i], "--base-freq")    && i + 1 < argc) p->base_freq    = atof(argv[++i]);
         else if (!strcmp(argv[i], "--tone-spacing") && i + 1 < argc) p->tone_spacing = atof(argv[++i]);

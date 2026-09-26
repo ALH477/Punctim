@@ -731,6 +731,13 @@ one-shot **and** streaming RX. Two DSP backends behind `src/hydra_dsp.h`: a port
 The default profile (48 kHz, 1000 baud, tones 2000/3000 Hz) is a **near-field / low-reverb /
 cabled** link. Cross-compiles to RISC-V (StarFive JH7110); runs real-time on one U74 core.
 
+**Musical profiles** (HydraModem 2.0.0, `hydramodem/docs/MUSIC.md`): `hydra_profile_music` /
+`--profile melody|chime|nocturne` (Python `hydra:profile=` too; C/Rust/Go/Node `punctim` still
+`default|aux` only) put the M-FSK tones on a just-intonation scale drawn from the baud's harmonic
+series, which is orthogonal by construction. Adds a Gray degree map, a tonic/octave preamble, an
+orthogonal drone, and an attack/release outside the symbol body. Slow (25–100 baud, 1.8–5 s/frame)
+with ~14 dB more AWGN margin; loopback-tested (`tests/test_music.c`), not certified.
+
 Profiles (`hydramodem/src/hydra_profile.c`): **`hydra_profile_default`** = binary FSK,
 24-symbol preamble, sync `0x2DD4`, **conv FEC (K=7 r=½, soft Viterbi) + interleaver ON**
 → 356 symbols = 0.356 s per frame. **`hydra_profile_aux_cable`** (`frame_tx`/`frame_rx

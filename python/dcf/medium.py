@@ -12,7 +12,7 @@ mirrored by every language's ``punctim``)::
     udp:dialect=proto|bare,bind=host:port,peer=h:p|h:p,pair=1,flush_ms=20,ts=0|now,seq_start=1
     l2eth:if=eth0,ethertype=0x88B5,dst=ff:ff:ff:ff:ff:ff,mtu=1500,impl=raw|loop[,id=]
     loop:id=NAME                                                in-process broadcast
-    hydra:in=DIR,out=DIR,profile=default|aux,fec=none|rep3|conv,interleave=0|1,
+    hydra:in=DIR,out=DIR,profile=default|aux|melody|chime|nocturne,fec=none|rep3|conv,interleave=0|1,
           base_freq=,tone_spacing=,baud=,n_tones=,impl=tool|cffi,tx=,rx=
     afsk:in=DIR,out=DIR,profile=standard|handheld|aux-cable,fec=0|1      (audio: = alias)
     sdr:in=DIR,out=DIR,mod=gfsk    janus:in=DIR,out=DIR,pset=1,fs=48000,pset_file=,tx=,rx=
@@ -235,7 +235,7 @@ def make_transport(spec, direction=None):
     if scheme == "hydra":
         opts = dict(out_dir=g("out"), in_dir=g("in"),
                     fec=_choice(g("fec", "conv"), "fec", ("none", "rep3", "conv")),
-                    profile=_choice(g("profile", "default"), "profile", ("default", "aux")),
+                    profile=_choice(g("profile", "default"), "profile", T.HYDRA_PROFILES),
                     interleave=None if g("interleave") is None
                     else int(_bool(g("interleave"), "interleave")))
         for k, conv in (("base_freq", _num), ("tone_spacing", _num), ("baud", _num),

@@ -606,7 +606,7 @@
           # (portable reference DSP); `make check` runs the full suite.
           hydramodem = pkgs.stdenv.mkDerivation {
             pname = "hydramodem";
-            version = "1.0.0";
+            version = "2.0.0";
             src = self;
             buildPhase = ''
               runHook preBuild
@@ -626,7 +626,7 @@
           # passed the loopback. See hydramodem/docs/FAUST_MODERNIZATION.md.
           hydramodem-faust = pkgs.stdenv.mkDerivation {
             pname = "hydramodem-faust";
-            version = "1.0.0";
+            version = "2.0.0";
             src = self;
             nativeBuildInputs = [ faust270 ];
             buildPhase = ''
@@ -654,7 +654,7 @@
           # libhydramodem via dcf-tools/build.sh. This is what the container ships.
           hydramodem-tools = pkgs.stdenv.mkDerivation {
             pname = "hydramodem-tools";
-            version = "1.0.0";
+            version = "2.0.0";
             src = self;
             nativeBuildInputs = [ pkgs.gcc pkgs.gnumake pkgs.bash ];
             buildPhase = ''
