@@ -99,16 +99,38 @@ both (see `docs/RECEIVER.md` for the full rationale):
 4. **Symbol-timing recovery** — a decision-directed loop tracks the TX/RX clock
    offset using the **total-energy** timing discriminator (peaked at symbol
    alignment, independent of which tone wins), **gated to transition symbols**
-   where that discriminator actually carries information. Decodes **±3000
-   ppm** on the default profile (evidence: [below](#what-is-established-and-at-which-level);
-   real audio crystals are ±100 ppm).
+   where that discriminator actually carries information. `test_loopback`
+   runs (prints, not asserts) a **±2000 ppm** clock-offset table on the
+   default profile, C reference, this repository; **±3000 ppm** is
+   `frame_rx`'s verdict on the vendored impaired set recorded in the
+   Exsecutor repository, not a test in this tree (evidence:
+   [Validation](#validation); real audio crystals are ±100 ppm).
 5. **Soft-decision decode** — per-bit max-log soft metrics → deinterleave →
    soft Viterbi → CRC.
 
 ## Channel characteristics & tuning
 
+
+
+<!-- truth:claim
+id: crc-not-auth
+kind: prose
+severity: error
+-->
+The frame's CRC-16 detects corruption; it is not authentication and provides no protection against a deliberate forgery (see “Security: the CRC is not authentication” below).
+<!-- truth:end -->
+<!-- truth:claim
+id: c-channel-tests
+kind: file_exists
+severity: error
+path: hydramodem/tests/test_channel.c
+-->
+`hydramodem/tests/test_channel.c` exists; it is the file that asserts modulation order, burst-error, and reverb-threshold behaviour cited below.
+<!-- truth:end -->
 The end-to-end behaviour on the impairments that matter for an acoustic link
-(`tests/test_channel.c` asserts all of this):
+(`tests/test_channel.c` asserts modulation order, burst errors, and the
+reverb thresholds below; clock offset, in a separate bullet below, is a
+different file and, past ±2000 ppm, a different repository):
 
 - **Modulation order.** 2/4/8/16-FSK all decode at 100 % clean; 2- and 4-FSK
   are asserted ≥ 95 % and 8-FSK ≥ 80 % at 0 dB AWGN (16-FSK is not run under
@@ -124,11 +146,16 @@ The end-to-end behaviour on the impairments that matter for an acoustic link
   default 1000 baud (1 ms symbols), inter-symbol interference dominates once the
   reverb tail exceeds a few ms, so the default profile is a **near-field /
   low-reverb / cabled** link. For a live room, **lower the baud** so the delay
-  spread is a fraction of a symbol: at RT60 = 50 ms, dropping 1000 → 125 baud
-  takes decode from ~3 % to ~75 %; 125 baud holds ≥ 80 % at RT60 = 20 ms. These
-  figures are from a **synthetic** reverb (an exponentially decaying random-tap
-  impulse response, `tests/test_channel.c`, 60 frames a point), not a measured
-  room. The tradeoff is throughput, and the tones must stay integer-cycle at the new baud:
+  spread is a fraction of a symbol: lower baud materially improves reverb
+  tolerance. **Asserted** by `test_channel.c`: clean reverb decodes 100 %
+  (`r0==100`) and 125 baud clears ≥ 80 % at RT60 = 20 ms (`lo20>=80`) — the
+  only two reverb thresholds the test gates. The RT60 = 50 ms comparison of
+  1000 baud vs. 125 baud (~3 % → ~75 %) is **printed by the test, not
+  asserted** — the same status as the AWGN sweep and clock-offset table in
+  [Validation](#validation). These figures are from a **synthetic** reverb
+  (an exponentially decaying random-tap impulse response, `tests/test_channel.c`,
+  60 frames a point), not a measured room. The tradeoff is throughput, and the
+  tones must stay integer-cycle at the new baud:
 
   ```c
   hydra_profile p; hydra_profile_default(&p);
@@ -136,10 +163,14 @@ The end-to-end behaviour on the impairments that matter for an acoustic link
   hydra_profile_init(&p);
   ```
 
-- **Clock offset / Doppler.** Timing recovery decodes ±3000 ppm; acoustic
-  Doppler at walking speed (~2900 ppm) and any real crystal (±100 ppm) are well
-  inside that. A sample-clock offset is equivalent to the pitch shift a
-  mismatched playback rate produces, so both are covered by the same loop.
+- **Clock offset / Doppler.** `test_loopback` runs (prints, not asserts) a
+  ±2000 ppm clock-offset table on the C reference, this repository; ±3000 ppm
+  is not run by any test in this tree — it is `frame_rx`'s verdict on the
+  vendored impaired set recorded in the Exsecutor repository (see
+  [Validation](#validation)). Acoustic Doppler at walking speed (~2900 ppm)
+  and any real crystal (±100 ppm) are inside the ±3000 ppm figure. A
+  sample-clock offset is equivalent to the pitch shift a mismatched playback
+  rate produces, so both are covered by the same loop.
 
 ## API
 

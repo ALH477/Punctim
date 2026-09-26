@@ -51,3 +51,6 @@ result-*
 .vscode/
 .idea/
 .DS_Store
+
+# Truthgate run receipt (python3 -m truthgate verify --receipt); not a source file
+.truthgate/receipt.json

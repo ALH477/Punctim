@@ -1,0 +1,18 @@
+# Truthgate policy — scoped to the docs touched in this run only.
+# Pre-existing content elsewhere in the tree is not gated.
+
+[policy]
+fail_on = "error"
+allow_unbound_prose = true
+command_mode = "allowlist"
+require_lock = false
+coverage = "paths"
+coverage_severity = "warning"
+
+[[docs]]
+path = "README.md"
+require_bound_fences = false
+
+[[docs]]
+path = "hydramodem/README.md"
+require_bound_fences = false
