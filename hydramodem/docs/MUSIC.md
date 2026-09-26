@@ -176,9 +176,26 @@ back to back included. Its window is longer than a melody burst, so after a
 decode it consumes only through the frame's release and replays the rest (fixed
 in 2.0.0; before, 1 of 4 back-to-back melody frames came through). It is
 single-profile: a duet needs both voices decoded from one window, which is what
-Exsecutor's `ausculta_fluxus.exsc` does. That receiver also recovers a burst
-that a noise click opened the window too early for. This C receiver does not
-yet.
+Exsecutor's `ausculta_fluxus.exsc` does.
+
+**Truncated-burst recovery** (2.0.1, ported from that receiver). A noise click
+can open a window early, and background noise keeps the silence rule from
+closing it, so a real burst starting inside the window runs off its end. The
+reference discarded that window, and the burst with it. Now, when a **full**
+window decodes nothing, acquisition keeps scanning past the complete-burst
+range. It takes the first origin matching nknown − 3 of the known prefix, and
+the window is replayed from one symbol before it. This runs only after the
+normal scan has failed, so no verdict changes.
+
+The recovery applies only to a full window. A window closed by silence cut its
+burst because the burst itself was cut (a musical burst has no silent gap).
+Replaying would find the same cut, one sample shorter each time. Measured with
+the rule removed, on `test_music` [6]'s dropout stream: the same frames, but
+11.7 s against 5.2 s for the whole test. That mutant survives the test; only
+the time shows it.
+
+`test_music` [6] pins both cases: the click stream gives its frame (0 without
+recovery), and the dropout stream gives the next whole burst's frame.
 
 ## Exact synthesis (normative for ports)
 

@@ -37,8 +37,8 @@
 
 #define HYDRAMODEM_VERSION_MAJOR 2
 #define HYDRAMODEM_VERSION_MINOR 0
-#define HYDRAMODEM_VERSION_PATCH 0
-#define HYDRAMODEM_VERSION       "2.0.0"
+#define HYDRAMODEM_VERSION_PATCH 1
+#define HYDRAMODEM_VERSION       "2.0.1"
 
 /* numeric form for comparisons: (major*10000 + minor*100 + patch) */
 #define HYDRAMODEM_VERSION_NUMBER \
@@ -52,7 +52,7 @@
 extern "C" {
 #endif
 
-/* Returns the library version string, e.g. "2.0.0" (matches HYDRAMODEM_VERSION
+/* Returns the library version string, e.g. "2.0.1" (matches HYDRAMODEM_VERSION
  * at build time; useful when linked as a shared object). */
 const char *hydramodem_version(void);
 

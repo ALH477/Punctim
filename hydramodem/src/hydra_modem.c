@@ -328,8 +328,11 @@ static float bit_soft(const double *E, int N, int bps, int b)
     return (float)((max1 - max0) / (max1 + max0 + 1e-12));
 }
 
+/* trunc_out (optional, the streaming receiver's): on HYDRA_ERR_NO_SYNC, the
+ * origin of a burst that starts in the window but runs off its end, or -1. */
 static int decode_window(const hydra_profile *p, const float *audio, size_t nsamp,
-                         uint8_t payload_out[HYDRA_DCF_BYTES], hydra_rx_diag *diag)
+                         uint8_t payload_out[HYDRA_DCF_BYTES], hydra_rx_diag *diag,
+                         long *trunc_out)
 {
     hydra_rx_dsp *rx = NULL;
     float    *iq = NULL, *soft = NULL;
@@ -343,6 +346,7 @@ static int decode_window(const hydra_profile *p, const float *audio, size_t nsam
     double    peak = 0.0, pos, sps;
     size_t    need, j;
 
+    if (trunc_out) *trunc_out = -1;
     if (!p || !audio || !payload_out) return HYDRA_ERR_ARG;
     N = p->n_tones; L = p->samples_per_symbol; bps = p->bits_per_symbol;
     if (N > HYDRA_MAXTONES) return HYDRA_ERR_ARG;
@@ -426,7 +430,27 @@ static int decode_window(const hydra_profile *p, const float *audio, size_t nsam
         if (diag->sync_score < 0) diag->sync_score = 0;
         diag->peak_energy  = (float)peak;
     }
-    if (best_score < nknown - 3) { rc = HYDRA_ERR_NO_SYNC; goto done; }
+    if (best_score < nknown - 3) {
+        /* No complete burst. For a streaming window, look past the
+         * complete-burst range for a known prefix whose burst runs off the
+         * window's end: the first origin matching nknown - 3 of it. The
+         * streaming receiver replays from there instead of discarding a burst
+         * that a false trigger (a click) started the window too early for.
+         * This runs only after the scan above has failed, so no verdict
+         * changes. Ported from Exsecutor's auditus.exsc. */
+        if (trunc_out) {
+            long q, q_hi = (long)nsamp - (long)nknown * (long)L;
+            for (q = o_hi + 1; q <= q_hi; ++q) {
+                int score = 0;
+                for (k = 0; k < nknown; ++k) {
+                    pf_symbol_energies(&pf, q + k * (long)L, L, E);
+                    if (argmax_d(E, N) == known[k]) ++score;
+                }
+                if (score >= nknown - 3) { *trunc_out = q; break; }
+            }
+        }
+        rc = HYDRA_ERR_NO_SYNC; goto done;
+    }
     if (diag) diag->frame_origin = best_o;
 
     /* ---- data demod with a decision-directed timing loop ----
@@ -510,7 +534,7 @@ int hydra_modem_rx_ex(const hydra_profile *p, const float *audio, size_t nsamp,
     hydra_rx_diag local;
     if (!diag) diag = &local;
     memset(diag, 0, sizeof *diag);
-    return decode_window(p, audio, nsamp, payload_out, diag);
+    return decode_window(p, audio, nsamp, payload_out, diag, NULL);
 }
 
 int hydra_modem_rx(const hydra_profile *p, const float *audio, size_t nsamp,
@@ -575,18 +599,35 @@ static int rx_step(hydra_rx *rx, float sample);
  * sent back to back, holds the start of the NEXT frame -- is replayed through
  * the segmenter. Discarding the whole window, as this did before, lost every
  * other frame of a back-to-back stream whenever the window outran one burst
- * (measured: 1 of 4 melody frames at a 60 ms gap). A failed window is still
- * discarded whole. */
+ * (measured: 1 of 4 melody frames at a 60 ms gap).
+ *
+ * A failed window is discarded whole -- UNLESS it is FULL and a burst starts
+ * inside it and runs off its end: a click opened the window early and noise
+ * kept the silence rule from closing it. Then the window is replayed from one
+ * symbol before that burst, so its preamble opens a fresh window. Only a full
+ * window: one closed by silence cut the burst because the burst itself was cut
+ * (a musical burst has no silent gap), and replaying would find the same cut,
+ * one sample shorter each time. In a full window the truncated burst starts
+ * after the last complete-burst origin, well past sample 0; the floor of 1 is a
+ * backstop that keeps every replay strictly shorter than its window. */
 static int rx_try_decode(hydra_rx *rx)
 {
     uint8_t payload[HYDRA_DCF_BYTES];
     hydra_rx_diag diag;
     size_t collected = rx->collected, end, i;
+    long trunc = -1;
     int frames = 0;
     memset(&diag, 0, sizeof diag);
     rx->state = ST_SEARCH; rx->collected = 0; rx->quiet_run = 0;
-    if (decode_window(&rx->p, rx->buf, collected, payload, &diag) != HYDRA_OK)
-        return 0;
+    if (decode_window(&rx->p, rx->buf, collected, payload, &diag, &trunc) != HYDRA_OK) {
+        if (trunc >= 0 && collected >= rx->frame_len) {
+            long L = rx->p.samples_per_symbol;
+            size_t start = (trunc > L + 1) ? (size_t)(trunc - L) : 1u;
+            for (i = start; i < collected; ++i)
+                frames += rx_step(rx, rx->buf[i]);
+        }
+        return frames;
+    }
     if (rx->cb) rx->cb(payload, &diag, rx->user);
     frames = 1;
     end = (size_t)diag.frame_origin + rx->body_len

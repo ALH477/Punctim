@@ -43,7 +43,7 @@ def _find_lib():
     if p and os.path.exists(p):
         return p
     here = os.path.dirname(os.path.abspath(__file__))
-    for cand in ("libhydramodem.so", "libhydramodem.so.2", "libhydramodem.so.2.0.0"):
+    for cand in ("libhydramodem.so", "libhydramodem.so.2", "libhydramodem.so.2.0.1"):
         f = os.path.abspath(os.path.join(here, "..", "..", "hydramodem", "build", cand))
         if os.path.exists(f):
             return f

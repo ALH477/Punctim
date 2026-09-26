@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.0.1 — truncated-burst recovery
+
+### Fixed
+- **Streaming RX lost a burst that a noise click opened the window too early
+  for.** Background noise kept the silence rule from closing the window, so the
+  burst ran off its end, and the whole window was discarded. Now, when a full
+  window decodes nothing, acquisition looks past the complete-burst range for a
+  burst whose known prefix matches (nknown − 3 of it) but whose body runs off
+  the end, and the window is replayed from one symbol before it. Only full
+  windows qualify: a burst cut by silence was really cut. This is ported from
+  Exsecutor's `ausculta_fluxus.exsc`. `tests/test_music.c` [6] recovers the
+  click stream's frame, and gives 0 frames without the fix.
+
 ## 2.0.0 — musical profiles
 
 ### Added

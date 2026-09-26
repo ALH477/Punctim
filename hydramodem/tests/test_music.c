@@ -12,7 +12,10 @@
  *                     streaming receiver.
  *   [6] streaming  -- back-to-back melody bursts through hydra_rx_push: every
  *                     frame, in order (the window outruns one burst, so the
- *                     receiver must keep what follows the decoded frame).
+ *                     receiver must keep what follows the decoded frame); a
+ *                     burst that a noise click opened the window too early for
+ *                     is recovered (truncated-burst replay); a burst cut by a
+ *                     dropout is not replayed, and the next one still decodes.
  *   [5] polyphony  -- the duet: two frames in one burst (melody + bass voices),
  *                     each decoded with its own profile; cross-voice leakage,
  *                     AWGN, clock offset, and hydra_poly_check's refusals.
@@ -337,6 +340,56 @@ static void test_stream(void)
     snprintf(msg, sizeof msg, "4 bursts back to back -> %d frames, in order", s.got);
     CHECK(ok && s.got == 4, msg);
     hydra_rx_destroy(rx);
+
+    /* A click opens the window 24,000 samples before a melody burst, and
+     * background noise (sigma 150/32768, as Exsecutor's fluxus-ictus.raw) keeps
+     * the silence rule from closing it: the window fills before the burst ends.
+     * Without truncated-burst recovery this stream yields nothing. */
+    {
+        float *a = NULL, *x; size_t n = 0, m, i, off = 0;
+        const double sd = 150.0 / 32768.0;
+        rand_payload(tx[0]);
+        if (hydra_modem_tx(&p, tx[0], &a, &n) != HYDRA_OK) { CHECK(0, "tx"); return; }
+        m = 30000 + 4000 + 20000 + n + 20000;
+        x = (float *)malloc(m * sizeof *x);
+        for (i = 0; i < m; ++i) x[i] = (float)(sd * gs());
+        for (i = 30000; i < 34000; ++i) x[i] = (float)(20.0 * sd * gs());   /* the click */
+        for (i = 0; i < n; ++i) x[54000 + i] += a[i];
+        memset(&s, 0, sizeof s);
+        rx = hydra_rx_create(&p, on_flux, &s);
+        for (off = 0; off < m; off += 4096) hydra_rx_push(rx, x + off, (m - off < 4096) ? m - off : 4096);
+        snprintf(msg, sizeof msg, "click-opened window, burst runs off its end -> %d frame(s), the burst's", s.got);
+        CHECK(s.got == 1 && !memcmp(s.f[0], tx[0], 17), msg);
+        hydra_rx_destroy(rx);
+
+        /* A burst cut short by a dropout (silence), then a whole burst. The
+         * dropout closes the click's window short of frame_len, so the cut
+         * burst is NOT replayed (it cannot be recovered); the next one decodes. */
+        {
+            /* the window (opened at 0) closes at ~238,760 samples: past body_len,
+             * so it IS decoded, and the cut burst (origin ~2,640) is found
+             * truncated -- Exsecutor's fluxus-truncus.raw geometry */
+            float *b2 = NULL; size_t n2 = 0, cut = 233000 - 1200, m2;
+            uint8_t t2[17];
+            rand_payload(t2);
+            if (hydra_modem_tx(&p, t2, &b2, &n2) != HYDRA_OK) { CHECK(0, "tx"); free(a); free(x); return; }
+            m2 = 1200 + cut + 20000 + n2 + 20000;
+            free(x); x = (float *)malloc(m2 * sizeof *x);
+            for (i = 0; i < m2; ++i) x[i] = (float)(sd * gs());
+            for (i = 0; i < 200; ++i) x[i] = (float)(20.0 * sd * gs());
+            for (i = 0; i < cut; ++i) x[1200 + i] += a[i];
+            for (i = 1200 + cut; i < 1200 + cut + 20000; ++i) x[i] = 0.0f;       /* dropout */
+            for (i = 0; i < n2; ++i) x[1200 + cut + 20000 + i] += b2[i];
+            memset(&s, 0, sizeof s);
+            rx = hydra_rx_create(&p, on_flux, &s);
+            for (off = 0; off < m2; off += 4096) hydra_rx_push(rx, x + off, (m2 - off < 4096) ? m2 - off : 4096);
+            snprintf(msg, sizeof msg, "burst cut by a dropout, then a whole one -> %d frame(s), the whole one's", s.got);
+            CHECK(s.got == 1 && !memcmp(s.f[0], t2, 17), msg);
+            hydra_rx_destroy(rx);
+            free(b2);
+        }
+        free(a); free(x);
+    }
 }
 
 int main(void)
