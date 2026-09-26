@@ -519,7 +519,7 @@ adapter certificate are untouched. Spec: `Documentation/DCF_MEDIUM_SPEC.md` (nor
   every scheme (`afsk:`/`sdr:` need numpy, `janus:` the GPL janus-c tools); C: `file stdio
   hex udp loop hydra`; Rust/Go/Node: `file stdio hex udp hydra` (the rest exit 3).
   `hydra:` shells out to `frame_tx`/`frame_rx` (`$HYDRA_TX`/`$HYDRA_RX`/PATH; they take
-  `--profile default|aux`, `--interleave 0|1`, `--preamble N`); Python alone also offers
+  `--profile default|aux|melody|chime|nocturne|bass`, `--interleave 0|1`, `--preamble N`); Python alone also offers
   in-process `impl=cffi`.
 - **Determinism rule (normative):** for finite inputs, `punctim io` in any language
   produces byte-identical output for identical input and URI (`udp:proto` needs `ts=0`,
@@ -732,8 +732,8 @@ The default profile (48 kHz, 1000 baud, tones 2000/3000 Hz) is a **near-field / 
 cabled** link. Cross-compiles to RISC-V (StarFive JH7110); runs real-time on one U74 core.
 
 **Musical profiles** (HydraModem 2.0.0, `hydramodem/docs/MUSIC.md`): `hydra_profile_music` /
-`--profile melody|chime|nocturne|bass` (Python `hydra:profile=` too; C/Rust/Go/Node `punctim` still
-`default|aux` only) put the M-FSK tones on a just-intonation scale drawn from the baud's harmonic
+`--profile melody|chime|nocturne|bass` (`hydra:profile=` in all five `punctim` CLIs, byte-identical —
+io-matrix leg `hydra-melody`) put the M-FSK tones on a just-intonation scale drawn from the baud's harmonic
 series, which is orthogonal by construction. Adds a Gray degree map, a tonic/octave preamble, an
 orthogonal drone, and an attack/release outside the symbol body. Slow (25–100 baud, 1.8–5 s/frame)
 with ~14 dB more AWGN margin; loopback-tested (`tests/test_music.c`), not certified.

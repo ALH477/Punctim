@@ -232,7 +232,16 @@ const HYDRA_AUX_FLAGS = ['--base-freq', '1200', '--tone-spacing', '1200', '--bau
 /** Resolve tools + the per-call flag list for a hydra: URI (Python HydraTransport). */
 function hydraSetup(kw) {
   const fec = uChoice(kw.fec === undefined ? 'conv' : kw.fec, 'fec', ['none', 'rep3', 'conv']);
-  const profile = uChoice(kw.profile === undefined ? 'default' : kw.profile, 'profile', ['default', 'aux']);
+  const profile = uChoice(kw.profile === undefined ? 'default' : kw.profile, 'profile',
+    ['default', 'aux', 'melody', 'chime', 'nocturne', 'bass', 'duet']);
+  // The musical tone-table profiles (hydramodem/docs/MUSIC.md) pass to the tools as --profile NAME;
+  // their pitches come from the tone table, so the linear tone-plan overrides are usage errors. The
+  // duet (two frames per WAV) is Python-only.
+  const music = ['melody', 'chime', 'nocturne', 'bass'].includes(profile);
+  if (music && ['base_freq', 'tone_spacing', 'n_tones'].some((k) => kw[k] !== undefined)) {
+    throw new UsageError('hydra: base_freq/tone_spacing/n_tones do not apply to a musical profile '
+      + '(its pitches come from the tone table)');
+  }
   const interleave = kw.interleave === undefined ? null : (uBool(kw.interleave, 'interleave') ? 1 : 0);
   const over = [];
   for (const [k, flag, conv] of [['base_freq', '--base-freq', uNum], ['tone_spacing', '--tone-spacing', uNum],
@@ -241,6 +250,7 @@ function hydraSetup(kw) {
   }
   const impl = uChoice(kw.impl === undefined ? 'tool' : kw.impl, 'impl', ['tool', 'cffi']);
   if (impl === 'cffi') throw new Unsupported('hydra:impl=cffi (in-process libhydramodem) is Python-only; use impl=tool');
+  if (profile === 'duet') throw new Unsupported('hydra:profile=duet (two frames per WAV) is Python-only');
   const tx = kw.tx || process.env.HYDRA_TX || which('frame_tx');
   const rx = kw.rx || process.env.HYDRA_RX || which('frame_rx');
   if (!tx || !rx) {
@@ -251,6 +261,12 @@ function hydraSetup(kw) {
   const rxc = hydraToolCaps(rx);
   const caps = new Set([...txc].filter((c) => rxc.has(c)));
   const prof = [];
+  if (music) {
+    if (!caps.has('--profile')) {
+      throw new Unsupported(`hydra: profile=${profile} needs frame_tx/frame_rx with --profile (rebuild hydramodem/dcf-tools)`);
+    }
+    prof.push('--profile', profile);
+  }
   if (profile === 'aux') {
     if (caps.has('--profile')) prof.push('--profile', 'aux');
     else {

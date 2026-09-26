@@ -15,6 +15,7 @@ pair of the available CLIs (same-language pairs included):
   udp-bare  the same with dialect=bare (SuperPack pairs + lone raw frame)
   hydra     writer (12 frames -> hydra:out=DIR WAVs, == direct frame_tx WAVs), then each
             reader (hydra:in=DIR -> hex --expect 12) == the 12 frames
+  hydra-melody  the same on profile=melody (the musical profile; WAVs == frame_tx --profile melody)
   garbage   every CLI: file:garbage.dcf -> hex: == corpus.hex, same skipped_bytes as the
             Python CLI (and the in-script reference scan), frames_in == 109
 
@@ -23,7 +24,7 @@ run `version --json` is skipped everywhere; a medium a CLI does not support (exi
 skip, never a failure. Writes a Markdown report to stdout and tests/io_matrix_results.md;
 exit 1 iff any cell failed.
 
-    python3 tests/io_matrix.py [--only file,stdio,udp,hydra,garbage] [--langs py,c,rs,go,js]
+    python3 tests/io_matrix.py [--only file,stdio,udp,hydra,hydra-melody,garbage] [--langs py,c,rs,go,js]
                                [--verbose] [--keep DIR] [--report PATH]
 """
 import argparse
@@ -46,11 +47,12 @@ LANGS = (("py", "Python", "PUNCTIM_PY", "python3 python/punctim.py"),
          ("rs", "Rust", "PUNCTIM_RS", "codec/target/debug/punctim"),
          ("go", "Go", "PUNCTIM_GO", "go/bin/punctim"),
          ("js", "Node", "PUNCTIM_JS", "node JS/nodejs/bin/punctim.js"))
-LEGS = ("file", "stdio", "udp-proto", "udp-bare", "hydra", "garbage")
+LEGS = ("file", "stdio", "udp-proto", "udp-bare", "hydra", "hydra-melody", "garbage")
 ALIASES = {"hex": "file", "udp": ("udp-proto", "udp-bare"), "udp_proto": "udp-proto",
            "udp_bare": "udp-bare", "proto": "udp-proto", "bare": "udp-bare"}
 TITLES = {"file": "hex → file → hex", "stdio": "stdio pipe", "udp-proto": "udp proto",
-          "udp-bare": "udp bare", "hydra": "hydra WAV dir", "garbage": "garbage twin"}
+          "udp-bare": "udp bare", "hydra": "hydra WAV dir",
+          "hydra-melody": "hydra melody WAV dir", "garbage": "garbage twin"}
 PASS, FAIL, SKIP = "✅", "❌", "⏭"
 HYDRA_N = 12
 T_SHORT, T_UDP, T_HYDRA = 30, 25, 90          # per-subprocess timeouts (s)
@@ -393,7 +395,12 @@ def leg_udp(dialect):
     return leg
 
 
-def leg_hydra(cx):
+def leg_hydra(cx, profile=None):
+    """profile=None: the default hydra leg; profile=NAME: the same leg on a musical
+    profile (URI `profile=NAME`, reference `frame_tx … --profile NAME`)."""
+    tag = "hydra" if profile is None else f"hydra_{profile}"
+    popt = "" if profile is None else f",profile={profile}"
+    pflags = [] if profile is None else ["--profile", profile]
     first = cx.frames[:HYDRA_N]
     c12 = cx.p("corpus12.hex")
     exp_hex = "".join(f.hex() + "\n" for f in first).encode()
@@ -405,13 +412,13 @@ def leg_hydra(cx):
         why = cx.hydra
         return cx.pairs(lambda w, r: (SKIP, why)), \
             ("WAVs ≡ frame_tx", {lg.key: (SKIP, lg.why or why) for lg in cx.langs})
-    tools_dir = fresh(cx.p("hydra_tools"))       # a private snapshot: immune to a concurrent
+    tools_dir = fresh(cx.p(f"{tag}_tools"))       # a private snapshot: immune to a concurrent
     os.makedirs(tools_dir)                        # rebuild of hydramodem/dcf-tools/build
     tx, rx = (shutil.copy2(t, tools_dir) for t in cx.hydra)
-    ref = fresh(cx.p("hydra_ref"))
+    ref = fresh(cx.p(f"{tag}_ref"))
     os.makedirs(ref)
     for i, f in enumerate(first, 1):              # the reference: frame_tx called directly
-        subprocess.run([tx, f.hex(), os.path.join(ref, f"hydra-{i:08d}.wav"), "--conv"],
+        subprocess.run([tx, f.hex(), os.path.join(ref, f"hydra-{i:08d}.wav"), "--conv", *pflags],
                        check=True, capture_output=True, timeout=T_SHORT)
     ref_wavs = {n: slurp(os.path.join(ref, n)) for n in sorted(os.listdir(ref))}
     tools = f"tx={tx},rx={rx}"
@@ -420,8 +427,8 @@ def leg_hydra(cx):
         if not w.ok or w.key in no_hydra:
             wcol[w.key] = (SKIP, w.why or no_hydra[w.key])
             continue
-        d = fresh(cx.p(f"hydra_{w.key}"))
-        res = run(io_argv(w, "hex:path=" + c12, f"hydra:out={d},{tools}"), T_HYDRA)
+        d = fresh(cx.p(f"{tag}_{w.key}"))
+        res = run(io_argv(w, "hex:path=" + c12, f"hydra:out={d},{tools}{popt}"), T_HYDRA)
         names = sorted(n for n in os.listdir(d) if not n.startswith(".")) \
             if os.path.isdir(d) else []
         diff = ""
@@ -442,11 +449,11 @@ def leg_hydra(cx):
             return wcol[w.key]
         if wcol[w.key][0] != PASS:
             return FAIL, f"writer {w.key} failed (see WAVs column)"
-        return cx.retry("hydra", w, r, lambda: hydra_read(w, r))
+        return cx.retry(tag, w, r, lambda: hydra_read(w, r))
 
     def hydra_read(w, r):
-        rhex = fresh(cx.p(f"R_hydra_{w.key}_{r.key}.hex"))
-        res = run(io_argv(r, f"hydra:in={cx.p(f'hydra_{w.key}')},{tools}", "hex:path=" + rhex,
+        rhex = fresh(cx.p(f"R_{tag}_{w.key}_{r.key}.hex"))
+        res = run(io_argv(r, f"hydra:in={cx.p(f'{tag}_{w.key}')},{tools}{popt}", "hex:path=" + rhex,
                           "--expect", str(HYDRA_N), "--seconds", "60"), T_HYDRA)
         return verdict(res, f"{r.key} read", exp_hex, slurp(rhex))
     return cx.pairs(cell), ("WAVs ≡ frame_tx", wcol)
@@ -488,7 +495,8 @@ def leg_garbage(cx):
 
 
 LEG_FN = {"file": leg_file, "stdio": leg_stdio, "udp-proto": leg_udp("proto"),
-          "udp-bare": leg_udp("bare"), "hydra": leg_hydra, "garbage": leg_garbage}
+          "udp-bare": leg_udp("bare"), "hydra": leg_hydra,
+          "hydra-melody": lambda cx: leg_hydra(cx, "melody"), "garbage": leg_garbage}
 LEG_DESC = {
     "file": "writer `io --in hex:path=corpus.hex --out file:path=W.dcf`; reader "
             "`io --in file:path=W.dcf --out hex:` == corpus.hex; W.dcf ≡ the 109 frames "
@@ -504,6 +512,9 @@ LEG_DESC = {
              f"{HYDRA_N} frames; WAVs ≡ `frame_tx HEX hydra-%08d.wav --conv`), reader `io "
              f"--in hydra:in=DIR,tx=…,rx=… --out hex:path=R.hex --expect {HYDRA_N} "
              f"--seconds 60` == corpus12.hex",
+    "hydra-melody": "as hydra with `profile=melody` (the musical tone-table profile, "
+                    "hydramodem/docs/MUSIC.md): WAVs ≡ `frame_tx HEX hydra-%08d.wav --conv "
+                    "--profile melody`, every reader recovers the 12 frames",
     "garbage": "every CLI `io --in file:path=garbage.dcf --out hex: --stats` == corpus.hex, "
                "skipped_bytes == Python's, frames_in == frames_out == 109",
 }

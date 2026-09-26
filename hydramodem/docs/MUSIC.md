@@ -213,10 +213,12 @@ this byte for byte.
   which does not depend on the profile. The musical profiles use 8 or 4 tones
   and 12-symbol preambles, which are not among the certified cases. Like every
   HydraModem waveform they are **loopback-tested, not byte-certified**.
-- **Where it is wired:** the C library, `frame_tx`/`frame_rx --profile`, and
-  Python (`hydra:profile=melody|chime|nocturne`, both `impl=tool` and
-  `impl=cffi`). The C/Rust/Go/Node `punctim` CLIs still accept only
-  `default|aux`.
+- **Where it is wired:** the C library, `frame_tx`/`frame_rx --profile`, and all
+  five `punctim` CLIs: `hydra:profile=melody|chime|nocturne|bass`, byte-identical
+  WAVs from every one (the `hydra-melody` leg of `tests/io_matrix.py`). Python also
+  has `impl=cffi` and the two-frame `profile=duet`; the other CLIs answer the duet
+  with exit 3. A musical profile with `base_freq`/`tone_spacing`/`n_tones` is exit 2
+  everywhere; `baud` passes through.
 - **ABI:** the tone map is appended to `hydra_profile`, which grows the struct.
   An old binary's stack profile is too small for the new constructors, so this
   is HydraModem **2.0.0** (soname `libhydramodem.so.2`).

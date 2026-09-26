@@ -565,8 +565,14 @@ static int hydra_setup(const uri_t *u, hydra_t *h, bool as_reader) {
     snprintf(h->fec, sizeof h->fec, "--%s", fec);
     const char *profile = uri_get(u, "profile");
     if (!profile) profile = "default";
-    if (strcmp(profile, "default") != 0 && strcmp(profile, "aux") != 0)
-        return msg(PX_USAGE, "profile='%s': want default|aux", profile);
+    /* The musical tone-table profiles (hydramodem/docs/MUSIC.md) are passed to the tools
+     * as --profile NAME; the duet (two frames per WAV) is Python-only. */
+    bool music = !strcmp(profile, "melody") || !strcmp(profile, "chime") ||
+                 !strcmp(profile, "nocturne") || !strcmp(profile, "bass");
+    if (strcmp(profile, "default") != 0 && strcmp(profile, "aux") != 0 && !music &&
+        strcmp(profile, "duet") != 0)
+        return msg(PX_USAGE, "profile='%s': want default|aux|melody|chime|nocturne|bass|duet",
+                   profile);
     bool il = true;
     bool il_given = uri_get(u, "interleave") != NULL;
     if (uri_bool(u, "interleave", true, &il)) return PX_USAGE;
@@ -591,6 +597,9 @@ static int hydra_setup(const uri_t *u, hydra_t *h, bool as_reader) {
             fmt_num(numd[k], numv[k], sizeof numv[k]);
         }
     }
+    if (music && (numg[0] || numg[1] || numg[3]))
+        return msg(PX_USAGE, "hydra: base_freq/tone_spacing/n_tones do not apply to a musical "
+                   "profile (its pitches come from the tone table)");
     const char *impl = uri_get(u, "impl");
     if (!impl) impl = "tool";
     if (strcmp(impl, "tool") != 0 && strcmp(impl, "cffi") != 0)
@@ -599,19 +608,25 @@ static int hydra_setup(const uri_t *u, hydra_t *h, bool as_reader) {
         return msg(PX_UNSUPPORTED, "medium unsupported: hydra:impl=cffi (libhydramodem is not "
                    "linked into C punctim in v0.1; use impl=tool)");
 
-    /* The effective profile must pass hydra_profile_init (the tools would reject it). */
-    dcf_hydra_profile_t p;
-    dcf_hydra_profile_named(&p, profile);
-    p.fec_mode = fec_mode;
-    p.interleave = il ? 1 : 0;
-    if (numg[0]) p.base_freq = numd[0];
-    if (numg[1]) p.tone_spacing = numd[1];
-    if (numg[2]) p.baud = numd[2];
-    if (numg[3]) p.n_tones = (int)numd[3];
-    if (dcf_hydra_profile_init(&p) != 0)
-        return msg(PX_USAGE, "hydra: the profile is rejected by hydra_profile_init (n_tones a "
-                   "power of two >= 2, tones below Nyquist, base_freq/tone_spacing integer "
-                   "multiples of baud)");
+    if (!strcmp(profile, "duet"))
+        return msg(PX_UNSUPPORTED, "medium unsupported: hydra:profile=duet (two frames per WAV) "
+                   "is Python-only");
+    /* The effective profile must pass hydra_profile_init (the tools would reject it). A
+     * musical profile's tone table is not in the certified codec; frame_tx validates it. */
+    if (!music) {
+        dcf_hydra_profile_t p;
+        dcf_hydra_profile_named(&p, profile);
+        p.fec_mode = fec_mode;
+        p.interleave = il ? 1 : 0;
+        if (numg[0]) p.base_freq = numd[0];
+        if (numg[1]) p.tone_spacing = numd[1];
+        if (numg[2]) p.baud = numd[2];
+        if (numg[3]) p.n_tones = (int)numd[3];
+        if (dcf_hydra_profile_init(&p) != 0)
+            return msg(PX_USAGE, "hydra: the profile is rejected by hydra_profile_init (n_tones a "
+                       "power of two >= 2, tones below Nyquist, base_freq/tone_spacing integer "
+                       "multiples of baud)");
+    }
 
     if (hydra_tool(u, "tx", "HYDRA_TX", "frame_tx", h->tx) != 0 ||
         hydra_tool(u, "rx", "HYDRA_RX", "frame_rx", h->rx) != 0)
@@ -619,6 +634,13 @@ static int hydra_setup(const uri_t *u, hydra_t *h, bool as_reader) {
                    "hydramodem/dcf-tools (build.sh) and put frame_tx/frame_rx on PATH or in "
                    "$HYDRA_TX/$HYDRA_RX (or tx=/rx=)");
     int caps = hydra_caps(h->tx) & hydra_caps(h->rx);
+    if (music) {
+        if (!(caps & HY_CAP_PROFILE))
+            return msg(PX_UNSUPPORTED, "medium unsupported: hydra: profile=%s needs "
+                       "frame_tx/frame_rx with --profile (rebuild hydramodem/dcf-tools)", profile);
+        hy_add(h, "--profile");
+        hy_add(h, profile);
+    }
     if (!strcmp(profile, "aux")) {
         if (caps & HY_CAP_PROFILE) {
             hy_add(h, "--profile");

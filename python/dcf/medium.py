@@ -243,6 +243,10 @@ def make_transport(spec, direction=None):
             if g(k) is not None:
                 v = conv(g(k), k)
                 opts[k] = int(v) if isinstance(v, float) and v.is_integer() else v
+        if opts["profile"] in T.HYDRA_MUSIC_PROFILES and any(
+                g(k) is not None for k in ("base_freq", "tone_spacing", "n_tones")):
+            raise UsageError("hydra: base_freq/tone_spacing/n_tones do not apply to a musical "
+                             "profile (its pitches come from the tone table)")
         if opts["profile"] == "duet":
             fixed = [k for k in ("fec", "interleave", "base_freq", "tone_spacing", "baud",
                                  "n_tones") if g(k) is not None]
