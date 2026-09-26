@@ -50,7 +50,9 @@ I/Q out).
 **Default profile.** 48 kHz sample rate; 1000 baud (48 samples/symbol); binary FSK with tones
 at 2000 and 3000 Hz (integer-cycle per symbol, hence exactly orthogonal over one symbol);
 24-symbol alternating preamble; 16-bit sync word `0x2DD4`; K=7, rate-1/2 convolutional code
-with a block interleaver. M-FSK orders 2/4/8/16 are supported and validated.
+with a block interleaver. M-FSK orders 2/4/8/16 are supported and loopback-tested in
+simulation (`tests/test_channel.c`; 16-FSK clean only); only the binary default profile has
+been run over hardware (§4).
 
 **Receiver.** The hard part of an acoustic link is that the two devices share no sample clock
 and the signal is buried in noise. The receiver is:
@@ -60,7 +62,7 @@ and the signal is buried in noise. The receiver is:
 3. **Acquisition** over the entire 40-symbol known prefix (24 preamble + 16 sync), so false
    alarm is negligible even when leading noise carries signal-level energy.
 4. **Decision-directed symbol-timing recovery** using a total-energy timing discriminator
-   gated to transition symbols; tolerates **≥ ±3000 ppm** clock offset (real audio crystals are
+   gated to transition symbols; decodes **±3000 ppm** clock offset on the default profile (real audio crystals are
    ±100 ppm; walking-speed acoustic Doppler ≈ 2900 ppm).
 5. **Soft-decision decode** — per-bit max-log metrics → deinterleave → soft Viterbi → CRC.
 
@@ -79,6 +81,10 @@ design. The Faust adapters are **version-tolerant across Faust 2.72–2.85** (th
 verified on 2.72.14, 2.83.1, and 2.85.5.
 
 ## 4. Hardware validation
+
+**Evidence class.** These are hardware runs reported with their setup and commands (§6), for
+the default profile only, over cable (not air). The raw per-frame logs are not committed to the
+repository, so the tables below are the reported results rather than re-runnable records.
 
 **Setup.** Two USB audio interfaces — a Native Instruments Komplete Audio 2 and a Yamaha MG-XU
 — cross-connected with 1/4" (TS) instrument cables at line level (output 1 → input 1 each way).

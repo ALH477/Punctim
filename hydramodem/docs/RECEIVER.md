@@ -87,11 +87,16 @@ What works is a **total-energy discriminator**, gated to transitions:
 - **Smoothed grid.** The per-symbol best offset feeds an EMA (`drift`) that
   drives the running position. Noise averages to ≈0 — the grid does not random-
   walk under AWGN, which preserves the soft-Viterbi coding gain — while a real
-  clock offset biases it consistently and is tracked. This tolerates **≥ ±3000
-  ppm**; real audio crystals are within ±100 ppm.
+  clock offset biases it consistently and is tracked. On the default profile it
+  decodes **±3000 ppm** (the vendored impaired set cited in `README.md`;
+  `tests/test_loopback.c` itself runs only ±2000 ppm and prints rather than asserts the result);
+  real audio crystals are within ±100 ppm.
 
 The reported `clock_ppm` is derived from the mean grid advance over the data
-field, so it is an honest estimate of the link's clock offset.
+field. Treat it as coarse: `tests/test_loopback.c`'s table prints, for applied
+offsets of +500, +2000 and −2000 ppm, estimates of −1053, −1860 and +1633 (the
+opposite sign, by that test's resampler convention, and not proportional). It is
+diagnostic output, not a calibrated measurement.
 
 ### Dead ends (recorded so they are not re-tried)
 
@@ -126,8 +131,9 @@ delay spread bleeds each symbol's energy into the next (inter-symbol
 interference). At the default 1 ms symbol that fails once the reverb tail passes
 a few ms, so the default profile is a near-field / low-reverb / cabled link. The
 standard fix is to lengthen the symbol — drop the baud so the delay spread is a
-small fraction of a symbol — which `tests/test_channel.c` confirms (at
-RT60 = 50 ms, 1000 baud decodes ~3 %, 125 baud ~75 %). A cyclic-prefix / guard
+small fraction of a symbol — which `tests/test_channel.c` confirms on a
+synthetic exponential random-tap reverb, not a measured room (at RT60 = 50 ms,
+1000 baud decodes ~3 %, 125 baud ~75 %). A cyclic-prefix / guard
 interval per symbol would buy more, at a throughput cost; it is the natural next
 step if heavy-reverb operation becomes a requirement.
 

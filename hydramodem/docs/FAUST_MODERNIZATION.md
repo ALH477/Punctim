@@ -6,10 +6,14 @@ definition of the CPFSK modulator and the quadrature down-conversion bank. There
 are two backends behind `src/hydra_dsp.h`:
 
 - **`hydra_dsp_ref.c`** — portable C, the default `make` build, a 1:1 hand-port of
-  `demod_modem.lib`. This is the certified/ground-truth path and what the test
-  suite and the hardware cable runs exercise.
+  `demod_modem.lib`. This is the numeric ground-truth path and what the test
+  suite and the hardware cable runs exercise. (What is certified is the symbol
+  stream, upstream of either DSP backend; the waveform is loopback-tested —
+  `README.md`, "What is established".)
 - **`hydra_dsp_faust_{tx,rx}.c`** — thin adapters over `faust -lang c -os` output,
-  the deployment path (`make faust`). Byte-identical to the reference in loopback.
+  the deployment path (`make faust`). Decode-equivalent to the reference in
+  loopback; its waveform differs in carrier phase (see below), so not
+  byte-identical.
 
 ## Current state — version-tolerant (Faust 2.72 – 2.85)
 
@@ -33,8 +37,8 @@ LLVM build; 2.72.14 is the reproducible, cache-backed stand-in with the same ABI
 
 ### Verified equivalence (Faust backend vs C reference)
 
-The compiled-Faust backend is not just "builds" — it is equivalent to the certified
-C reference:
+The compiled-Faust backend is not just "builds" — it is decode-equivalent to the C
+reference:
 
 - **Loopback:** `make faust-check` passes the full clean/AWGN/clock-offset suite.
 - **Cross-decode:** a frame modulated by the Faust backend decodes on the reference
@@ -111,12 +115,12 @@ What changed:
    TX warm-up (settling `si.smoo` / `fi.dcblocker`) is preserved on both.
 2. **Dropped `-ftz 2`.** The Makefile no longer passes it — it produced the
    malformed bit-cast on >= 2.83, and the C reference doesn't flush denormals
-   (it is the numeric reference), so removing it keeps TX/RX byte-equivalent and
+   (it is the numeric reference), so removing it keeps TX/RX equivalent to it and
    builds cleanly on every version. (No supported per-version denormal flag is
    needed at 48 kHz voice-band.)
 3. **Re-validated.** Loopback green on all three Faust versions; the Faust TX is
    tone-for-tone identical to the C reference and cross-decodes with it both ways
-   (see "Verified equivalence" above). The C reference remains the certified path.
+   (see "Verified equivalence" above). The C reference remains the ground-truth path.
 
 ### Remaining (optional) follow-ups
 
