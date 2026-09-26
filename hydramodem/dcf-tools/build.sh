@@ -15,12 +15,14 @@ out="$here/build"
 mkdir -p "$out"
 # hydra_symbols_certify: certifies the DCF-Medium `hydra_symbols` vectors
 # (codec/medium_vectors.gen.h) against the real hydra_frame_build + TX->RX loopback.
+# false_frame: counts CRC-valid outputs from inputs that hold no intact frame; it
+# compiles src/hydra_modem.c into itself to count decode attempts (docs/RECEIVER.md).
 for t in dcf_loopback tx_campaign rx_campaign frame_tx frame_rx poly_tx poly_rx sense_node sstv_send sstv_recv \
-         hydra_symbols_certify; do
+         hydra_symbols_certify false_frame; do
     # shellcheck disable=SC2086
     $CC $CFLAGS "$here/$t.c" "$root/build/libhydramodem.a" -lm -o "$out/$t"
 done
-echo "built: $out/{dcf_loopback,tx_campaign,rx_campaign,frame_tx,frame_rx,poly_tx,poly_rx,sense_node,sstv_send,sstv_recv,hydra_symbols_certify}"
+echo "built: $out/{dcf_loopback,tx_campaign,rx_campaign,frame_tx,frame_rx,poly_tx,poly_rx,sense_node,sstv_send,sstv_recv,hydra_symbols_certify,false_frame}"
 
 # DCF-Snake nodes (cat5e audio snake): the record/cue planes ride the certified codec + the
 # raw-L2 SuperPack transport (snake_l2.c), independent of the hydramodem acoustic lib. The

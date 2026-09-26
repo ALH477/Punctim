@@ -147,3 +147,182 @@ period follows at least a whole frame body (a lone frame trailed only by its own
 guard) — the latter case is why the quiet branch decodes rather than only
 abandoning. Shorter bursts are dropped as false triggers. Memory is bounded
 regardless of stream length.
+
+## False frames
+
+A false frame is a CRC-valid 17-byte payload that the receiver outputs when no
+intact frame of its profile was sent, or one whose bytes differ from every frame
+that was sent. For a mesh a manufactured frame is worse than a lost one, so the
+question is how often it happens and what stands between it and Punctim.
+
+**Guards on the receive path.** There are two:
+
+1. **Acquisition.** At least `nknown - 3` of the known prefix symbols
+   (preamble + sync) must match at one origin. For a uniformly random symbol
+   stream the per-origin chance is (binomial, *estimated*): default 40/2-ary
+   9.7e-9, aux 32/2-ary 1.3e-6, bass and chime 20/4-ary 3.0e-8, melody 18/8-ary
+   1.6e-11. Aux is the weakest, because its preamble is 16 symbols, not 24.
+2. **Viterbi + CRC-16.** The soft Viterbi decoder turns *any* soft input into
+   some 152-bit word, so after acquisition the HydraModem CRC-16/CCITT-FALSE is
+   the only check. The expected pass rate is 2^-16 = 1.53e-5.
+
+The modem itself never checks that the payload is a DeModFrame (sync `0xD3`,
+version nibble 1, CRC-16 over bytes 0..14 in 15..16). `frame_rx`, `poly_rx`,
+`hydra_modem_rx*` and the `hydra_rx` callback return any HydraModem-CRC-valid
+payload. The DeModFrame gate is applied later by `punctim io` in all five
+CLIs (`python/dcf/medium.py` `run_io` → `mediumlab_core.gate`, and
+`dcf_medium_gate` in `C_SDK/node/punctim.c`, plus the Rust, Go and Node ports).
+It is on by default and `--no-validate` turns it off. Python's
+`Transport._deliver` does **not** apply the gate, and neither does
+`dcf.bridge.Bridge`. The bridge forwards a gate-failing frame to every other
+transport (`wire.decode` raises, so `dst` falls back to broadcast). This was
+checked with a loopback bridge and the false payload
+`41ee14814dfec5e9d589fcfe339e08af79`, which was relayed. On the
+`dcf-bridge` path the HydraModem CRC is therefore the only guard.
+
+**The two CRCs are not independent in the obvious way.** CRC-16/CCITT-FALSE has
+no final XOR, so a message followed by its own big-endian CRC has a CRC of
+`0x0000`. The HydraModem CRC field of *every* valid DeModFrame is therefore
+`0x0000` (the harness self-test checks this on 1e5 frames). A HydraModem-valid
+payload passes the DeModFrame gate only if that field is 0 (2^-16), byte 0 is
+`0xD3` (2^-8) and the version nibble is 1 (2^-4). That is about 2^-28 = 3.7e-9
+per false HydraModem frame (*estimated*, assuming uniform decoder output), and
+about 2^-44 per decode that reaches the CRC.
+
+### Measurement
+
+`dcf-tools/false_frame.c` compiles `src/hydra_modem.c` into itself and renames
+two external calls to counting wrappers. It does not change the library.
+`hydra_rx_dsp_process` runs once per `decode_window` (**attempts**) and
+`hydra_frame_decode_soft` runs once per window that passed acquisition
+(**sync**). The one-shot path is `hydra_modem_rx` on one WAV-sized window (lead
++ frame + tail, as `frame_rx` decodes a file). The streaming path pushes the
+same audio continuously through `hydra_rx_push` and counts callbacks.
+Structured trials are followed by 0.25 s of silence. Every row has a fixed seed,
+so rerunning gives the same TSV. The inputs are synthetic 48 kHz float, clipped
+to ±1:
+
+- **background:** digital silence; white Gaussian noise at −40, −20 and
+  −6 dBFS RMS; pink noise at −20 dBFS; off-grid "music" (1–3 voices of
+  12-TET ±30-cent notes with 4 harmonics, fundamentals kept off the baud grid,
+  in phrases with rests); on-grid music (notes drawn from the profile's *own*
+  tones, 1–4 whole symbols each, phase-continuous); an on-grid trill (each
+  phrase opens with the preamble's own tonic/top-tone alternation, 4..preamble+4
+  symbols, then random own tones); clicks (Poisson 5/s, impulses or
+  0.2–3 ms bursts, over a −70 dBFS floor).
+- **structured:** a real frame cut at 10–99 % of its body; two frames overlapped
+  at 1/3 symbol and at 2–90 % of a body; a frame of another profile (aux↔default,
+  melody/chime/bass/nocturne into each other); a frame with 1–8 sync bits
+  flipped; a frame with 2–64 coded bits flipped; a preamble alone, and a preamble
+  plus sync with nothing after it.
+- **presync_random:** a correct preamble and sync followed by uniformly random
+  data symbols. Every trial reaches the CRC, so this is the direct test of it.
+- **codec:** soft metrics fed straight into `hydra_frame_decode_soft` (random
+  Gaussian or ±1, or a valid codeword with 8–48 coded bits flipped), for volume.
+
+Results, summed over classes (per-class rows in `dcf-tools/false_frame.tsv`):
+
+| profile | path | class family | audio h | attempts | sync | CRC fail | false | false + DeModFrame gate |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| default | one-shot | background | 25.5 | 231821 | 9 | 9 | 0 | 0 |
+| default | one-shot | structured | 3.1 | 13800 | 9020 | 3585 | 0 | 0 |
+| default | one-shot | presync_random | 22.0 | 200000 | 200000 | 199998 | **2** | 0 |
+| default | stream | background | 25.5 | 56273 | 46 | 46 | 0 | 0 |
+| default | stream | structured | 4.1 | 22500 | 6309 | 1790 | 0 | 0 |
+| default | stream | presync_random | 36.3 | 200000 | 200000 | 199999 | **1** | 0 |
+| aux | one-shot | background | 17.0 | 185462 | 187 | 187 | 0 | 0 |
+| aux | one-shot | structured | 3.6 | 13800 | 9310 | 3846 | 0 | 0 |
+| aux | one-shot | presync_random | 9.2 | 100000 | 100000 | 99999 | **1** | 0 |
+| aux | stream | background | 17.0 | 45941 | 38 | 38 | 0 | 0 |
+| aux | stream | structured | 4.6 | 33300 | 6613 | 2277 | 0 | 0 |
+| aux | stream | presync_random | 16.3 | 100000 | 100000 | 99999 | **1** | 0 |
+| melody | one-shot | background | 8.5 | 6103 | 1 | 1 | 0 | 0 |
+| melody | one-shot | structured | 1.9 | 1250 | 786 | 235 | 0 | 0 |
+| melody | one-shot | presync_random | 4.2 | 3000 | 3000 | 2999 | **1** | 0 |
+| melody | stream | background | 8.5 | 2079 | 4 | 4 | 0 | 0 |
+| melody | stream | structured | 2.1 | 900 | 600 | 133 | 0 | 0 |
+| melody | stream | presync_random | 4.7 | 3000 | 3000 | 3000 | 0 | 0 |
+| bass | one-shot | background | 8.5 | 4267 | 0 | 0 | 0 | 0 |
+| bass | one-shot | structured | 2.4 | 1150 | 791 | 265 | 0 | 0 |
+| bass | one-shot | presync_random | 6.0 | 3000 | 3000 | 3000 | 0 | 0 |
+| bass | stream | background | 8.5 | 1736 | 10 | 10 | 0 | 0 |
+| bass | stream | structured | 2.6 | 699 | 588 | 137 | 0 | 0 |
+| bass | stream | presync_random | 6.5 | 3000 | 3000 | 3000 | 0 | 0 |
+| chime | one-shot | background | 8.5 | 16635 | 1 | 1 | 0 | 0 |
+| chime | one-shot | structured | 0.9 | 1150 | 791 | 293 | 0 | 0 |
+| chime | one-shot | presync_random | 5.1 | 10000 | 10000 | 10000 | 0 | 0 |
+| chime | stream | background | 8.5 | 4041 | 26 | 26 | 0 | 0 |
+| chime | stream | structured | 1.0 | 1200 | 592 | 165 | 0 | 0 |
+| chime | stream | presync_random | 6.0 | 10000 | 10000 | 10000 | 0 | 0 |
+
+In the structured family, sync hits that are not CRC failures are
+**legitimate** decodes of the frame that was really sent: a frame cut at ≥75 %
+of its body still decodes, as do ≤3 flipped sync bits, one voice of an
+overlap, and ≤~24 flipped coded bits. A wrong-profile frame never reached the
+CRC (0 sync hits in every pairing).
+
+Codec-level (no audio; the codec is profile-independent at 316 coded bits):
+
+| input | decodes | false | rate | DeModFrame gate |
+|---|---:|---:|---:|---:|
+| soft ~ N(0,1) | 4,000,000 | 58 | 1.45e-5 | 0 |
+| random ±1 | 2,000,000 | 29 | 1.45e-5 | 0 |
+| codeword, 8 / 16 / 20 / 24 bits flipped | 100k / 200k / 500k / 500k | 0 | < 3.0e-5 / 1.5e-5 / 6.0e-6 / 6.0e-6 (95 %) | 0 |
+| codeword, 28 / 32 / 48 bits flipped | 500k / 500k / 100k | 1 / 4 / 3 | ≈ 1e-5 per wrong Viterbi output | 0 |
+
+### What this says
+
+- **After acquisition the CRC performs as designed.** Across the codec rows,
+  87 false frames in 6.0e6 random decodes gives 1.45e-5, against 2^-16 =
+  1.53e-5. With audio, presync_random gave 6 false frames in 632,000 decodes
+  (9.5e-6; the Poisson 95 % interval covers 1.53e-5). When the Viterbi decoder
+  settles on a *wrong* codeword (28–48 flipped bits), the CRC let through
+  8 of about 786,000, again about 2^-16. Once a decode reaches the CRC, about
+  1 in 65,000 comes out as a false HydraModem frame.
+- **No false frame was seen outside the classes built to reach the CRC.**
+  Background audio covered 136 h in total with 0 false frames (95 % bound
+  < 3/h per cell, which is weak). The useful figure is the **sync-hit rate**,
+  because false frames/h ≈ sync hits/h × 1.5e-5. The worst measured sync-hit
+  rates were aux one-shot on noise or clicks (≈ 21–24 /h, from 41–48 in 2 h),
+  chime streaming the on-grid trill (26 /h), and default streaming off-grid
+  music or the trill (7–8 /h). That gives about 3–4e-4 false HydraModem
+  frames/h, roughly one per 2,500–3,300 h of such input (*estimated*, not
+  observed). Default one-shot on noise reached the CRC 1 time in 3 h.
+- **The DeModFrame gate stopped every false frame.** None of the 101 false
+  HydraModem frames (6 audio, 95 codec) passed it, and 2 of them had byte 0 =
+  `0xD3`. The analytic factor of about 3.7e-9 puts the gated rate near
+  1e-12/h. At these volumes that cannot be measured; it is *estimated* only.
+- **The streaming receiver decodes far more often than it needs to on stationary
+  noise.** Its noise EMA adapts only while searching and starts at 0, so any
+  input louder than 0.02 re-triggers it at once. It decoded about 10–420 windows/h on
+  noise, and about 250–7,700 windows/h on the phrase-and-rest music (more for the faster profiles). Nearly all of them
+  failed acquisition. This costs CPU, but it raises the sync-hit exposure only
+  through more attempts. It is behaviour, not a bug.
+
+No crash and no manufactured frame appeared in any class not designed to reach
+the CRC. No library bug was found.
+
+**Not measured.** The inputs are synthetic. The tests did not use real
+acoustic recordings, real room or background audio, real speech, real
+instruments, sound-card clipping or AGC, or clock offset combined with the
+adversarial classes. Coverage is 136 h of synthetic background and 116 h of
+presync_random audio, far short of the hundreds to thousands of hours needed
+to *observe* a false frame on background input. The musical profiles got about
+8.5 h of background each, and only 3,000 (melody, bass) or 10,000 (chime)
+presync_random decodes. So their CRC pass rate rests on the codec rows, which
+use the same decoder. Nocturne was tested only as a wrong-profile source. The
+Faust DSP backend was not tested; everything ran on the default C reference.
+
+Reproduce (about 35 min on 4 cores; the counts are deterministic):
+
+```sh
+cd hydramodem && make && dcf-tools/build.sh
+B=dcf-tools/build/false_frame
+$B --selftest
+$B --profile default --path oneshot,stream --hours 3 --trials 3 --presync 200000 > A.tsv &
+$B --profile aux --path oneshot,stream --hours 2 --trials 3 --presync 100000 > B1.tsv &
+$B --profile melody --path oneshot,stream --hours 1 --trials 1 --presync 3000 > C.tsv &
+( $B --profile bass --path oneshot,stream --hours 1 --trials 1 --presync 3000 > D1.tsv
+  $B --profile chime --path oneshot,stream --hours 1 --trials 1 --presync 10000 > D2.tsv ) &
+wait; $B --path codec > B2.tsv     # false payloads are printed on stderr
+```
