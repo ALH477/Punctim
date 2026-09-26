@@ -740,7 +740,8 @@ with ~14 dB more AWGN margin; loopback-tested (`tests/test_music.c`), not certif
 `bass` (D2 B2 D3 A3, 75–225 Hz) and **polyphony**: `hydra_modem_tx_poly`/`_rx_poly` sum up to 4
 frames into one burst, one voice each (disjoint 25 Hz-grid tones on one symbol grid ⇒ orthogonal);
 `hydra_profile_duet` = melody + bass, two frames in 7.18 s, the acoustic SuperPack
-(`dcf-tools/poly_tx`/`poly_rx`, Python `HydraDuet`). The Exsecutor port
+(`dcf-tools/poly_tx`/`poly_rx`, Python `HydraDuet`, and `punctim io` via
+`hydra:profile=duet`, which pairs consecutive frames like `udp:dialect=bare`, Python only). The Exsecutor port
 (`exsecutor/examples/hydramodem/melos*.exsc`) is byte-identical for `melody` only.
 
 Profiles (`hydramodem/src/hydra_profile.c`): **`hydra_profile_default`** = binary FSK,

@@ -4,6 +4,8 @@
  * "-" for a voice that did not decode. Exit 0 when both decoded, 1 otherwise.
  * Each voice is decoded independently with its own profile (melody, bass), so
  * one voice can be recovered when the other is lost.
+ * A lone frame (poly_tx with one frame) prints its frame then "-" and exits 1:
+ * from the audio alone it is indistinguishable from a pair whose bass was lost.
  * Repo glue (DeMoD LLC, LGPL-3.0). See hydramodem/docs/MUSIC.md, "Polyphony".
  *
  *   poly_rx in.wav

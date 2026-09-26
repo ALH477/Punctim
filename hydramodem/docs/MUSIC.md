@@ -135,6 +135,11 @@ hear a bass intro, then the melody comes in.
 - On the command line: `dcf-tools/poly_tx <A> <B> out.wav` and
   `dcf-tools/poly_rx in.wav`, which prints two lines, `-` for a lost voice.
 - In Python: `dcf.hydramodem_cffi.HydraDuet`.
+- In `punctim io` (Python): `hydra:out=DIR,profile=duet` pairs consecutive frames
+  into one WAV each, and a lone frame goes out on the melody voice after `flush_ms`
+  (20) or at close. `hydra:in=DIR,profile=duet` delivers each file's frames in voice
+  order. Both `impl=tool` (`poly_tx`/`poly_rx`) and `impl=cffi` work
+  (`Documentation/DCF_MEDIUM_SPEC.md`).
 - Each voice decodes with the plain single-voice profile (`melody`, `bass`)
   and independently, so one frame survives when the other is lost.
 

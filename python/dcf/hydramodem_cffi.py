@@ -193,11 +193,15 @@ class HydraDuet:
                 raise ValueError("bad duet profile")
 
     def encode_pair_wav(self, frame_a, frame_b, path):
+        """frame_b=None sends frame_a alone on the melody voice (a lone frame)."""
         lib = _load()
         pl = ((C.c_uint8 * HYDRA_DCF_BYTES) * 2)()
-        pl[0][:] = bytes(frame_a); pl[1][:] = bytes(frame_b)
+        pl[0][:] = bytes(frame_a)
+        if frame_b is not None:
+            pl[1][:] = bytes(frame_b)
+        nv = 1 if frame_b is None else 2
         audio = C.POINTER(C.c_float)(); n = C.c_size_t(0)
-        if lib.hydra_modem_tx_poly(self._tx, 2, pl, C.byref(audio), C.byref(n)) != 0:
+        if lib.hydra_modem_tx_poly(self._tx, nv, pl, C.byref(audio), C.byref(n)) != 0:
             raise RuntimeError("hydra_modem_tx_poly failed")
         try:
             if lib.hydra_wav_write(path.encode(), audio, n, int(self._tx[0].sample_rate)) != 0:

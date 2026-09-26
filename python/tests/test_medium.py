@@ -451,6 +451,83 @@ class TestTransports(unittest.TestCase):
                 medium.make_transport("afsk:out=" + tempfile.mkdtemp(), "out")
 
 
+# ══ hydra:profile=duet (two frames per WAV) ═══════════════════════════════════
+class _RecordingPairs(T._DirMedium):
+    """A PAIRS medium with no modem: records what it would encode, so the pairing rule
+    is tested on its own (stdlib, always runs)."""
+    EXT = ".rec"
+    PAIRS = True
+
+    def __init__(self, **kw):
+        super().__init__("rec", **kw)
+        self.files = []
+
+    def _encode_pair_file(self, a, b, path):
+        self.files.append((a, b))
+        open(path, "wb").close()
+
+
+class TestHydraDuet(unittest.TestCase):
+    def setUp(self):
+        self.fs = [wire.encode(0, i + 1, 0x10 + i, 0x20, bytes([i] * 4), 0x1000 + i)
+                   for i in range(5)]
+
+    def test_pairing_is_positional(self):
+        for n, want in ((1, 1), (2, 1), (3, 2), (4, 2), (5, 3)):
+            m = _RecordingPairs(out_dir=tempfile.mkdtemp())
+            for f in self.fs[:n]:
+                m.send_now(f)
+            m.flush()
+            got = [x for pair in m.files for x in pair if x is not None]
+            self.assertEqual(got, self.fs[:n], n)                 # order, nothing lost
+            self.assertEqual(len(m.files), want, n)
+            self.assertEqual(m.files[-1][1] is None, n % 2 == 1, n)  # odd -> lone last
+
+    def test_lone_frame_flushes_after_flush_ms(self):
+        m = _RecordingPairs(out_dir=tempfile.mkdtemp(), flush_ms=10)
+        m.send_now(self.fs[0])
+        m._idle()
+        self.assertEqual(m.files, [])                              # not yet stale
+        time.sleep(0.03)
+        m._idle()
+        self.assertEqual(m.files, [(self.fs[0], None)])
+        m.send_now(self.fs[1]); m.send_now(self.fs[2])             # a fresh pair
+        self.assertEqual(m.files[-1], (self.fs[1], self.fs[2]))
+
+    def test_duet_options_are_refused(self):
+        with self.assertRaises(medium.UsageError):
+            medium.make_transport("hydra:out=%s,profile=duet,baud=50" % tempfile.mkdtemp(),
+                                  "out")
+
+    def _io_roundtrip(self, impl, n):
+        d = tempfile.mkdtemp()
+        hx = os.path.join(d, "in.hex")
+        with open(hx, "w") as fh:
+            fh.write("".join(f.hex() + "\n" for f in self.fs[:n]))
+        st = medium.run_io("hex:path=" + hx, "hydra:out=%s/w,profile=duet,impl=%s" % (d, impl))
+        self.assertEqual(st["frames_out"], n)
+        self.assertEqual(len(os.listdir(os.path.join(d, "w"))), (n + 1) // 2)
+        back = os.path.join(d, "back.hex")
+        medium.run_io("hydra:in=%s/w,profile=duet,impl=%s" % (d, impl), "hex:path=" + back,
+                      count=n, seconds=120)
+        with open(back) as fh:
+            self.assertEqual(fh.read().split(), [f.hex() for f in self.fs[:n]])
+
+    def test_duet_io_roundtrip_tool(self):
+        if not T.hydramodem_available():
+            self.skipTest("HydraModem frame_tx/frame_rx not built/on PATH")
+        try:
+            T.HydraTransport("probe", profile="duet", out_dir=tempfile.mkdtemp())
+        except T.MediumUnsupported:
+            self.skipTest("poly_tx/poly_rx not built")
+        self._io_roundtrip("tool", 3)
+
+    def test_duet_io_roundtrip_cffi(self):
+        if not T.hydramodem_cffi_available():
+            self.skipTest("libhydramodem (ctypes) not available")
+        self._io_roundtrip("cffi", 3)
+
+
 # ══ punctim (subprocess) ══════════════════════════════════════════════════════
 class TestPunctimCli(unittest.TestCase):
     def setUp(self):

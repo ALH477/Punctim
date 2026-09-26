@@ -635,9 +635,20 @@ class _DirMedium(Transport):
 
     EXT = ""
 
-    def __init__(self, name, out_dir=None, in_dir=None, poll=0.1, rate_bps=4000, **kw):
+    # A medium that carries TWO frames per file (the HydraModem duet) sets PAIRS = True
+    # and implements _encode_pair_file(a, b_or_None, path); _decode_file may then
+    # return a list of frames. Pairing is positional, like udp:dialect=bare's
+    # SuperPacks: consecutive frames pair in order, and a lone frame goes alone after
+    # flush_ms, at flush() or at stop().
+    PAIRS = False
+
+    def __init__(self, name, out_dir=None, in_dir=None, poll=0.1, rate_bps=4000,
+                 flush_ms=20, **kw):
         super().__init__(name, rate_bps=rate_bps, **kw)
         self._out, self._in, self._poll = out_dir, in_dir, poll
+        self._flush_s = max(0.0, float(flush_ms)) / 1000.0
+        self._pending = None                  # PAIRS: (frame, t_monotonic)
+        self._plock = threading.Lock()
         self._n = 0
         self._seen = set()
         self._rx_running = False
@@ -646,14 +657,38 @@ class _DirMedium(Transport):
             if d:
                 os.makedirs(d, exist_ok=True)
 
-    def _transmit(self, frame, dest):
-        if not self._out:
-            return
+    def _publish(self, encode):
         self._n += 1
         tmp = os.path.join(self._out, f".{self.name}-{self._n}{self.EXT}.tmp")
         final = os.path.join(self._out, f"{self.name}-{self._n:08d}{self.EXT}")
-        self._encode_file(frame, tmp)
+        encode(tmp)
         os.replace(tmp, final)            # atomic publish so the reader never sees a partial
+
+    def _transmit(self, frame, dest):
+        if not self._out:
+            return
+        if not self.PAIRS:
+            self._publish(lambda path: self._encode_file(frame, path))
+            return
+        with self._plock:
+            held, self._pending = self._pending, None
+            if held is None:
+                self._pending = (bytes(frame), time.monotonic())
+                return
+        self._publish(lambda path: self._encode_pair_file(held[0], bytes(frame), path))
+
+    def flush(self):
+        if not self.PAIRS:
+            return
+        with self._plock:
+            held, self._pending = self._pending, None
+        if held is not None and self._out:
+            self._publish(lambda path: self._encode_pair_file(held[0], None, path))
+
+    def _idle(self):
+        held = self._pending
+        if held is not None and time.monotonic() - held[1] >= self._flush_s:
+            self.flush()
 
     def _start_recv(self):
         if not self._in:
@@ -678,8 +713,11 @@ class _DirMedium(Transport):
                     frame = self._decode_file(path)
                 except Exception:
                     frame = None
-                if frame is not None and len(frame) == FRAME_LEN:
-                    self._deliver(frame, {"file": f})
+                frames = frame if isinstance(frame, (list, tuple)) else [frame]
+                for voice, fr in enumerate(frames):
+                    if fr is not None and len(fr) == FRAME_LEN:
+                        self._deliver(fr, {"file": f, "voice": voice} if len(frames) > 1
+                                      else {"file": f})
             time.sleep(self._poll)
 
     def _stop_recv(self):
@@ -687,6 +725,7 @@ class _DirMedium(Transport):
 
     def _encode_file(self, frame, path): ...
     def _decode_file(self, path): ...
+    def _encode_pair_file(self, a, b, path): ...
 
 
 class AudioTransport(_DirMedium):
@@ -872,7 +911,11 @@ def hydra_tool_caps(tool):
 # The musical tone-table HydraModem profiles (hydra_profile_music presets): M-FSK on a
 # just-intonation scale built from the baud's harmonic series. See hydramodem/docs/MUSIC.md.
 HYDRA_MUSIC_PROFILES = ("melody", "chime", "nocturne", "bass")
-HYDRA_PROFILES = ("default", "aux") + HYDRA_MUSIC_PROFILES
+# The polyphonic duet (hydra_profile_duet): TWO frames per WAV, the melody voice
+# carrying the first and the bass voice the second. Needs poly_tx/poly_rx (tool) or
+# libhydramodem's hydra_modem_tx_poly (cffi).
+HYDRA_POLY_PROFILES = ("duet",)
+HYDRA_PROFILES = ("default", "aux") + HYDRA_MUSIC_PROFILES + HYDRA_POLY_PROFILES
 
 # The `aux` HydraModem profile (hydra_profile_aux_cable): 1200 baud, tones 1200/2400 Hz,
 # 16-symbol preamble, conv + interleave. Applied as explicit tool flags when the tool has
@@ -901,6 +944,12 @@ class HydraTransport(_DirMedium):
             raise ValueError(f"hydra profile must be {'|'.join(HYDRA_PROFILES)}, got {profile!r}")
         if fec not in ("none", "rep3", "conv"):
             raise ValueError(f"hydra fec must be none|rep3|conv, got {fec!r}")
+        if profile == "duet":
+            if any(x is not None for x in (base_freq, tone_spacing, baud, n_tones, interleave)):
+                raise ValueError("hydra: profile=duet fixes its tone plan and FEC; "
+                                 "base_freq/tone_spacing/baud/n_tones/interleave do not apply")
+            self._init_duet(name, tx_bin, rx_bin, rate_bps, kw)
+            return
         tx = tx_bin or os.environ.get("HYDRA_TX") or shutil.which("frame_tx")
         rx = rx_bin or os.environ.get("HYDRA_RX") or shutil.which("frame_rx")
         if not tx or not rx:
@@ -939,12 +988,56 @@ class HydraTransport(_DirMedium):
         self._fec = "--" + fec
         self._prof = prof
 
+    def _init_duet(self, name, tx_bin, rx_bin, rate_bps, kw):
+        """profile=duet: two frames per WAV through poly_tx/poly_rx. They are found as
+        $HYDRA_POLY_TX/$HYDRA_POLY_RX, next to the resolved frame_tx/frame_rx (the
+        tx=/rx= options or $HYDRA_TX/$HYDRA_RX), or on PATH. The duet has no FEC,
+        interleave or tone-plan options: hydra_profile_duet fixes them."""
+        def sibling(env, explicit, ref_env, ref_name, name_):
+            if os.environ.get(env):
+                return os.environ[env]
+            ref = explicit or os.environ.get(ref_env) or shutil.which(ref_name)
+            if ref:
+                cand = os.path.join(os.path.dirname(os.path.abspath(ref)), name_)
+                if os.access(cand, os.X_OK):
+                    return cand
+            return shutil.which(name_)
+        tx = sibling("HYDRA_POLY_TX", tx_bin, "HYDRA_TX", "frame_tx", "poly_tx")
+        rx = sibling("HYDRA_POLY_RX", rx_bin, "HYDRA_RX", "frame_rx", "poly_rx")
+        if not tx or not rx:
+            raise MediumUnsupported(
+                "hydra: profile=duet needs poly_tx/poly_rx: build hydramodem/dcf-tools "
+                "(build.sh) and put them next to frame_tx/frame_rx, on PATH, or in "
+                "$HYDRA_POLY_TX/$HYDRA_POLY_RX")
+        _DirMedium.__init__(self, name, rate_bps=rate_bps, **kw)
+        self.PAIRS = True
+        self._tx, self._rx = tx, rx
+
+    def _encode_pair_file(self, a, b, path):
+        args = [self._tx, bytes(a).hex()] + ([bytes(b).hex()] if b is not None else [])
+        subprocess.run(args + [path], check=True, stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL, timeout=60)
+
     def _encode_file(self, frame, path):
         subprocess.run([self._tx, bytes(frame).hex(), path, self._fec, *self._prof],
                        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                        timeout=60)
 
     def _decode_file(self, path):
+        if self.PAIRS:
+            try:
+                res = subprocess.run([self._rx, path], capture_output=True, text=True,
+                                     timeout=120)
+            except subprocess.TimeoutExpired:
+                return None
+            out = []
+            for line in res.stdout.split():
+                try:
+                    b = bytes.fromhex(line)
+                except ValueError:
+                    b = None                   # "-": that voice did not decode
+                out.append(b if b is not None and len(b) == FRAME_LEN else None)
+            return out
         try:
             res = subprocess.run([self._rx, path, self._fec, *self._prof],
                                  capture_output=True, text=True, timeout=60)
@@ -980,18 +1073,27 @@ class HydraCffiTransport(_DirMedium):
     def __init__(self, name="hydra", fec="conv", base_freq=None, tone_spacing=None,
                  baud=None, n_tones=None, profile="default", interleave=None,
                  rate_bps=8000, **kw):
-        from .hydramodem_cffi import HydraModem, available
+        from .hydramodem_cffi import HydraDuet, HydraModem, available
         if not available():
             raise MediumUnsupported("libhydramodem not loadable (build hydramodem/ or set "
                                     "$HYDRAMODEM_LIB)")
-        codec = HydraModem(fec=fec, base_freq=base_freq, tone_spacing=tone_spacing,
-                           baud=baud, n_tones=n_tones, profile=profile,
-                           interleave=interleave)
+        if profile == "duet":
+            codec = HydraDuet()
+        else:
+            codec = HydraModem(fec=fec, base_freq=base_freq, tone_spacing=tone_spacing,
+                               baud=baud, n_tones=n_tones, profile=profile,
+                               interleave=interleave)
         super().__init__(name, rate_bps=rate_bps, **kw)
+        self.PAIRS = profile == "duet"
         self._codec = codec
+
+    def _encode_pair_file(self, a, b, path):
+        self._codec.encode_pair_wav(a, b, path)
 
     def _encode_file(self, frame, path):
         self._codec.encode_wav(frame, path)
 
     def _decode_file(self, path):
+        if self.PAIRS:
+            return list(self._codec.decode_pair_wav(path))
         return self._codec.decode_wav(path)
