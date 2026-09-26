@@ -386,8 +386,13 @@ static int decode_window(const hydra_profile *p, const float *audio, size_t nsam
                 pf_symbol_energies(&pf, o + k * (long)L, L, E);
                 if (argmax_d(E, N) == known[k]) ++score;
             }
+            /* The plateau is the FIRST run of best-scoring origins: an origin
+             * more than one symbol past its start belongs to another burst (a
+             * streaming window may hold the next frame's prefix too, and both
+             * then score in full). One burst's plateau is never wider than a
+             * symbol, so for a single burst this is the old first..last. */
             if (score > best_score) { best_score = score; o_first = o; o_last = o; }
-            else if (score == best_score) { o_last = o; }
+            else if (score == best_score && o <= o_first + (long)L) { o_last = o; }
         }
         best_o = (o_first + o_last) / 2;
     }
@@ -563,14 +568,70 @@ void hydra_rx_reset(hydra_rx *rx)
     rx->state = ST_SEARCH; rx->collected = 0; rx->quiet_run = 0;
 }
 
+static int rx_step(hydra_rx *rx, float sample);
+
+/* Decode the collected window. On success only the samples through the frame's
+ * end (origin + body + release ramp) are consumed; the rest -- which, for bursts
+ * sent back to back, holds the start of the NEXT frame -- is replayed through
+ * the segmenter. Discarding the whole window, as this did before, lost every
+ * other frame of a back-to-back stream whenever the window outran one burst
+ * (measured: 1 of 4 melody frames at a 60 ms gap). A failed window is still
+ * discarded whole. */
 static int rx_try_decode(hydra_rx *rx)
 {
     uint8_t payload[HYDRA_DCF_BYTES];
     hydra_rx_diag diag;
+    size_t collected = rx->collected, end, i;
+    int frames = 0;
     memset(&diag, 0, sizeof diag);
-    if (decode_window(&rx->p, rx->buf, rx->collected, payload, &diag) == HYDRA_OK) {
-        if (rx->cb) rx->cb(payload, &diag, rx->user);
-        return 1;
+    rx->state = ST_SEARCH; rx->collected = 0; rx->quiet_run = 0;
+    if (decode_window(&rx->p, rx->buf, collected, payload, &diag) != HYDRA_OK)
+        return 0;
+    if (rx->cb) rx->cb(payload, &diag, rx->user);
+    frames = 1;
+    end = (size_t)diag.frame_origin + rx->body_len
+        + (size_t)(rx->p.ramp_ms * 1e-3 * rx->p.sample_rate + 0.5);
+    if (end < collected) {
+        /* replay in place: a replayed sample is written at an index no greater
+         * than the one it is read from, so reads never see their own writes */
+        for (i = end; i < collected; ++i)
+            frames += rx_step(rx, rx->buf[i]);
+    }
+    return frames;
+}
+
+/* One sample through the energy segmenter. */
+static int rx_step(hydra_rx *rx, float sample)
+{
+    double ax = fabs((double)sample);
+    double on_thr  = (6.0 * rx->noise > 0.02) ? 6.0 * rx->noise : 0.02;
+    double off_thr = (3.0 * rx->noise > 0.01) ? 3.0 * rx->noise : 0.01;
+
+    if (rx->state == ST_SEARCH) {
+        rx->noise += 0.001 * (ax - rx->noise);
+        if (ax > on_thr) {
+            rx->state = ST_COLLECT;
+            rx->collected = 0;
+            rx->quiet_run = 0;
+            rx->buf[rx->collected++] = sample;
+        }
+        return 0;
+    }
+    /* ST_COLLECT */
+    if (rx->collected < rx->cap)
+        rx->buf[rx->collected++] = sample;
+    rx->quiet_run = (ax < off_thr) ? rx->quiet_run + 1 : 0;
+
+    if (rx->collected >= rx->frame_len || rx->collected >= rx->cap)
+        return rx_try_decode(rx);
+    if (rx->quiet_run > 3u * (size_t)rx->p.samples_per_symbol) {
+        /* burst ended (sustained silence). If at least a whole frame body was
+         * captured, decode it -- a lone frame is followed only by its own
+         * trailing guard, never reaching frame_len. A shorter burst was a false
+         * trigger and is dropped. */
+        if (rx->collected >= rx->body_len)
+            return rx_try_decode(rx);
+        rx->state = ST_SEARCH; rx->collected = 0; rx->quiet_run = 0;
     }
     return 0;
 }
@@ -579,40 +640,8 @@ int hydra_rx_push(hydra_rx *rx, const float *samples, size_t n)
 {
     size_t i;
     int    frames = 0;
-
     if (!rx || (!samples && n)) return HYDRA_ERR_ARG;
-
-    for (i = 0; i < n; ++i) {
-        double ax = fabs((double)samples[i]);
-        double on_thr  = (6.0 * rx->noise > 0.02) ? 6.0 * rx->noise : 0.02;
-        double off_thr = (3.0 * rx->noise > 0.01) ? 3.0 * rx->noise : 0.01;
-
-        if (rx->state == ST_SEARCH) {
-            rx->noise += 0.001 * (ax - rx->noise);
-            if (ax > on_thr) {
-                rx->state = ST_COLLECT;
-                rx->collected = 0;
-                rx->quiet_run = 0;
-                rx->buf[rx->collected++] = samples[i];
-            }
-        } else { /* ST_COLLECT */
-            if (rx->collected < rx->cap)
-                rx->buf[rx->collected++] = samples[i];
-            rx->quiet_run = (ax < off_thr) ? rx->quiet_run + 1 : 0;
-
-            if (rx->collected >= rx->frame_len || rx->collected >= rx->cap) {
-                frames += rx_try_decode(rx);
-                rx->state = ST_SEARCH; rx->collected = 0; rx->quiet_run = 0;
-            } else if (rx->quiet_run > 3u * (size_t)rx->p.samples_per_symbol) {
-                /* burst ended (sustained silence). If at least a whole frame
-                 * body was captured, decode it -- a lone frame is followed only
-                 * by its own trailing guard, never reaching frame_len. A shorter
-                 * burst was a false trigger and is dropped. */
-                if (rx->collected >= rx->body_len)
-                    frames += rx_try_decode(rx);
-                rx->state = ST_SEARCH; rx->collected = 0; rx->quiet_run = 0;
-            }
-        }
-    }
+    for (i = 0; i < n; ++i)
+        frames += rx_step(rx, samples[i]);
     return frames;
 }

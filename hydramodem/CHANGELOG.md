@@ -21,6 +21,21 @@
   `HydraDuet`.
 - `tests/test_music.c` (in `make check`).
 
+### Fixed
+- **Streaming RX lost frames sent back to back** on the musical profiles:
+  `hydra_rx_push`'s window (body + 50 ms + 4 symbols) is longer than a melody
+  burst plus the 60 ms between bursts, so it held the next burst's start and then
+  discarded the whole window. 1 of 4 melody frames came through at `frame_tx`'s
+  gap. Now only the samples through the decoded frame (its release included) are
+  consumed and the rest is replayed through the segmenter: 4 of 4
+  (`tests/test_music.c` [6], which fails at 1 of 4 on the old code). The default
+  profile was not affected (8 of 8 before and after).
+- **Acquisition's plateau is the first run** of best-scoring origins (within one
+  symbol of the first), so a window holding two bursts' prefixes centres on the
+  first, not between them. For a single burst the plateau is never a symbol wide,
+  so one-shot verdicts are unchanged: the 96-input impaired comparison gives the
+  same verdicts before and after.
+
 ### Changed (ABI)
 - `hydra_profile` gains `tone_mult[16]`, `drone_mult[2]`, `drone_gain` and
   `ramp_ms`, appended after the derived fields. The struct grew, so the soname

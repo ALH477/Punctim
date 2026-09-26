@@ -10,6 +10,9 @@
  *                     still refuse drones.
  *   [4] link       -- clean loopback for every scale, AWGN, clock offset, and the
  *                     streaming receiver.
+ *   [6] streaming  -- back-to-back melody bursts through hydra_rx_push: every
+ *                     frame, in order (the window outruns one burst, so the
+ *                     receiver must keep what follows the decoded frame).
  *   [5] polyphony  -- the duet: two frames in one burst (melody + bass voices),
  *                     each decoded with its own profile; cross-voice leakage,
  *                     AWGN, clock offset, and hydra_poly_check's refusals.
@@ -302,6 +305,40 @@ static void test_poly(void)
     CHECK(ok[0] == 2 && ok[1] == 2, msg);
 }
 
+/* --------------------------------------------------------- [6] streaming -- */
+typedef struct { int got; uint8_t f[8][17]; } flux;
+static void on_flux(const uint8_t payload[HYDRA_DCF_BYTES], const hydra_rx_diag *d, void *user)
+{
+    flux *s = (flux *)user; (void)d;
+    if (s->got < 8) memcpy(s->f[s->got], payload, 17);
+    ++s->got;
+}
+
+static void test_stream(void)
+{
+    hydra_profile p; flux s; hydra_rx *rx; uint8_t tx[4][17];
+    char msg[160]; int b, ok = 1;
+    float z[4096];
+    printf("[6] streaming: back-to-back melody bursts (60 ms apart, as frame_tx writes them)\n");
+    hydra_profile_melody(&p); hydra_profile_init(&p);
+    memset(&s, 0, sizeof s); memset(z, 0, sizeof z);
+    rx = hydra_rx_create(&p, on_flux, &s);
+    for (b = 0; b < 4; ++b) {
+        float *a = NULL; size_t n = 0, off;
+        rand_payload(tx[b]);
+        if (hydra_modem_tx(&p, tx[b], &a, &n) != HYDRA_OK) { ok = 0; break; }
+        for (off = 0; off < n; off += 4096)          /* arbitrary chunking */
+            hydra_rx_push(rx, a + off, (n - off < 4096) ? n - off : 4096);
+        free(a);
+    }
+    for (b = 0; b < 4; ++b) hydra_rx_push(rx, z, 4096);   /* trailing silence */
+    for (b = 0; b < 4 && b < s.got; ++b)
+        if (memcmp(s.f[b], tx[b], 17)) ok = 0;
+    snprintf(msg, sizeof msg, "4 bursts back to back -> %d frames, in order", s.got);
+    CHECK(ok && s.got == 4, msg);
+    hydra_rx_destroy(rx);
+}
+
 int main(void)
 {
     named ps[6];
@@ -323,6 +360,7 @@ int main(void)
     test_envelope();
     test_link(ps, np);
     test_poly();
+    test_stream();
     printf(g_fail ? "MUSIC TESTS FAILED (%d)\n" : "ALL MUSIC TESTS PASSED (%d failures)\n", g_fail);
     return g_fail ? 1 : 0;
 }

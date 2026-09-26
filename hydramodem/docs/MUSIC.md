@@ -169,6 +169,17 @@ Measured (C reference DSP, 48 kHz loopback, wideband SNR over the whole burst,
   Phone and laptop speakers roll off well above 75 Hz, so on them the bass
   voice's frame may be lost while the melody's survives. A cable does not care.
 
+### Streaming
+
+`hydra_rx_push` decodes the musical profiles from an unbounded stream, bursts
+back to back included. Its window is longer than a melody burst, so after a
+decode it consumes only through the frame's release and replays the rest (fixed
+in 2.0.0; before, 1 of 4 back-to-back melody frames came through). It is
+single-profile: a duet needs both voices decoded from one window, which is what
+Exsecutor's `ausculta_fluxus.exsc` does. That receiver also recovers a burst
+that a noise click opened the window too early for. This C receiver does not
+yet.
+
 ## Exact synthesis (normative for ports)
 
 Every musical tone and drone partial completes a whole number of cycles in
