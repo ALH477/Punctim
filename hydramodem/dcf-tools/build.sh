@@ -10,7 +10,7 @@ root=$(cd "$here/.." && pwd)
 make -C "$root" build/libhydramodem.a >/dev/null
 
 CC=${CC:-cc}
-CFLAGS=${CFLAGS:--std=gnu11 -O2 -Wall -Wextra}
+CFLAGS=${CFLAGS:--std=gnu11 -O2 -Wall -Wextra -ffp-contract=off}
 out="$here/build"
 mkdir -p "$out"
 # hydra_symbols_certify: certifies the DCF-Medium `hydra_symbols` vectors

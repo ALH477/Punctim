@@ -54,7 +54,7 @@ Just intonation vs 12-TET, for reference: 9/8 = 204 ¢, 5/4 = 386 ¢ (−14),
 | **Preamble = symbols 0 and N−1** (unchanged framing) | with the Gray map this becomes a tremolo on the tonic and its octave (two octaves for 16 tones, a fifth for 2 or 4 tones). The intro states the key. | none: the known acquisition prefix is the same symbols as always, and `test_music` asserts the interval |
 | **Preamble 12 symbols** (linear profiles: 24/16) | a ~0.5 s intro at 25 baud | 12 + 6 known 8-ary symbols; acquisition needs ≥ nknown−3 matches |
 | **Drone**: tonic an octave down (`h0/2`), plus the fifth above that (`3h0/4`) when those are integers | a pedal under the melody. Every scale note is consonant with it. | each drone partial is also a harmonic of the baud and never a data tone. The cross term between two such tones integrates to zero over one symbol **whatever the window start**, so the drone is invisible to every correlator on the timing grid and in the acquisition scan. Measured leakage is ≤ 5e−14 of a data tone. It costs power: data amplitude drops to `tx_gain − Σ drone_gain` (0.66 of 0.9), which is ~6 % of signal power (≈ 0.3 dB at equal total power). |
-| **Raised-cosine attack/release** (`ramp_ms`, 8 ms) | no onset or offset click | rendered **outside** the symbol body: the first tone is pre-rolled and the last post-rolled. No data symbol is attenuated, and the pre-roll is the same tone as preamble symbol 0. `ramp_ms = 0` (all linear profiles) renders exactly the old waveform. |
+| **Raised-cosine attack/release** (`ramp_ms`, 10 ms) | no onset or offset click | rendered **outside** the symbol body: the first tone is pre-rolled and the last post-rolled. No data symbol is attenuated, and the pre-roll is the same tone as preamble symbol 0. Linear profiles keep the 1.0.0 synthesis path unchanged. |
 
 ## Presets
 
@@ -81,9 +81,9 @@ over 20 random payloads (40 for `default`).
 | SNR (dB) | −2 | −6 | −8 | −10 | −16 | −18 | −20 | −22 | −24 |
 |---|---|---|---|---|---|---|---|---|---|
 | `default` | 100 | 97 | 65 | 2 | — | — | — | — | — |
-| `chime`, drone off / on | | | | | 100 / 100 | 75 / 55 | 0 / 0 | | |
-| `melody`, drone off / on | | | | | 100 / 100 | 100 / 100 | 100 / 100 | 95 / 95 | 10 / 5 |
-| `nocturne`, drone off / on | | | | | 100 / 100 | 100 / 100 | 100 / 100 | 100 / 100 | 5 / 5 |
+| `chime`, drone off / on | | | | | 100 / 100 | 50 / 40 | 0 / 0 | | |
+| `melody`, drone off / on | | | | | 100 / 100 | 100 / 100 | 100 / 100 | 95 / 100 | 10 / 0 |
+| `nocturne`, drone off / on | | | | | 100 / 100 | 100 / 100 | 100 / 100 | 90 / 85 | 20 / 25 |
 
 The 25-baud presets have about 14 dB more margin than `default`, bought with 14×
 the airtime. That is the processing gain of 40 ms symbols. Clock offset (10
@@ -91,6 +91,34 @@ frames per point, linear-interpolation resampler): `melody` and `nocturne` decod
 at ±5000 ppm and fail at ±8000; `chime` decodes at ±3000 and fails at ±5000.
 `tests/test_music.c` asserts all of this with margin: −18 dB, ±3000 ppm, clean
 loopback of every scale, and the streaming receiver.
+
+## Exact synthesis (normative for ports)
+
+Every musical tone and drone partial completes a whole number of cycles in
+`L = samples_per_symbol` samples, so every phase the transmitter needs is `k/L`
+of a cycle for an integer `k`. The musical transmitter (`music_render` in
+`src/hydra_modem.c`) uses that directly and bypasses the DSP backend, whose
+oscillator accumulates `f/fs` in floating point (600/48000 is not a binary
+fraction, so it drifts over 240,000 samples):
+
+- `qsin(N, k) = sin(2πk/N)` is computed with libm **only for `k ≤ N/4`**, as
+  `sin((2.0*M_PI*k)/N)`, and folded by symmetry elsewhere. The table is
+  therefore exactly odd and quarter-symmetric.
+- Data carrier: an integer phase `a` starts at 0 at the first pre-roll
+  sample. For each sample, `a += tone_mult[symbol]` (mod `L`) *before* the
+  output, as the reference DSP does.
+- Drone `k`: `b_k` starts at 0, the output uses `b_k`, and then
+  `b_k += drone_mult[k]` (mod `L`).
+- `v = gd*qsin(L,a)`, then `v = v + drone_gain*qsin(L,b_k)` for each drone in
+  order, with `gd = tx_gain - n_drones*drone_gain`.
+- Ramp over `R` samples: pre-roll `e = 0.5 - 0.5*qsin(4R, (2i+1+R) mod 4R)`,
+  post-roll `e = 0.5 + 0.5*qsin(4R, (2j+1+R) mod 4R)`, body `e = 1.0`. The
+  sample is `(float)(e*v)`, then the WAV writer's `lround(s*32767.0)`. At 25 baud
+  with 10 ms, `4R = L = 1920`, so it is the same table.
+- The library is built with `-ffp-contract=off`, so no FMA can change a bit.
+
+`exsecutor/examples/hydramodem/melos*.exsc` is an independent port held to
+this byte for byte.
 
 ## Known limits
 
@@ -102,8 +130,8 @@ loopback of every scale, and the streaming receiver.
   misbehaves, first try `drone_mult[] = 0`.
 - **Faust backend:** the compiled RX bank hard-codes a linear tone plan, so
   `hydra_rx_dsp_create()` refuses a tone table. Use the default `make` (C
-  reference RX). The Faust TX is frequency-driven and works unchanged. The drone
-  is synthesised in C, not in Faust.
+  reference RX). The musical TX does not use either DSP backend; it is the
+  exact table synthesis above, in C.
 - **Certification:** the `hydra_symbols` vectors certify the symbol stream,
   which does not depend on the profile. The musical profiles use 8 or 4 tones
   and 12-symbol preambles, which are not among the certified cases. Like every

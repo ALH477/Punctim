@@ -85,7 +85,7 @@ int hydra_profile_music(hydra_profile *p, hydra_scale scale, double baud,
     p->fec_mode      = HYDRA_FEC_CONV;
     p->interleave    = 1;
     p->tx_gain       = 0.9;
-    p->ramp_ms       = 8.0;
+    p->ramp_ms       = 10.0;
 
     /* transpose by whole harmonics: tonic = deg[0] * m * baud, nearest root_hz */
     m = (int)floor(root_hz / ((double)deg[0] * baud) + 0.5);
@@ -128,8 +128,10 @@ static int music_check(const hydra_profile *p)
 {
     int k, j; double drone_sum = 0.0;
     if (p->n_tones > HYDRA_MUSIC_MAX_TONES) return -1;
-    /* exact integer cycles need an integer number of samples per symbol */
+    /* exact integer cycles need an integer number of samples per symbol, and
+     * the quarter-wave sine table (hydra_modem.c, qsin) a multiple of four */
     if (fabs((double)p->samples_per_symbol * p->baud - p->sample_rate) > 1e-6) return -1;
+    if (p->samples_per_symbol % 4 != 0) return -1;
     for (k = 0; k < p->n_tones; ++k) {
         if (p->tone_mult[k] <= 0) return -1;
         if ((double)p->tone_mult[k] * p->baud >= 0.5 * p->sample_rate) return -1;

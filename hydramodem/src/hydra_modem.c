@@ -59,6 +59,69 @@ const char *hydra_strerror(int s)
 
 /* ============================== TRANSMIT ================================== */
 
+/* ------------------------- musical synthesis (exact) -------------------------
+ * A musical profile's tones and drone partials are integer harmonics of the
+ * baud, so each completes a whole number of cycles in L = samples_per_symbol
+ * samples: every phase the transmitter ever needs is k/L of a cycle for an
+ * integer k. The musical path therefore keeps phase as an INTEGER counter
+ * mod L (no accumulated f/fs rounding) and reads one quarter-wave sine table,
+ * so the waveform is a pure function of that table -- which is what lets an
+ * independent port (exsecutor/examples/hydramodem/melos*.exsc) reproduce the
+ * WAV byte for byte. The raised-cosine ramp over R samples is cos(2 pi (2i+1)
+ * / 4R), the same table at period 4R; with the presets' 10 ms ramp at 25 baud,
+ * 4R == L and it is literally the same table.
+ *
+ * qsin(N, k) = sin(2 pi k / N), 0 <= k < N, N % 4 == 0: computed by libm only
+ * on the first quarter (k <= N/4) and folded by symmetry elsewhere, so the
+ * table is exactly odd and quarter-symmetric. */
+static double qsin(long N, long k)
+{
+    long q = N / 4;
+    if (k > 2 * q) return -qsin(N, k - 2 * q);
+    if (k > q)     k = 2 * q - k;
+    if (k == 0)    return 0.0;
+    return sin((2.0 * M_PI * (double)k) / (double)N);
+}
+
+/* Render the span (pre-roll + body + post-roll) of a musical profile into
+ * out[0 .. ramp+body+ramp). Order of the double operations is normative: the
+ * port repeats it exactly. */
+static void music_render(const hydra_profile *p, const uint8_t *symbols, size_t nsym,
+                         size_t ramp, float *out)
+{
+    long   L = p->samples_per_symbol, R = (long)ramp, a = 0;
+    long   b[HYDRA_MUSIC_MAX_DRONES], h[HYDRA_MUSIC_MAX_DRONES];
+    int    k, nd = 0;
+    size_t body = nsym * (size_t)L, span = ramp + body + ramp, i;
+    double gd;
+
+    for (k = 0; k < HYDRA_MUSIC_MAX_DRONES; ++k)
+        if (p->drone_mult[k] > 0) { h[nd] = p->drone_mult[k]; b[nd] = 0; ++nd; }
+    gd = p->tx_gain - (double)nd * p->drone_gain;
+
+    for (i = 0; i < span; ++i) {
+        size_t s = (i < ramp) ? 0
+                 : (i >= ramp + body) ? nsym - 1
+                 : (i - ramp) / (size_t)L;
+        double v, e = 1.0;
+        /* data carrier: phase advanced BEFORE the output (hydra_dsp_ref.c) */
+        a += p->tone_mult[symbols[s]];
+        if (a >= L) a -= L;
+        v = gd * qsin(L, a);
+        /* drones: sample i sits at phase h*i, walked */
+        for (k = 0; k < nd; ++k) {
+            v = v + p->drone_gain * qsin(L, b[k]);
+            b[k] += h[k];
+            if (b[k] >= L) b[k] -= L;
+        }
+        if (i < ramp)
+            e = 0.5 - 0.5 * qsin(4 * R, (2 * (long)i + 1 + R) % (4 * R));
+        else if (i >= ramp + body)
+            e = 0.5 + 0.5 * qsin(4 * R, (2 * (long)(i - ramp - body) + 1 + R) % (4 * R));
+        out[i] = (float)(e * v);
+    }
+}
+
 int hydra_modem_tx(const hydra_profile *p,
                    const uint8_t payload[HYDRA_DCF_BYTES],
                    float **audio_out, size_t *nsamp_out)
@@ -67,19 +130,18 @@ int hydra_modem_tx(const hydra_profile *p,
     float        *freq    = NULL;
     float        *audio   = NULL;
     hydra_tx_dsp *tx      = NULL;
-    size_t        nsym = 0, spp, body, ramp, span, lead, tail, total, i;
+    size_t        nsym = 0, spp, body, ramp, lead, tail, total, i;
     long          s;
-    int           rc, k, ndrone = 0;
-    double        data_gain, dstep[HYDRA_MUSIC_MAX_DRONES];
+    int           rc;
 
     if (!p || !payload || !audio_out || !nsamp_out) return HYDRA_ERR_ARG;
 
     spp  = (size_t)p->samples_per_symbol;
-    /* Optional attack/release: the first tone is pre-rolled and the last tone
-     * post-rolled for `ramp` samples under a raised-cosine envelope, OUTSIDE the
-     * symbol body -- no data symbol is attenuated, and the pre-roll is the same
-     * tone as preamble symbol 0, so acquisition is unaffected. ramp_ms == 0
-     * (every linear profile) renders exactly the historical waveform. */
+    /* Optional attack/release (musical profiles): the first tone is pre-rolled
+     * and the last post-rolled for `ramp` samples under a raised cosine,
+     * OUTSIDE the symbol body -- no data symbol is attenuated, and the
+     * pre-roll is the same tone as preamble symbol 0, so acquisition is
+     * unaffected. */
     ramp = (size_t)(p->ramp_ms * 1e-3 * p->sample_rate + 0.5);
     lead = (size_t)(0.02 * p->sample_rate) + ramp;   /* 20 ms silence each side */
     tail = lead;
@@ -91,49 +153,30 @@ int hydra_modem_tx(const hydra_profile *p,
     if (rc != 0 || nsym == 0) { rc = HYDRA_ERR_ARG; goto done; }
 
     body  = nsym * spp;
-    span  = ramp + body + ramp;
     total = lead + body + tail;
-
-    freq  = (float *)malloc(span  * sizeof *freq);
     audio = (float *)calloc(total, sizeof *audio);   /* guards start at 0 */
-    if (!freq || !audio) { rc = HYDRA_ERR_ALLOC; goto done; }
+    if (!audio) { rc = HYDRA_ERR_ALLOC; goto done; }
 
-    for (i = 0; i < ramp; ++i) {
-        freq[i]               = (float)hydra_tone_freq(p, symbols[0]);
-        freq[ramp + body + i] = (float)hydra_tone_freq(p, symbols[nsym - 1]);
-    }
-    for (s = 0; s < (long)nsym; ++s) {
-        double f = hydra_tone_freq(p, symbols[s]);
-        for (i = 0; i < spp; ++i)
-            freq[ramp + (size_t)s * spp + i] = (float)f;
-    }
-
-    tx = hydra_tx_dsp_create(p->sample_rate);
-    if (!tx) { rc = HYDRA_ERR_ALLOC; goto done; }
-    hydra_tx_dsp_process(tx, freq, audio + lead - ramp, (int)span);
-
-    /* Drone partials (musical profiles only): steady tones at integer harmonics
-     * of the baud that are NOT data tones. For any two such frequencies the
-     * cross term integrates to zero over any window of one symbol, whatever its
-     * start, so the accompaniment is invisible to every correlator on the grid
-     * and during the acquisition scan. The data carrier gives up the drones'
-     * share of the amplitude so the peak stays <= tx_gain. */
-    for (k = 0; k < HYDRA_MUSIC_MAX_DRONES; ++k)
-        if (p->drone_mult[k] > 0)
-            dstep[ndrone++] = (double)p->drone_mult[k] * p->baud / p->sample_rate;
-    data_gain = p->tx_gain - (double)ndrone * p->drone_gain;
-
-    for (i = 0; i < span; ++i) {
-        double v = data_gain * (double)audio[lead - ramp + i], env = 1.0;
-        for (k = 0; k < ndrone; ++k) {
-            double ph = dstep[k] * (double)i;
-            v += p->drone_gain * sin(2.0 * M_PI * (ph - floor(ph)));
+    if (p->tone_mult[0] > 0) {
+        /* Musical: exact integer-phase synthesis, drones and ramp included
+         * (docs/MUSIC.md). The DSP backend is not used: its oscillator
+         * accumulates f/fs in floating point, which is the drift this avoids. */
+        music_render(p, symbols, nsym, ramp, audio + lead - ramp);
+    } else {
+        /* Linear: the historical path, unchanged (ramp_ms is 0 here unless a
+         * caller set it, in which case the pre/post-roll is silence). */
+        freq = (float *)malloc(body * sizeof *freq);
+        if (!freq) { rc = HYDRA_ERR_ALLOC; goto done; }
+        for (s = 0; s < (long)nsym; ++s) {
+            double f = hydra_tone_freq(p, symbols[s]);
+            for (i = 0; i < spp; ++i)
+                freq[(size_t)s * spp + i] = (float)f;
         }
-        if (i < ramp)
-            env = 0.5 - 0.5 * cos(M_PI * ((double)i + 0.5) / (double)ramp);
-        else if (i >= ramp + body)
-            env = 0.5 + 0.5 * cos(M_PI * ((double)(i - ramp - body) + 0.5) / (double)ramp);
-        audio[lead - ramp + i] = (float)(env * v);
+        tx = hydra_tx_dsp_create(p->sample_rate);
+        if (!tx) { rc = HYDRA_ERR_ALLOC; goto done; }
+        hydra_tx_dsp_process(tx, freq, audio + lead, (int)body);
+        for (i = 0; i < body; ++i)
+            audio[lead + i] *= (float)p->tx_gain;
     }
 
     *audio_out = audio;

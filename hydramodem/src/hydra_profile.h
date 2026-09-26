@@ -111,13 +111,14 @@ void hydra_profile_aux_cable(hydra_profile *p);
  * N-1) becomes a tremolo on the tonic and its octave (two octaves for 16
  * tones, a fifth for FIFTH/TRIAD).
  *   scale      one of hydra_scale
- *   baud       symbol rate; sample_rate/baud must be an integer (exact cycles)
+ *   baud       symbol rate; sample_rate/baud must be an integer multiple of 4
+ *              (exact cycles; quarter-wave sine table)
  *   root_hz    desired tonic; the achieved tonic is the nearest root_harmonic *
  *              m * baud (m >= 1 integer), i.e. the scale is transposed by whole
  *              harmonics of the baud and may sit a few cents off root_hz.
  *   drone      1 = add a root (octave below) + fifth drone where those partials
  *              are integers, 0 = none.
- * FEC conv + interleave, 48 kHz, tx_gain 0.9, ramp 8 ms, preamble 12. Call
+ * FEC conv + interleave, 48 kHz, tx_gain 0.9, ramp 10 ms, preamble 12. Call
  * hydra_profile_init() afterwards as usual. Returns 0 ok, <0 bad arguments.
  * NOT interoperable with the linear profiles; loopback-tested, not certified
  * beyond the symbol stream (the symbol stream is profile-generic). */

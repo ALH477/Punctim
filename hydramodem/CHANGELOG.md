@@ -9,8 +9,10 @@
   scale on the harmonic series of the baud: pentatonic or triad, orthogonal by
   construction. Symbols are Gray-mapped onto scale degrees, the preamble becomes a
   tonic/octave tremolo, an optional drone sits on harmonics that are
-  orthogonal to every data correlator, and an 8 ms raised-cosine attack/release
-  is rendered outside the symbol body. See `docs/MUSIC.md`.
+  orthogonal to every data correlator, and a 10 ms raised-cosine attack/release
+  is rendered outside the symbol body. Musical synthesis is exact: integer
+  phase on the `k/L` grid and a quarter-wave sine table (no accumulated
+  `f/fs` drift), so the WAV is a normative function of the table. See `docs/MUSIC.md`.
 - `tests/test_music.c` (in `make check`).
 
 ### Changed (ABI)
@@ -18,6 +20,7 @@
   `ramp_ms`, appended after the derived fields. The struct grew, so the soname
   is now `libhydramodem.so.2`. `hydra_profile_default` / `_aux_cable` now zero
   the whole struct first. Linear profiles render exactly the 1.0.0 waveform.
+- The library is built with `-ffp-contract=off` (no FMA contraction).
 - The Faust RX backend refuses a musical tone table (its tone bank is compiled
   in); use the C reference RX.
 

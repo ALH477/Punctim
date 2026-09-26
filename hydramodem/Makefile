@@ -23,6 +23,11 @@ WARN      ?= -Wall -Wextra
 ARCHFLAGS ?=
 CFLAGS    ?= $(CSTD) $(OPT) $(WARN) $(ARCHFLAGS) -Isrc
 LDLIBS    ?= -lm
+# No FMA contraction, whatever CFLAGS says: the musical transmitter's output is
+# a normative function of its sine table and a fixed order of IEEE-754 double
+# operations (docs/MUSIC.md), and a fused multiply-add on RISC-V/AArch64 would
+# change the last bit. x86-64 baseline has no FMA, so there nothing changes.
+override CFLAGS += -ffp-contract=off
 
 # install layout
 PREFIX     ?= /usr/local
