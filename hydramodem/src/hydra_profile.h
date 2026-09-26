@@ -35,7 +35,9 @@ typedef enum {
     HYDRA_SCALE_TRIAD      = 1, /*  4 tones  4:5:6:8           major triad + octave */
     HYDRA_SCALE_MAJOR_PENT = 2, /*  8 tones  24:27:30:36:40:48:54:60 (do re mi so la do' re' mi') */
     HYDRA_SCALE_MINOR_PENT = 3, /*  8 tones  30:36:40:45:54:60:72:80 (la do re mi so la' do' re') */
-    HYDRA_SCALE_MAJOR_PENT16 = 4 /* 16 tones major pentatonic 24..192, three octaves  */
+    HYDRA_SCALE_MAJOR_PENT16 = 4,/* 16 tones major pentatonic 24..192, three octaves  */
+    HYDRA_SCALE_BASS       = 5  /*  4 tones  3:5:6:9  bass roots I vi I' V (D2 B2 D3 A3 at
+                                 *  25 baud) -- the in-key bass notes on the 25 Hz grid */
 } hydra_scale;
 
 /* Forward error correction mode. */
@@ -132,6 +134,32 @@ int  hydra_profile_music(hydra_profile *p, hydra_scale scale, double baud,
 void hydra_profile_melody(hydra_profile *p);
 void hydra_profile_chime(hydra_profile *p);
 void hydra_profile_nocturne(hydra_profile *p);
+/*   bass     : bass roots, 25 baud (40 ms notes), tonic 75 Hz (D2, the melody's
+ *              tonic three octaves down), no drone -- 75/125/150/225 Hz */
+void hydra_profile_bass(hydra_profile *p);
+
+/* ---- polyphony: several frames at once, one voice each ----------------------
+ * Every musical tone is an integer harmonic of the baud, so two voices at the
+ * SAME baud whose tones (and drones) are disjoint are orthogonal: each voice's
+ * correlators see nothing of the others, whatever notes they play, because
+ * their symbol boundaries coincide. hydra_modem_tx_poly sums up to
+ * HYDRA_POLY_MAX_VOICES independent frames into one burst -- the acoustic
+ * SuperPack: a frame pair in one transmission, where SuperPack puts a pair in
+ * one datagram. Voices are right-aligned (shorter ones enter later, by whole
+ * symbols) so all end together; each is decoded with its own profile. */
+#define HYDRA_POLY_MAX_VOICES 4
+
+/* The duet preset: voice 0 = melody (no drone, tx_gain 0.5), voice 1 = bass
+ * (tx_gain 0.4). The peak stays <= 0.9. Decode voice 0 with
+ * hydra_profile_melody and voice 1 with hydra_profile_bass (drone and gain are
+ * transmit-only). */
+void hydra_profile_duet(hydra_profile voices[2]);
+
+/* 0 if the voices can share one burst: 1..HYDRA_POLY_MAX_VOICES initialised
+ * musical profiles, one sample rate, one baud, one ramp, every tone and drone
+ * frequency distinct across all voices, and the tx_gains summing to <= 1.0 so
+ * the mix never clips. <0 otherwise. */
+int  hydra_poly_check(const hydra_profile *voices, int nvoices);
 
 /* Compute derived fields and validate. Returns 0 on success, <0 on bad config:
  * n_tones not a power of two, non-positive rates, highest tone above Nyquist, or

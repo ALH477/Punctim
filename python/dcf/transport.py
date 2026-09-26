@@ -871,7 +871,7 @@ def hydra_tool_caps(tool):
 
 # The musical tone-table HydraModem profiles (hydra_profile_music presets): M-FSK on a
 # just-intonation scale built from the baud's harmonic series. See hydramodem/docs/MUSIC.md.
-HYDRA_MUSIC_PROFILES = ("melody", "chime", "nocturne")
+HYDRA_MUSIC_PROFILES = ("melody", "chime", "nocturne", "bass")
 HYDRA_PROFILES = ("default", "aux") + HYDRA_MUSIC_PROFILES
 
 # The `aux` HydraModem profile (hydra_profile_aux_cable): 1200 baud, tones 1200/2400 Hz,

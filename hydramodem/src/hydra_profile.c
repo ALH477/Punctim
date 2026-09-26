@@ -61,6 +61,11 @@ static const int k_scale_minor[8]  = { 30, 36, 40, 45, 54, 60, 72, 80 };
 static const int k_scale_major16[16] = { 24, 27, 30, 36, 40, 48, 54, 60,
                                          72, 80, 96, 108, 120, 144, 160, 192 };
 
+/* D2 B2 D3 A3 at 25 baud: 1 5/3 2 3 -- the bass notes of the melody's D
+ * pentatonic that are whole multiples of 25 Hz below 250 Hz. E, F# and a lower
+ * A would be 84.375, 93.75 and 112.5 Hz: off the grid, so not orthogonal. */
+static const int k_scale_bass[4]   = { 3, 5, 6, 9 };
+
 static unsigned gray(unsigned d) { return d ^ (d >> 1); }
 
 int hydra_profile_music(hydra_profile *p, hydra_scale scale, double baud,
@@ -74,6 +79,7 @@ int hydra_profile_music(hydra_profile *p, hydra_scale scale, double baud,
         case HYDRA_SCALE_MAJOR_PENT:   deg = k_scale_major;   n = 8;  break;
         case HYDRA_SCALE_MINOR_PENT:   deg = k_scale_minor;   n = 8;  break;
         case HYDRA_SCALE_MAJOR_PENT16: deg = k_scale_major16; n = 16; break;
+        case HYDRA_SCALE_BASS:         deg = k_scale_bass;    n = 4;  break;
         default: return -1;
     }
     memset(p, 0, sizeof *p);
@@ -121,6 +127,47 @@ void hydra_profile_chime(hydra_profile *p)
 void hydra_profile_nocturne(hydra_profile *p)
 {
     (void)hydra_profile_music(p, HYDRA_SCALE_MINOR_PENT, 25.0, 750.0, 1);
+}
+
+void hydra_profile_bass(hydra_profile *p)
+{
+    (void)hydra_profile_music(p, HYDRA_SCALE_BASS, 25.0, 75.0, 0);
+}
+
+void hydra_profile_duet(hydra_profile voices[2])
+{
+    hydra_profile_melody(&voices[0]);
+    voices[0].drone_mult[0] = voices[0].drone_mult[1] = 0;   /* the bass is the low end */
+    voices[0].drone_gain = 0.0;
+    voices[0].tx_gain    = 0.5;
+    hydra_profile_bass(&voices[1]);
+    voices[1].tx_gain    = 0.4;
+}
+
+int hydra_poly_check(const hydra_profile *v, int n)
+{
+    int a, b, j, k; double gain = 0.0;
+    if (!v || n < 1 || n > HYDRA_POLY_MAX_VOICES) return -1;
+    for (a = 0; a < n; ++a) {
+        if (v[a].tone_mult[0] <= 0 || v[a].samples_per_symbol <= 0) return -1;
+        if (v[a].sample_rate != v[0].sample_rate || v[a].baud != v[0].baud ||
+            v[a].ramp_ms != v[0].ramp_ms) return -1;
+        gain += v[a].tx_gain;
+        for (b = 0; b < a; ++b) {
+            /* every frequency of voice a against every frequency of voice b */
+            int fa[HYDRA_MUSIC_MAX_TONES + HYDRA_MUSIC_MAX_DRONES], na = 0;
+            int fb[HYDRA_MUSIC_MAX_TONES + HYDRA_MUSIC_MAX_DRONES], nb = 0;
+            for (k = 0; k < v[a].n_tones; ++k) fa[na++] = v[a].tone_mult[k];
+            for (k = 0; k < HYDRA_MUSIC_MAX_DRONES; ++k) if (v[a].drone_mult[k] > 0) fa[na++] = v[a].drone_mult[k];
+            for (k = 0; k < v[b].n_tones; ++k) fb[nb++] = v[b].tone_mult[k];
+            for (k = 0; k < HYDRA_MUSIC_MAX_DRONES; ++k) if (v[b].drone_mult[k] > 0) fb[nb++] = v[b].drone_mult[k];
+            for (j = 0; j < na; ++j)
+                for (k = 0; k < nb; ++k)
+                    if (fa[j] == fb[k]) return -1;
+        }
+    }
+    if (gain > 1.0 + 1e-12) return -1;
+    return 0;
 }
 
 /* Validate the musical fields (only called when tone_mult[0] > 0). */

@@ -118,7 +118,9 @@ static void music_render(const hydra_profile *p, const uint8_t *symbols, size_t 
             e = 0.5 - 0.5 * qsin(4 * R, (2 * (long)i + 1 + R) % (4 * R));
         else if (i >= ramp + body)
             e = 0.5 + 0.5 * qsin(4 * R, (2 * (long)(i - ramp - body) + 1 + R) % (4 * R));
-        out[i] = (float)(e * v);
+        /* `+=`: a single voice renders into zeros, so this is (float)(e*v)
+         * exactly; polyphony sums its voices here (float adds, voice order). */
+        out[i] += (float)(e * v);
     }
 }
 
@@ -190,6 +192,70 @@ done:
     free(audio);
     hydra_tx_dsp_destroy(tx);
     return rc;
+}
+
+/* ================================ POLYPHONY ================================ */
+
+int hydra_modem_tx_poly(const hydra_profile *voices, int nvoices,
+                        const uint8_t payloads[][HYDRA_DCF_BYTES],
+                        float **audio_out, size_t *nsamp_out)
+{
+    uint8_t *symbols[HYDRA_POLY_MAX_VOICES] = { NULL };
+    size_t   nsym[HYDRA_POLY_MAX_VOICES], body_max = 0, spp, ramp, lead, total;
+    float   *audio = NULL;
+    int      v, rc;
+
+    if (!voices || !payloads || !audio_out || !nsamp_out) return HYDRA_ERR_ARG;
+    if (hydra_poly_check(voices, nvoices) != 0) return HYDRA_ERR_ARG;
+
+    spp  = (size_t)voices[0].samples_per_symbol;
+    ramp = (size_t)(voices[0].ramp_ms * 1e-3 * voices[0].sample_rate + 0.5);
+    lead = (size_t)(0.02 * voices[0].sample_rate) + ramp;   /* as hydra_modem_tx */
+
+    for (v = 0; v < nvoices; ++v) {
+        symbols[v] = (uint8_t *)malloc(voices[v].total_syms);
+        if (!symbols[v]) { rc = HYDRA_ERR_ALLOC; goto done; }
+        if (hydra_frame_build(&voices[v], payloads[v], symbols[v],
+                              voices[v].total_syms, &nsym[v]) != 0 || nsym[v] == 0) {
+            rc = HYDRA_ERR_ARG; goto done;
+        }
+        if (nsym[v] * spp > body_max) body_max = nsym[v] * spp;
+    }
+    total = lead + body_max + lead;
+    audio = (float *)calloc(total, sizeof *audio);
+    if (!audio) { rc = HYDRA_ERR_ALLOC; goto done; }
+
+    /* Right-aligned: a shorter voice enters later by WHOLE symbols, so every
+     * voice's symbol boundaries fall on one grid -- the condition for the
+     * voices to be orthogonal -- and all of them end together. */
+    for (v = 0; v < nvoices; ++v) {
+        size_t offset = body_max - nsym[v] * spp;
+        music_render(&voices[v], symbols[v], nsym[v], ramp, audio + lead + offset - ramp);
+    }
+
+    *audio_out = audio;
+    *nsamp_out = total;
+    audio = NULL;
+    rc = HYDRA_OK;
+done:
+    for (v = 0; v < HYDRA_POLY_MAX_VOICES; ++v) free(symbols[v]);
+    free(audio);
+    return rc;
+}
+
+int hydra_modem_rx_poly(const hydra_profile *voices, int nvoices,
+                        const float *audio, size_t nsamp,
+                        uint8_t payloads_out[][HYDRA_DCF_BYTES], int status_out[])
+{
+    int v, ok = 0;
+    if (!voices || !audio || !payloads_out || nvoices < 1 ||
+        nvoices > HYDRA_POLY_MAX_VOICES) return -1;
+    for (v = 0; v < nvoices; ++v) {
+        int st = hydra_modem_rx(&voices[v], audio, nsamp, payloads_out[v]);
+        if (status_out) status_out[v] = st;
+        if (st == HYDRA_OK) ++ok;
+    }
+    return ok;
 }
 
 /* ===================== RECEIVE: integrate-and-dump core =================== */

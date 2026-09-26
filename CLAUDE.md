@@ -732,11 +732,16 @@ The default profile (48 kHz, 1000 baud, tones 2000/3000 Hz) is a **near-field / 
 cabled** link. Cross-compiles to RISC-V (StarFive JH7110); runs real-time on one U74 core.
 
 **Musical profiles** (HydraModem 2.0.0, `hydramodem/docs/MUSIC.md`): `hydra_profile_music` /
-`--profile melody|chime|nocturne` (Python `hydra:profile=` too; C/Rust/Go/Node `punctim` still
+`--profile melody|chime|nocturne|bass` (Python `hydra:profile=` too; C/Rust/Go/Node `punctim` still
 `default|aux` only) put the M-FSK tones on a just-intonation scale drawn from the baud's harmonic
 series, which is orthogonal by construction. Adds a Gray degree map, a tonic/octave preamble, an
 orthogonal drone, and an attack/release outside the symbol body. Slow (25–100 baud, 1.8–5 s/frame)
 with ~14 dB more AWGN margin; loopback-tested (`tests/test_music.c`), not certified.
+`bass` (D2 B2 D3 A3, 75–225 Hz) and **polyphony**: `hydra_modem_tx_poly`/`_rx_poly` sum up to 4
+frames into one burst, one voice each (disjoint 25 Hz-grid tones on one symbol grid ⇒ orthogonal);
+`hydra_profile_duet` = melody + bass, two frames in 7.18 s, the acoustic SuperPack
+(`dcf-tools/poly_tx`/`poly_rx`, Python `HydraDuet`). The Exsecutor port
+(`exsecutor/examples/hydramodem/melos*.exsc`) is byte-identical for `melody` only.
 
 Profiles (`hydramodem/src/hydra_profile.c`): **`hydra_profile_default`** = binary FSK,
 24-symbol preamble, sync `0x2DD4`, **conv FEC (K=7 r=½, soft Viterbi) + interleaver ON**

@@ -13,6 +13,12 @@
   is rendered outside the symbol body. Musical synthesis is exact: integer
   phase on the `k/L` grid and a quarter-wave sine table (no accumulated
   `f/fs` drift), so the WAV is a normative function of the table. See `docs/MUSIC.md`.
+- **Bass voice and polyphony**: `hydra_profile_bass` (D2 B2 D3 A3, 75–225 Hz,
+  `--profile bass`); `hydra_modem_tx_poly` / `hydra_modem_rx_poly` /
+  `hydra_poly_check` put up to 4 frames in one burst, one voice each;
+  `hydra_profile_duet` (melody + bass) is the acoustic SuperPack: 2 frames in
+  7.18 s vs 10.04 s sequential. `dcf-tools/poly_tx` / `poly_rx`; Python
+  `HydraDuet`.
 - `tests/test_music.c` (in `make check`).
 
 ### Changed (ABI)

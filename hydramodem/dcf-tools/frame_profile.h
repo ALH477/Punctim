@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 /* dcf-tools/frame_profile.h -- shared CLI -> hydra_profile parsing for frame_tx/frame_rx.
- * Named profile (default|aux|melody|chime|nocturne), FEC mode, interleaver on/off, preamble length and FDMA
+ * Named profile (default|aux|melody|chime|nocturne|bass), FEC mode, interleaver on/off, preamble length and FDMA
  * tone-channel overrides (so each node can sit on a distinct frequency band of the line).
  * Repo glue (DeMoD LLC, LGPL-3.0). */
 #ifndef DCF_FRAME_PROFILE_H
@@ -14,7 +14,7 @@
  * transport (python/dcf/transport.py hydra_tool_caps) probes the usage text for
  * "--profile" / "--interleave" / "--preamble", so keep those spellings here. */
 #define FRAME_PROFILE_USAGE \
-    "[--profile default|aux|melody|chime|nocturne] [--none|--rep3|--conv] [--interleave 0|1] [--preamble N]\n" \
+    "[--profile default|aux|melody|chime|nocturne|bass] [--none|--rep3|--conv] [--interleave 0|1] [--preamble N]\n" \
     "        [--base-freq HZ] [--tone-spacing HZ] [--baud HZ] [--n-tones N]"
 
 /* Strict decimal int parse: whole string, no trailing junk. Returns 0 ok, -1 bad. */
@@ -51,7 +51,7 @@ static int frame_profile_args(hydra_profile *p, int argc, char **argv, int start
     for (int i = start; i < argc; ++i) {
         if (strcmp(argv[i], "--profile") != 0) continue;
         if (i + 1 >= argc) {
-            fprintf(stderr, "--profile needs default|aux|melody|chime|nocturne\n"); return -1;
+            fprintf(stderr, "--profile needs default|aux|melody|chime|nocturne|bass\n"); return -1;
         }
         const char *name = argv[++i];
         if      (!strcmp(name, "default"))  hydra_profile_default(p);
@@ -59,8 +59,9 @@ static int frame_profile_args(hydra_profile *p, int argc, char **argv, int start
         else if (!strcmp(name, "melody"))   hydra_profile_melody(p);
         else if (!strcmp(name, "chime"))    hydra_profile_chime(p);
         else if (!strcmp(name, "nocturne")) hydra_profile_nocturne(p);
+        else if (!strcmp(name, "bass"))     hydra_profile_bass(p);
         else {
-            fprintf(stderr, "bad --profile: %s (default|aux|melody|chime|nocturne)\n", name);
+            fprintf(stderr, "bad --profile: %s (default|aux|melody|chime|nocturne|bass)\n", name);
             return -1;
         }
     }

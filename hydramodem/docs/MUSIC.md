@@ -63,6 +63,8 @@ Just intonation vs 12-TET, for reference: 9/8 = 204 ¢, 5/4 = 386 ¢ (−14),
 | `melody` | major pentatonic | 25 (40 ms) | 600 Hz (≈ D5 +37 ¢) | 300 + 450 Hz | 4.96 s | 75 b/s |
 | `chime` | triad arpeggio | 100 (10 ms) | 400 Hz (≈ G4 +35 ¢) | 200 + 300 Hz | 1.78 s | 200 b/s |
 | `nocturne` | minor pentatonic | 25 (40 ms) | 750 Hz (≈ F♯5 +23 ¢) | 375 Hz | 4.96 s | 75 b/s |
+| `bass` | bass roots D2 B2 D3 A3 | 25 (40 ms) | 75 Hz (≈ D2 +37 ¢) | — | 7.12 s | 50 b/s |
+| `duet` (poly) | melody + bass, 2 frames | 25 (40 ms) | 600 / 75 Hz | — | 7.18 s / 2 frames | 125 b/s |
 | `default` (reference) | — (a 2:3 fifth) | 1000 (1 ms) | — | — | 0.356 s | 1000 b/s |
 
 The tonic is `h0 · m · baud` for the integer `m` nearest the requested `root_hz`.
@@ -91,6 +93,76 @@ frames per point, linear-interpolation resampler): `melody` and `nocturne` decod
 at ±5000 ppm and fail at ±8000; `chime` decodes at ±3000 and fails at ±5000.
 `tests/test_music.c` asserts all of this with margin: −18 dB, ±3000 ppm, clean
 loopback of every scale, and the streaming receiver.
+
+## Bass and polyphony: two frames, one burst
+
+### The bass voice (`bass`)
+
+The melody's tonic is 600 Hz, a D. The bass voice takes the notes of that
+D pentatonic that fall in the bass register **and** are whole multiples of
+25 Hz. It needs the second condition to stay orthogonal:
+
+| note | D2 | B2 | D3 | A3 |
+|---|---|---|---|---|
+| Hz (harmonic of 25) | 75 (3) | 125 (5) | 150 (6) | 225 (9) |
+| role | I | vi | I′ | V |
+
+E, F♯ and a lower A would be 84.375, 93.75 and 112.5 Hz. Those are off the
+grid, so they are not available. This is 4-FSK at 25 baud with no drone. Its
+preamble is a D2–D3 octave tremolo, and it is a profile on its own too
+(`--profile bass`, 7.12 s a frame).
+
+### The duet: the acoustic SuperPack
+
+SuperPack puts two frames in one datagram. The **duet** puts two frames in one
+acoustic burst, sounding at the same time: frame A on the melody voice
+(600–1500 Hz) and frame B on the bass voice (75–225 Hz).
+
+Why the voices do not interfere: every tone of both voices is a multiple of
+25 Hz, and both voices change note on the same 40 ms grid. So inside any
+symbol window, each voice's correlators see the other voice as a set of
+whole-cycle tones at other frequencies, which integrate to zero whatever notes
+are playing. The rules for voices sharing a burst are `hydra_poly_check`'s:
+one baud, disjoint tones and drones, and gains summing to ≤ 1.0 so nothing
+clips. The bass frame is longer (178 symbols against 124), so the melody
+**enters later by whole symbols** to keep the grid and end with the bass. You
+hear a bass intro, then the melody comes in.
+
+- `hydra_modem_tx_poly(voices, n, payloads, …)` and `hydra_modem_rx_poly(…)`
+  are the API, for up to `HYDRA_POLY_MAX_VOICES` = 4 voices.
+- `hydra_profile_duet()` is the preset: melody without its drone at gain 0.5,
+  and bass at 0.4.
+- On the command line: `dcf-tools/poly_tx <A> <B> out.wav` and
+  `dcf-tools/poly_rx in.wav`, which prints two lines, `-` for a lost voice.
+- In Python: `dcf.hydramodem_cffi.HydraDuet`.
+- Each voice decodes with the plain single-voice profile (`melody`, `bass`)
+  and independently, so one frame survives when the other is lost.
+
+Measured (C reference DSP, 48 kHz loopback, wideband SNR over the whole burst,
+20 random frame pairs per point):
+
+| SNR (dB) | −16 | −18 | −20 | −22 |
+|---|---|---|---|---|
+| duet, melody voice | 100 | 100 | 100 | 55 |
+| duet, bass voice | 100 | 100 | 75 | 5 |
+| `bass` alone | | | 100 | |
+
+- **Airtime:** 7.18 s for 34 bytes, against 10.04 s for two `melody` frames
+  one after another. That is 29 % less airtime, or 1.4× the throughput.
+- **Clock offset** (6 pairs per point): the melody voice decodes at ±5000 ppm.
+  The bass voice decodes at ±3000 ppm and **fails at ±5000 ppm**. Its notes are
+  only 25 Hz (one cycle a symbol) apart, which blunts the timing loop's
+  transition discriminator. That diagnosis is **[UNTESTED]**; the limit itself
+  is measured.
+- **Cross-voice leakage** on the symbol grid: ≤ 1.1e−9 of a unit tone, which is
+  float rounding (asserted in `test_music`).
+- **The melody's entry:** its 10 ms attack is not on the grid. It overlaps the
+  last 10 ms of one bass symbol at about −34 dB (1.9 % of that symbol's own
+  correlation, computed). It is harmless at every point above, but it is not
+  zero.
+- **Speakers [UNTESTED]:** 75–225 Hz needs a speaker that reproduces bass.
+  Phone and laptop speakers roll off well above 75 Hz, so on them the bass
+  voice's frame may be lost while the melody's survives. A cable does not care.
 
 ## Exact synthesis (normative for ports)
 

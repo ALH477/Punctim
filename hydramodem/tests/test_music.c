@@ -10,6 +10,9 @@
  *                     still refuse drones.
  *   [4] link       -- clean loopback for every scale, AWGN, clock offset, and the
  *                     streaming receiver.
+ *   [5] polyphony  -- the duet: two frames in one burst (melody + bass voices),
+ *                     each decoded with its own profile; cross-voice leakage,
+ *                     AWGN, clock offset, and hydra_poly_check's refusals.
  *
  * Margins are set well inside what was measured (docs/MUSIC.md), so these are
  * regressions, not flaky thresholds.
@@ -102,7 +105,7 @@ static void test_theory(named *ps, int np)
             int octave = (hi == 2 * lo || hi == 4 * lo), fifth = (2 * hi == 3 * lo);
             snprintf(msg, sizeof msg, "%-9s preamble = %s tremolo (%d:%d)", ps[q].name,
                      octave ? (hi == 4 * lo ? "two-octave" : "octave") : fifth ? "fifth" : "??", lo, hi);
-            CHECK(N <= 4 ? fifth : octave, msg);
+            CHECK(octave || fifth, msg);   /* octave(s) for 8/16 tones and bass, a fifth for 2/4 */
         }
     }
 }
@@ -221,9 +224,87 @@ static void test_link(named *ps, int np)
     }
 }
 
+/* --------------------------------------------------------- [5] polyphony -- */
+static int duet_roundtrip(const hydra_profile *v, const hydra_profile *rx, double snr,
+                          double ppm, int ok_out[2])
+{
+    uint8_t f[2][17], o[2][17]; float *a = NULL, *b; size_t n = 0, m; int st[2] = { -1, -1 };
+    rand_payload(f[0]); rand_payload(f[1]);
+    if (hydra_modem_tx_poly(v, 2, f, &a, &n) != HYDRA_OK) return -1;
+    if (snr < 99) awgn(a, n, snr);
+    b = a; m = n;
+    if (ppm != 0.0) b = clock_resample(a, n, ppm, &m);
+    if (b) hydra_modem_rx_poly(rx, 2, b, m, o, st);
+    ok_out[0] += (st[0] == HYDRA_OK && !memcmp(o[0], f[0], 17));
+    ok_out[1] += (st[1] == HYDRA_OK && !memcmp(o[1], f[1], 17));
+    if (b != a) free(b);
+    free(a);
+    return 0;
+}
+
+static void test_poly(void)
+{
+    hydra_profile v[2], rx[2], bad[2];
+    char msg[160]; int t, ok[2];
+    printf("[5] polyphony: the duet (melody + bass, one frame each, one burst)\n");
+    hydra_profile_duet(v);
+    hydra_profile_init(&v[0]); hydra_profile_init(&v[1]);
+    /* the receivers are the plain single-voice profiles: drone and gain are TX-only */
+    hydra_profile_melody(&rx[0]); hydra_profile_bass(&rx[1]);
+    hydra_profile_init(&rx[0]); hydra_profile_init(&rx[1]);
+    CHECK(hydra_poly_check(v, 2) == 0, "duet passes hydra_poly_check");
+    CHECK(v[0].tx_gain + v[1].tx_gain <= 0.9 + 1e-12, "duet peak stays <= 0.9");
+
+    bad[0] = rx[0]; bad[1] = rx[0]; bad[0].tx_gain = bad[1].tx_gain = 0.4;
+    CHECK(hydra_poly_check(bad, 2) != 0, "two voices on the same tones are refused");
+    bad[0] = v[0]; bad[1] = v[1]; bad[1].tx_gain = 0.6;
+    CHECK(hydra_poly_check(bad, 2) != 0, "gains summing past 1.0 (clipping) are refused");
+    bad[0] = v[0]; bad[1] = v[1]; bad[1].baud = 50.0; hydra_profile_init(&bad[1]);
+    CHECK(hydra_poly_check(bad, 2) != 0, "voices at different bauds are refused");
+
+    /* each voice's correlators see nothing of the other, on the symbol grid */
+    {
+        uint8_t f[1][17]; float *b = NULL; size_t m = 0, st; double worst[2] = { 0, 0 }; int who, k, j;
+        for (who = 0; who < 2; ++who) {
+            const hydra_profile *other = &v[1 - who], *mine = &v[who];
+            rand_payload(f[0]);
+            if (hydra_modem_tx_poly(other, 1, f, &b, &m) != HYDRA_OK) continue;
+            for (st = 1440; st + 1920 <= m; st += 1920)
+                for (k = 0; k < mine->n_tones; ++k) {
+                    double I = 0, Q = 0, fr = mine->tone_mult[k] * mine->baud;
+                    for (j = 0; j < 1920; ++j) {
+                        double w = 2 * M_PI * fr * (double)j / mine->sample_rate;
+                        I += b[st + (size_t)j] * cos(w); Q += b[st + (size_t)j] * sin(w);
+                    }
+                    { double lk = sqrt(I * I + Q * Q) / 960.0; if (lk > worst[who]) worst[who] = lk; }
+                }
+            free(b); b = NULL;
+        }
+        snprintf(msg, sizeof msg, "cross-voice leakage: bass->melody %.1e, melody->bass %.1e of a unit tone",
+                 worst[0], worst[1]);
+        CHECK(worst[0] < 1e-6 && worst[1] < 1e-6, msg);
+    }
+
+    ok[0] = ok[1] = 0;
+    for (t = 0; t < 3; ++t) duet_roundtrip(v, rx, 100, 0, ok);
+    snprintf(msg, sizeof msg, "duet clean: melody %d/3, bass %d/3 (%.2f s for 34 bytes)", ok[0], ok[1],
+             (double)(v[1].total_syms * 1920 + 2 * 1440) / 48000.0);
+    CHECK(ok[0] == 3 && ok[1] == 3, msg);
+    /* measured knees in the duet: melody ~-21 dB, bass ~-20 dB (wideband, whole-burst power) */
+    ok[0] = ok[1] = 0;
+    for (t = 0; t < 6; ++t) duet_roundtrip(v, rx, -16.0, 0, ok);
+    snprintf(msg, sizeof msg, "duet AWGN -16 dB: melody %d/6, bass %d/6", ok[0], ok[1]);
+    CHECK(ok[0] >= 5 && ok[1] >= 5, msg);
+    /* measured: bass holds +/-3000 ppm and fails +/-5000 (melody holds both) */
+    ok[0] = ok[1] = 0;
+    duet_roundtrip(v, rx, 100, 3000, ok); duet_roundtrip(v, rx, 100, -3000, ok);
+    snprintf(msg, sizeof msg, "duet clock offset +/-3000 ppm: melody %d/2, bass %d/2", ok[0], ok[1]);
+    CHECK(ok[0] == 2 && ok[1] == 2, msg);
+}
+
 int main(void)
 {
-    named ps[5];
+    named ps[6];
     int np = 0, q;
     printf("== HydraModem musical profiles ==\n");
     ps[np].name = "melody";   hydra_profile_melody(&ps[np].p);   ++np;
@@ -231,6 +312,7 @@ int main(void)
     ps[np].name = "nocturne"; hydra_profile_nocturne(&ps[np].p); ++np;
     ps[np].name = "pent16";   hydra_profile_music(&ps[np].p, HYDRA_SCALE_MAJOR_PENT16, 25.0, 300.0, 1); ++np;
     ps[np].name = "fifth";    hydra_profile_music(&ps[np].p, HYDRA_SCALE_FIFTH, 100.0, 400.0, 1); ++np;
+    ps[np].name = "bass";     hydra_profile_bass(&ps[np].p);     ++np;
     for (q = 0; q < np; ++q) {
         char msg[96];
         snprintf(msg, sizeof msg, "%-9s profile initialises", ps[q].name);
@@ -240,6 +322,7 @@ int main(void)
     test_drone(ps, np);
     test_envelope();
     test_link(ps, np);
+    test_poly();
     printf(g_fail ? "MUSIC TESTS FAILED (%d)\n" : "ALL MUSIC TESTS PASSED (%d failures)\n", g_fail);
     return g_fail ? 1 : 0;
 }
