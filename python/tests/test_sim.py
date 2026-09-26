@@ -95,6 +95,32 @@ class TestExactMedia(unittest.TestCase):
     def test_hydra_aux_conv(self):
         self.check_hydra("aux", "conv", 348, 0.2900)
 
+    def test_hydra_musical(self):
+        # symbols from hydra_profile(); seconds = symbols/baud + two 10 ms ramps, which
+        # is frame_tx's WAV length minus its 2 x 20 ms silent guards (checked on the
+        # built tools: melody 5.02 s, chime 1.84 s, bass 7.18 s, duet 7.18 s WAVs)
+        from dcf.sim.media import Hydra
+        for prof, syms, burst, per in (("melody", 124, 4.98, 4.98), ("nocturne", 124, 4.98, 4.98),
+                                       ("chime", 178, 1.80, 1.80), ("bass", 178, 7.14, 7.14),
+                                       ("duet", 178, 7.14, 3.57)):
+            med = Hydra("m", {"profile": prof})
+            self.assertEqual(med.count, syms, prof)
+            self.assertAlmostEqual(med.t_burst, burst, places=9, msg=prof)
+            self.assertAlmostEqual(med.t_frame, per, places=9, msg=prof)
+        self.assertAlmostEqual(Hydra("m", {"profile": "melody", "baud": "50"}).t_frame,
+                               124 / 50 + 0.02, places=9)
+        j = to_json(plan(medium="hydra:profile=duet"))
+        row = j["exact"]["media"]["hydra:profile=duet"]
+        self.assertEqual(row["frames_per_burst"], 2)
+        self.assertAlmostEqual(row["airtime_per_frame_s"], 3.57, places=9)
+
+    def test_hydra_musical_rejects_tone_plan(self):
+        from dcf.sim.media import Hydra, SimUsage
+        with self.assertRaises(SimUsage):
+            Hydra("m", {"profile": "melody", "n_tones": "4"})
+        with self.assertRaises(SimUsage):
+            Hydra("m", {"profile": "duet", "baud": "50"})
+
     def test_afsk_handheld_crc8(self):
         bits = M.afsk_bits_encode(M.L2_FILLER, "handheld", False)
         baud = M.AFSK_PROFILES["handheld"]["baud"]

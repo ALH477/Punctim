@@ -648,7 +648,10 @@ class _DirMedium(Transport):
         self._out, self._in, self._poll = out_dir, in_dir, poll
         self._flush_s = max(0.0, float(flush_ms)) / 1000.0
         self._pending = None                  # PAIRS: (frame, t_monotonic)
-        self._plock = threading.Lock()
+        # Held across every publish (pairing decision, _n, and the file write), so
+        # a sender thread and the idle flush can neither reuse a file number nor
+        # publish a lone frame after the frame that followed it.
+        self._plock = threading.RLock()
         self._n = 0
         self._seen = set()
         self._rx_running = False
@@ -658,11 +661,12 @@ class _DirMedium(Transport):
                 os.makedirs(d, exist_ok=True)
 
     def _publish(self, encode):
-        self._n += 1
-        tmp = os.path.join(self._out, f".{self.name}-{self._n}{self.EXT}.tmp")
-        final = os.path.join(self._out, f"{self.name}-{self._n:08d}{self.EXT}")
-        encode(tmp)
-        os.replace(tmp, final)            # atomic publish so the reader never sees a partial
+        with self._plock:
+            self._n += 1
+            tmp = os.path.join(self._out, f".{self.name}-{self._n}{self.EXT}.tmp")
+            final = os.path.join(self._out, f"{self.name}-{self._n:08d}{self.EXT}")
+            encode(tmp)
+            os.replace(tmp, final)        # atomic publish so the reader never sees a partial
 
     def _transmit(self, frame, dest):
         if not self._out:
@@ -675,15 +679,15 @@ class _DirMedium(Transport):
             if held is None:
                 self._pending = (bytes(frame), time.monotonic())
                 return
-        self._publish(lambda path: self._encode_pair_file(held[0], bytes(frame), path))
+            self._publish(lambda path: self._encode_pair_file(held[0], bytes(frame), path))
 
     def flush(self):
         if not self.PAIRS:
             return
         with self._plock:
             held, self._pending = self._pending, None
-        if held is not None and self._out:
-            self._publish(lambda path: self._encode_pair_file(held[0], None, path))
+            if held is not None and self._out:
+                self._publish(lambda path: self._encode_pair_file(held[0], None, path))
 
     def _idle(self):
         held = self._pending
@@ -910,7 +914,8 @@ def hydra_tool_caps(tool):
 
 # The musical tone-table HydraModem profiles (hydra_profile_music presets): M-FSK on a
 # just-intonation scale built from the baud's harmonic series. See hydramodem/docs/MUSIC.md.
-HYDRA_MUSIC_PROFILES = ("melody", "chime", "nocturne", "bass")
+# Single-sourced from the ctypes binding, whose import loads nothing.
+from .hydramodem_cffi import MUSIC_PROFILES as HYDRA_MUSIC_PROFILES  # noqa: E402
 # The polyphonic duet (hydra_profile_duet): TWO frames per WAV, the melody voice
 # carrying the first and the bass voice the second. Needs poly_tx/poly_rx (tool) or
 # libhydramodem's hydra_modem_tx_poly (cffi).
@@ -923,14 +928,27 @@ HYDRA_PROFILES = ("default", "aux") + HYDRA_MUSIC_PROFILES + HYDRA_POLY_PROFILES
 HYDRA_AUX_FLAGS = ["--base-freq", "1200", "--tone-spacing", "1200", "--baud", "1200"]
 
 
+def _hydra_check_args(profile, fec, base_freq, tone_spacing, baud, n_tones, interleave):
+    """The argument checks HydraTransport and HydraCffiTransport share (ValueError)."""
+    if profile not in HYDRA_PROFILES:
+        raise ValueError(f"hydra profile must be {'|'.join(HYDRA_PROFILES)}, got {profile!r}")
+    if fec not in ("none", "rep3", "conv"):
+        raise ValueError(f"hydra fec must be none|rep3|conv, got {fec!r}")
+    if profile == "duet" and any(
+            x is not None for x in (base_freq, tone_spacing, baud, n_tones, interleave)):
+        raise ValueError("hydra: profile=duet fixes its tone plan and FEC; "
+                         "base_freq/tone_spacing/baud/n_tones/interleave do not apply")
+
+
 class HydraTransport(_DirMedium):
     """Carry frames over HydraModem via the `frame_tx`/`frame_rx` tools. Raises
     MediumUnsupported at construction if they aren't built/on PATH (run
     hydramodem/dcf-tools/build.sh, then set $HYDRA_TX/$HYDRA_RX or put build/ on PATH).
 
     profile="default"|"aux" picks hydra_profile_default / hydra_profile_aux_cable;
-    "melody"|"chime"|"nocturne" pick the musical tone-table profiles (need a
-    frame_tx/frame_rx with --profile);
+    "melody"|"chime"|"nocturne"|"bass" pick the musical tone-table profiles (need a
+    frame_tx/frame_rx with --profile); "duet" sends two frames per WAV, melody voice
+    + bass voice (needs poly_tx/poly_rx; see _init_duet);
     interleave=0 disables the coded-bit interleaver (needs a tool with --interleave,
     else MediumUnsupported); base_freq/tone_spacing/baud/n_tones override the profile's
     tone plan (FDMA channels)."""
@@ -940,14 +958,8 @@ class HydraTransport(_DirMedium):
     def __init__(self, name="hydra", fec="conv", tx_bin=None, rx_bin=None,
                  base_freq=None, tone_spacing=None, baud=None, n_tones=None,
                  profile="default", interleave=None, rate_bps=8000, **kw):
-        if profile not in HYDRA_PROFILES:
-            raise ValueError(f"hydra profile must be {'|'.join(HYDRA_PROFILES)}, got {profile!r}")
-        if fec not in ("none", "rep3", "conv"):
-            raise ValueError(f"hydra fec must be none|rep3|conv, got {fec!r}")
+        _hydra_check_args(profile, fec, base_freq, tone_spacing, baud, n_tones, interleave)
         if profile == "duet":
-            if any(x is not None for x in (base_freq, tone_spacing, baud, n_tones, interleave)):
-                raise ValueError("hydra: profile=duet fixes its tone plan and FEC; "
-                                 "base_freq/tone_spacing/baud/n_tones/interleave do not apply")
             self._init_duet(name, tx_bin, rx_bin, rate_bps, kw)
             return
         tx = tx_bin or os.environ.get("HYDRA_TX") or shutil.which("frame_tx")
@@ -1074,6 +1086,7 @@ class HydraCffiTransport(_DirMedium):
                  baud=None, n_tones=None, profile="default", interleave=None,
                  rate_bps=8000, **kw):
         from .hydramodem_cffi import HydraDuet, HydraModem, available
+        _hydra_check_args(profile, fec, base_freq, tone_spacing, baud, n_tones, interleave)
         if not available():
             raise MediumUnsupported("libhydramodem not loadable (build hydramodem/ or set "
                                     "$HYDRAMODEM_LIB)")

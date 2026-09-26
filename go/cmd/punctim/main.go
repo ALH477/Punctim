@@ -161,7 +161,7 @@ DCF medium tool (Go): move DeModFrames between any two media, deterministically
 
 media: file:path=,append=,follow=,mode=  stdio:  hex:[path=]
        udp:dialect=proto|bare,bind=,peer=a|b,pair=1,flush_ms=20,ts=0|now,seq_start=1
-       hydra:in=DIR,out=DIR,profile=default|aux,fec=none|rep3|conv,interleave=0|1,
+       hydra:in=DIR,out=DIR,profile=default|aux|melody|chime|nocturne|bass,fec=none|rep3|conv,interleave=0|1,
              base_freq=,tone_spacing=,baud=,n_tones=,tx=,rx=
        (l2eth: loop: afsk: audio: sdr: janus: -> exit 3 in this build)
 exit: 0 ok, 1 I/O, 2 usage, 3 medium unsupported, 4 cert failed, 5 invalid frame,
@@ -612,7 +612,7 @@ var schemeKeys = map[string][]string{
 	"udp":   {"dialect", "bind", "peer", "pair", "flush_ms", "ts", "seq_start"},
 	"l2eth": {"if", "ethertype", "dst", "mtu", "impl", "id", "flush_ms"},
 	"loop":  {"id"},
-	"hydra": {"in", "out", "profile", "fec", "interleave", "base_freq", "tone_spacing", "baud",
+	"hydra": {"in", "out", "profile", "fec", "interleave", "base_freq", "tone_spacing", "flush_ms", "baud",
 		"n_tones", "impl", "tx", "rx"},
 	"afsk":  {"in", "out", "profile", "fec"},
 	"audio": {"in", "out", "profile", "fec"},

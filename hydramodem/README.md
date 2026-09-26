@@ -241,7 +241,8 @@ docs/      RECEIVER.md  (acquisition + timing-recovery design notes)
 
 See **BUILD.md** for the Faust compile commands, JH7110 cross-compilation, and
 the profile-matching requirement; **docs/RECEIVER.md** for the receiver design;
-**docs/MUSIC.md** for the musical profiles (`--profile melody|chime|nocturne`).
+**docs/MUSIC.md** for the musical profiles (`--profile melody|chime|nocturne|bass`)
+and the two-frame `duet` (`dcf-tools/poly_tx`/`poly_rx`).
 
 ## License
 

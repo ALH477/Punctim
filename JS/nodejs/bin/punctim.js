@@ -91,7 +91,7 @@ const SCHEMES = {
   udp: ['dialect', 'bind', 'peer', 'pair', 'flush_ms', 'ts', 'seq_start'],
   l2eth: ['if', 'ethertype', 'dst', 'mtu', 'impl', 'id', 'flush_ms'],
   loop: ['id'],
-  hydra: ['in', 'out', 'profile', 'fec', 'interleave', 'base_freq', 'tone_spacing',
+  hydra: ['in', 'out', 'profile', 'fec', 'interleave', 'base_freq', 'tone_spacing', 'flush_ms',
     'baud', 'n_tones', 'impl', 'tx', 'rx'],
   afsk: ['in', 'out', 'profile', 'fec'],
   audio: ['in', 'out', 'profile', 'fec'],

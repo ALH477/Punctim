@@ -23,7 +23,7 @@
  *   loop:id=NAME     the in-process broadcast medium: a loop: writer delivers to a loop:
  *                    reader with the same id in this process (Python LoopbackMedium) and
  *                    otherwise discards; a loop: reader is an infinite, silent source.
- *   hydra:in=,out=,profile=default|aux,fec=none|rep3|conv,interleave=0|1,base_freq=,
+ *   hydra:in=,out=,profile=default|aux|melody|chime|nocturne|bass,fec=none|rep3|conv,interleave=0|1,base_freq=,
  *         tone_spacing=,baud=,n_tones=,impl=tool,tx=,rx=
  *                    HydraModem WAV spool dirs via fork/exec of frame_tx / frame_rx
  *                    (tx=/rx=, $HYDRA_TX/$HYDRA_RX, or PATH), identical spool semantics
@@ -227,7 +227,7 @@ static int mkdirs(const char *path) {
 }
 
 /* ── the medium URI grammar (mirrors python/dcf/medium.py:parse_uri) ─────────────── */
-typedef struct { const char *scheme; const char *keys[14]; } scheme_keys_t;
+typedef struct { const char *scheme; const char *keys[16]; } scheme_keys_t;
 static const scheme_keys_t SCHEMES[] = {
     {"file",  {"path", "mode", "append", "follow", "in", "out", NULL}},
     {"stdio", {NULL}},
@@ -236,7 +236,7 @@ static const scheme_keys_t SCHEMES[] = {
     {"l2eth", {"if", "ethertype", "dst", "mtu", "impl", "id", "flush_ms", NULL}},
     {"loop",  {"id", NULL}},
     {"hydra", {"in", "out", "profile", "fec", "interleave", "base_freq", "tone_spacing",
-               "baud", "n_tones", "impl", "tx", "rx", NULL}},
+               "flush_ms", "baud", "n_tones", "impl", "tx", "rx", NULL}},
     {"afsk",  {"in", "out", "profile", "fec", NULL}},
     {"audio", {"in", "out", "profile", "fec", NULL}},
     {"sdr",   {"in", "out", "mod", NULL}},

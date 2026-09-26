@@ -191,7 +191,11 @@ fraction, so it drifts over 240,000 samples):
 
 - `qsin(N, k) = sin(2πk/N)` is computed with libm **only for `k ≤ N/4`**, as
   `sin((2.0*M_PI*k)/N)`, and folded by symmetry elsewhere. The table is
-  therefore exactly odd and quarter-symmetric.
+  therefore exactly odd and quarter-symmetric. It is the one input from
+  outside this file: the bytes are reproducible only across `sin`
+  implementations that agree on those `N/4 + 1` arguments. glibc's `sin` is
+  correctly rounded in practice, and the Exsecutor port matches the C output
+  byte for byte on glibc; other libms (musl, macOS, MSVC) are **[UNTESTED]**.
 - Data carrier: an integer phase `a` starts at 0 at the first pre-roll
   sample. For each sample, `a += tone_mult[symbol]` (mod `L`) *before* the
   output, as the reference DSP does.
@@ -219,8 +223,10 @@ clock-shifted input.
   orthogonal. A hard-driven speaker may not. If a real acoustic link
   misbehaves, first try `drone_mult[] = 0`.
 - **Faust backend:** the compiled RX bank hard-codes a linear tone plan, so
-  `hydra_rx_dsp_create()` refuses a tone table. Use the default `make` (C
-  reference RX). The musical TX does not use either DSP backend; it is the
+  `hydra_rx_dsp_create()` refuses a tone table. That refusal is a NULL, which
+  `hydra_modem_rx` cannot tell from a failed allocation, so a Faust build reports
+  a musical decode as `HYDRA_ERR_ALLOC` ("out of memory"). Use the default `make`
+  (C reference RX). The musical TX does not use either DSP backend; it is the
   exact table synthesis above, in C.
 - **Certification:** the `hydra_symbols` vectors certify the symbol stream,
   which does not depend on the profile. The musical profiles use 8 or 4 tones

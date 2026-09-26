@@ -18,7 +18,7 @@ int main(int argc, char **argv)
 {
     hydra_profile v[2];
     uint8_t out[2][HYDRA_DCF_BYTES];
-    int st[2], sr = 0, k, i;
+    int st[2] = { -1, -1 }, sr = 0, k, i;
     float *audio = NULL; size_t n = 0;
     if (argc != 2) { fprintf(stderr, "usage: %s in.wav\n", argv[0]); return 2; }
     hydra_profile_melody(&v[0]);
@@ -27,6 +27,7 @@ int main(int argc, char **argv)
     if (hydra_wav_read(argv[1], &audio, &n, &sr) != 0) { fprintf(stderr, "read %s failed\n", argv[1]); return 1; }
     k = hydra_modem_rx_poly(v, 2, audio, n, out, st);
     free(audio);
+    if (k < 0) { fprintf(stderr, "rx_poly: bad arguments\n"); return 1; }
     for (int vo = 0; vo < 2; ++vo) {
         if (st[vo] != HYDRA_OK) { puts("-"); continue; }
         for (i = 0; i < (int)HYDRA_DCF_BYTES; ++i) printf("%02x", out[vo][i]);

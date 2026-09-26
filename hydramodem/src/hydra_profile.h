@@ -141,8 +141,10 @@ void hydra_profile_bass(hydra_profile *p);
 /* ---- polyphony: several frames at once, one voice each ----------------------
  * Every musical tone is an integer harmonic of the baud, so two voices at the
  * SAME baud whose tones (and drones) are disjoint are orthogonal: each voice's
- * correlators see nothing of the others, whatever notes they play, because
- * their symbol boundaries coincide. hydra_modem_tx_poly sums up to
+ * correlators see nothing of the others' symbol bodies, whatever notes they
+ * play, because their symbol boundaries coincide. The one exception is a later
+ * voice's attack (ramp_ms), which is not on the grid: in the duet the melody's
+ * 10 ms pre-roll overlaps one bass symbol at about -34 dB (docs/MUSIC.md). hydra_modem_tx_poly sums up to
  * HYDRA_POLY_MAX_VOICES independent frames into one burst -- the acoustic
  * SuperPack: a frame pair in one transmission, where SuperPack puts a pair in
  * one datagram. Voices are right-aligned (shorter ones enter later, by whole

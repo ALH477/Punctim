@@ -10,20 +10,10 @@
  *                                         `hydra:profile=duet` medium sends an odd frame)
  */
 #include "../src/hydramodem.h"
+#include "frame_profile.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-static int parse_hex(const char *h, uint8_t *out, int n)
-{
-    if ((int)strlen(h) != 2 * n) return -1;
-    for (int i = 0; i < n; ++i) {
-        unsigned v;
-        if (sscanf(h + 2 * i, "%2x", &v) != 1) return -1;
-        out[i] = (uint8_t)v;
-    }
-    return 0;
-}
 
 int main(int argc, char **argv)
 {
@@ -36,8 +26,8 @@ int main(int argc, char **argv)
         fprintf(stderr, "usage: %s <17-byte-hex A (melody)> [<17-byte-hex B (bass)>] out.wav\n", argv[0]);
         return 2;
     }
-    if (parse_hex(argv[1], f[0], HYDRA_DCF_BYTES) ||
-        (nv == 2 && parse_hex(argv[2], f[1], HYDRA_DCF_BYTES))) {
+    if (frame_parse_hex(argv[1], f[0], HYDRA_DCF_BYTES) ||
+        (nv == 2 && frame_parse_hex(argv[2], f[1], HYDRA_DCF_BYTES))) {
         fprintf(stderr, "bad hex (need %d hex chars per frame)\n", 2 * (int)HYDRA_DCF_BYTES);
         return 2;
     }

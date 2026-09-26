@@ -206,7 +206,7 @@ frame, skipping a voice that did not decode. The duet fixes its tone plan and FE
 needs `poly_tx`/`poly_rx` (`$HYDRA_POLY_TX`/`$HYDRA_POLY_RX`, next to `frame_tx`, or PATH)
 or `impl=cffi`.
 
-The musical profiles (`melody`/`chime`/`nocturne`, `hydra_profile_music`) change only the
+The musical profiles (`melody`/`chime`/`nocturne`/`bass`, `hydra_profile_music`) change only the
 symbol → frequency map (a just-intonation tone table on the baud's harmonics) and the
 tempo; the symbol stream is built by the same `hydra_frame_build`, but their 4/8-tone,
 12-symbol-preamble parameters are **not** among the certified cases (see

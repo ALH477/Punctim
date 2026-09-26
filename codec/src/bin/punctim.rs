@@ -75,7 +75,7 @@ DCF medium tool: move DeModFrames between any two media, deterministically
 
 media (this build): file:path=,append=,follow=,mode=  stdio:  hex:[path=,append=,follow=]
   udp:dialect=proto|bare,bind=,peer=a|b,pair=1,flush_ms=20,ts=0|now,seq_start=1
-  hydra:in=DIR,out=DIR,profile=default|aux,fec=none|rep3|conv,interleave=0|1,
+  hydra:in=DIR,out=DIR,profile=default|aux|melody|chime|nocturne|bass,fec=none|rep3|conv,interleave=0|1,
         base_freq=,tone_spacing=,baud=,n_tones=,impl=tool,tx=,rx=
   (loop: l2eth: afsk: audio: sdr: janus: -> exit 3 in the Rust build)
 exit: 0 ok, 1 I/O, 2 usage, 3 medium unsupported, 4 cert failed, 5 invalid frame,
@@ -622,6 +622,7 @@ const SCHEMES: [(&str, &[&str]); 12] = [
             "interleave",
             "base_freq",
             "tone_spacing",
+            "flush_ms",
             "baud",
             "n_tones",
             "impl",
