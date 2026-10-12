@@ -73,6 +73,99 @@ component lists are homogeneous so the ≥1.21.5 SNBT text parser accepts them.
 **Convention kept:** `mc:` is a *known* medium everywhere — the C/Rust/Go/Node `punctim` parse it and
 exit 3 (Python-only), matching how `janus:`/`sdr:` are handled.
 
+## 2026-10-11 — Multi-kind agent presence & ping pass (dated findings)
+
+**What landed** (`e898983`): a pinger that discovers and pings several kinds of
+agents on one machine — Python `DcfTextNode` agents (echo / coordinator /
+langgraph-llm / lua) over UDP, and an **Exsecutor runtime** agent over a stdio
+pipe. Presence is an adapter over DCF-Text: PING/PONG ride ordinary DATA frames,
+distinguished by two new descriptor flag bits (`PING` 0x08, `PONG` 0x10) that are
+opaque to L2, so the certified `text_vectors.json` is **untouched** (verified: no
+drift after regeneration). The payload is a deterministic `DCP1 <kind> <node_id>
+<name>` line, not JSON, so the Exsecutor agent parses it byte-by-byte.
+
+**Files:** `matrix-bridge/dcf_presence.py` (line codec + flags + `PresenceTable`),
+`matrix-bridge/a2a_ping.py` (pinger CLI: `discover` / `ping` / `ping-exsc` /
+`demo`), `matrix-bridge/tests/test_a2a_ping.py`, `exsecutor/agent/`
+(`demodframe.exsc` · `codex.exsc` · `presence.exsc` · `driver.exsc` ·
+`selftest.sh`), `Documentation/DCF_PRESENCE_SPEC.md` (normative).
+
+**Why the Exsecutor agent is a stdio pipe, not a socket.** `rete` is declared
+(spec §4.6) but not derivable (§4.7); the prelude's syscall table lists `rete` as
+`[OPEN]` with no routines, and "no socket-family syscall appears here, and none
+ever will without a `rete` routine." The agent therefore speaks the `stdio:`
+medium (`DCF_MEDIUM_SPEC.md`, stream class): the host driver feeds it whole
+17-byte `DeModFrame`s on stdin and reads whole frames from stdout. Its audited
+syscall set is `read(0)` / `write(1)` / `exit_group(231)` — the same set the
+entry-23 certificate binary audits to. Identity (kind, node id, name) is compiled
+in as literals: Exsecutor has no argv and no getenv.
+
+**Verified green (all run, all passed):**
+
+- `dcf_presence.py` selftest: CERTIFIED (line codec round-trip + rejection of
+  malformed lines + flag predicates + roster fold in insertion order with dedup).
+- `tests/test_a2a_ping.py`: CERTIFIED (codec, roster, two-node PING/PONG loopback
+  over UDP, channel isolation — a foreign-channel node does not answer).
+- `a2a_ping.py demo`: CERTIFIED — pings a Python `echo` agent (UDP, ~4 ms RTT)
+  **and** the Exsecutor agent (stdio pipe, ~0.1 ms RTT), two kinds in one run.
+- `exsecutor/agent/selftest.sh`: CERTIFIED — compiles the agent unit with the
+  pinned `exsc`, assembles with `fasmg`, pipes a canned PING in, compares the PONG
+  frames **byte-for-byte** against a Python-computed oracle, checks determinism
+  (two runs byte-identical), checks clean EOF (exit 0), and checks that a corrupt
+  frame fails loudly (exit 2). Skips cleanly without a toolchain; fails loudly
+  under `PUNCTIM_REQUIRE_EXSECUTOR=1`.
+- No drift: `exsecutor/certify.sh` still 246/246; `gen_text_vectors.py` output
+  byte-identical to `Documentation/text_vectors.json`; existing `test_a2a.py`
+  still CERTIFIED.
+
+**Findings from this pass** (each verified against the pinned compiler, 2026-10-11):
+
+- **P1. `atque` / `sive` / `residuum` are unusable in source programs even though
+  the spec says they are settled.** Spec §5.4 (2026-09-25 amendment) admits
+  integer `/`, `residuum`, `atque`, `sive`, and points at
+  `tests/programs/basis64/` and `tests/programs/numerus_decimalis/` as evidence —
+  but **neither compiles** with the pinned `exsc` from the flake
+  (`nix build .#exsc`): both fail with `EXS-E0201` at the operator. The fixture
+  `tests/unit/cst_bitand_or.asm` itself records the gap: its header says "THIS
+  FIXTURE STOPS AT THE CST … `checker/types/types.inc` `rassert`s on an op
+  appended after `AST_OP_DIV` that it does not know, deliberately, until its arms
+  are widened — so nothing here runs the checker." The checker arms for
+  `AST_OP_BAND`/`AST_OP_BOR`/`AST_OP_REM` exist in the dispatch (the `.bitop` and
+  `.bin_divadm` arms), but the `rassert` guards the *next* append — meaning the
+  arms were never reached from source. The pinned flake input appears to lag the
+  EXSECUTOR tree. The Exsecutor agent was written around this: bit extraction
+  uses `deorsum` + `sicut u8` (shift right, take the low byte), bit tests use a
+  shift-to-low-bit helper (`bit_est`), and the seq split uses
+  `seq - ((seq deorsum 10) sursum 10)` instead of `residuum`. *Open:* confirm
+  whether the pinned EXSECUTOR flake input is stale, or whether the spec's
+  "settled" claim is ahead of the shipped compiler.
+- **P2. Module-level `firma` whose initializer is an `acies` literal traps in the
+  lowering.** Spec §8.6 records this ("a table is written as a function returning
+  the literal until it is closed"). The agent's identity strings therefore live
+  behind accessor functions (`genus_agentis()`, `nomen()`), not module constants.
+  *Known, worked around.*
+- **P3. `&mutabilis u16` parameters do not accept `mutabilis u16` arguments**
+  (`EXS-E0303`). Out-params are `&mutabilis acies<u8, N>` only. The agent avoids
+  scalar out-params entirely. *Known, worked around.*
+- **P4. Functions with six scalar parameters plus an aggregate return trip the
+  emitter** ("param index > 5 (Tier 1's 6-argument limit)" — finding 8). The
+  agent's `fac_quantum` takes a `DeModFrame`-shaped set as one aggregate via
+  `vacuum()` + field assignment, matching `obsigna`'s design. *Known, worked
+  around.*
+- **P5. A `mutabilis` value cannot be cast** (`firma w = buf sicut acies<…>` where
+  `buf` is `mutabilis` fails with `EXS-E0305`). Copy to `firma` first, then cast.
+  The driver does this for every frame buffer. *Known, worked around.*
+
+**Convention kept:** the new flag bits are opaque to L2 and the `DCP1` line is
+application payload, so this pass adds **no** vectors and does not touch the
+246-vector wire certificate or the `text_vectors.json` certificate. The new
+spec `DCF_PRESENCE_SPEC.md` is normative and listed in `Documentation/index.md`;
+`DCF_TEXT_SPEC.md`'s Consumers section cross-references it.
+
+**Wire-up:** `make test-a2a` runs the presence selftest + loopback tests + the
+multi-kind demo. `make certify` now also runs `exsecutor/agent/selftest.sh`
+alongside `exsecutor/certify.sh`. Nix apps: `#a2a-ping`, `#a2a-ping-demo`.
+
 ## 2026-09-24 — DCF-Medium pass (dated findings)
 
 Each entry below is dated 2026-09-24 and was verified against the tree on that date.
@@ -582,6 +675,10 @@ donee. The offending line has been removed.
 | `golden_vectors.json` | 109+137-vector finite certificate |
 | `wirelab_mcp.py` | MCP server over the codec + certificate |
 | `wirelab.lua` | DeMoD UI front panel, self-certifying |
+| `matrix-bridge/dcf_presence.py` | presence line codec + flag bits + `PresenceTable` |
+| `matrix-bridge/a2a_ping.py` | multi-kind agent pinger CLI (`discover` / `ping` / `ping-exsc` / `demo`) |
+| `exsecutor/agent/` | the Exsecutor presence agent (`.exsc` codec + stdio driver + `selftest.sh`) |
+| `Documentation/DCF_PRESENCE_SPEC.md` | normative presence / ping adapter spec |
 
 The single highest-leverage action: make `certify` a CI gate. It turns "every SDK
 agrees" from a hope into a 246-vector test, and it would have caught the
