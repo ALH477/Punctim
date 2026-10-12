@@ -1,0 +1,64 @@
+// SPDX-License-Identifier: LGPL-3.0-only
+// Copyright (C) 2026 DeMoD LLC.
+//
+// The DeModFrame codec for the Exsecutor presence agent.  Pure: no `poscit`
+// anywhere, no `initium`, nothing that could reach a capability.  The body is
+// the same machinery as the certified entry-23 codec (exsecutor/codex.exsc):
+// the CRC's polynomial division is `aut` and a shift by one, and a field
+// access is the shift and the byte-order load the declaration states.
+
+// CRC-16/CCITT-FALSE over b[0..n): init 0xFFFF, polynomial 0x1021, no
+// reflection, no final xor.
+publica functio redundantia(b: acies<u8, 17>, n: mensura) -> u16 {
+    mutabilis c: u16 = 0xffff;
+    per i in 0..n {
+        c = c aut ((b[i] sicut u16) sursum 8);
+        per k in 0..8 {
+            si c ge 0x8000 {
+                c = (c sursum 1) aut 0x1021;
+            } aliter {
+                c = c sursum 1;
+            }
+        }
+    }
+    redde c;
+}
+
+// The affine validity map: zero iff the stored CRC matches bytes 0..14.
+publica functio syndroma(w: acies<u8, 17>) -> u16 {
+    firma f = w sicut DeModFrame;
+    redde redundantia(w, 15) aut f.cursus;
+}
+
+// Seal: the six free fields as given; sync byte, version and CRC written.
+publica functio obsigna(f: DeModFrame) -> DeModFrame {
+    mutabilis g = f;
+    g.signum = 0xd3;
+    g.versio = 1;
+    g.cursus = redundantia(g sicut acies<u8, 17>, 15);
+    redde g;
+}
+
+// The all-zero frame.
+publica functio vacuum() -> DeModFrame {
+    redde DeModFrame {
+        signum: 0,
+        versio: 0,
+        genus: 0,
+        numerus: 0,
+        fons: 0,
+        meta: 0,
+        onus: 0,
+        tempus: 0,
+        cursus: 0
+    };
+}
+
+// Read: 0 valid, 1 bad sync, 2 bad version, 3 bad CRC, tested in that order.
+publica functio lege(w: acies<u8, 17>) -> u8 {
+    firma f = w sicut DeModFrame;
+    si f.signum ne 0xd3 { redde 1; }
+    si f.versio ne 1 { redde 2; }
+    si syndroma(w) ne 0 { redde 3; }
+    redde 0;
+}

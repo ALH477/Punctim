@@ -1,0 +1,212 @@
+// SPDX-License-Identifier: LGPL-3.0-only
+// Copyright (C) 2026 DeMoD LLC.
+//
+// The Exsecutor presence agent — a stdio pipe agent that answers PINGs.
+//
+// WHY STDIO AND NOT A SOCKET. Exsecutor's `rete` (network) atom is declared
+// (spec §4.6) but not derivable (§4.7: "the other atoms are declared and not
+// yet derivable"), and the prelude's syscall table lists `rete` as [OPEN]
+// with no routines — "No socket-family syscall appears here, and none ever
+// will without a `rete` routine" (compiler/x86_64/prelude/README.md). So an
+// .exsc program cannot open a UDP socket. The host driver feeds it whole
+// 17-byte DeModFrames on stdin and reads whole frames from stdout: exactly
+// the `stdio:` medium DCF_MEDIUM_SPEC.md already defines (stream class,
+// byte-wise scan). The audited syscall set stays read(0) / write(1) /
+// exit_group(231) — the same set the entry-23 certificate binary audits to.
+//
+// PROTOCOL. The stdio medium is framing-agnostic, so the agent implements the
+// DCF-Text L2 framing itself, minimally, for the one message shape it needs:
+// a presence payload is <= 40 bytes, so it always fits in ONE data fragment
+// after the descriptor. A PING arrives as two frames:
+//
+//   descriptor  frag_idx=0  payload = [len_hi, len_lo, flags, 0]
+//   data        frag_idx=1  payload = the DCP1 line, zero-padded to 4
+//
+// The agent reads the descriptor, learns `len` and `flags`, reads one data
+// fragment, and if the flags ask for a ping (FLAG_PING set, FLAG_PONG clear)
+// answers with its own descriptor + data pair carrying the PONG flag. The
+// answer's seq echoes the PING's packet_id, and its src is the agent's
+// compiled-in node id; the dst is the PING's src.
+//
+// IDENTITY IS COMPILED IN. Exsecutor has no argv and no getenv (ambitus
+// beyond the standard streams is [OPEN]), so kind / node id / name are
+// literals served by the accessor functions in presence.exsc. Different
+// kinds of Exsecutor agent are different builds — the honest answer to
+// "no ambient state" (spec §1).
+//
+// EXIT STATUS. 0 on clean EOF; 2 on a frame the codec refused (bad sync /
+// version / CRC) — the driver fails loudly rather than silently dropping,
+// the same discipline as the certificate's driver; 3 on a short read
+// mid-frame; 4 on a write failure.
+
+// The helpers write no `poscit`: they are private, so their rows are inferred
+// from their bodies (spec §4.1 rule 5), and the authority they use is the
+// `Lector` / `Scriptor` `initium` hands them.  Declaring `poscit sicut l` on
+// a helper that calls another such helper is refused today (EXS-E0421 — the
+// checker defect recorded as docs/design/wire-codec.md finding 9), so the
+// helpers' rows are inferred, exactly as entry-23's probatio.exsc does.
+
+// ── reading ──────────────────────────────────────────────────────────────────
+functio lege_octetum(l: Lector) -> u16 {
+    redde l.lege_octeto();
+}
+
+// Read exactly 17 bytes into (*buf) from the reader, given the first byte
+// already read.  Returns 1 on success, 2 on a short read (end of input
+// mid-frame).
+functio lege_quantum_ex(l: Lector, buf: &mutabilis acies<u8, 17>,
+                       first: u8) -> u8 {
+    (*buf)[0] = first;
+    per i in 1..17 {
+        mutabilis c: u16 = lege_octetum(l);
+        si c eq 256 { redde 2; }
+        (*buf)[i] = c sicut u8;
+    }
+    redde 1;
+}
+
+// ── writing ──────────────────────────────────────────────────────────────────
+functio scribe_octetum(s: Scriptor, b: u8) -> mensura {
+    redde s.scribe_octeto(b);
+}
+
+// Write exactly 17 bytes from buf.  Returns 1 iff every byte wrote.
+functio scribe_quantum(s: Scriptor, buf: acies<u8, 17>) -> u8 {
+    per i in 0..17 {
+        si scribe_octetum(s, buf[i]) ne 1 { redde 0; }
+    }
+    redde 1;
+}
+
+// ── DCF-Text L2, the one message shape the agent speaks ──────────────────────
+// Build one DATA frame from a fully-specified DeModFrame.  Takes the frame
+// by value, not six scalars: six scalars plus the hidden result pointer are
+// seven words and the IR calling convention passes six (finding 8).  The
+// timestamp is 0: Exsecutor has no clock (horologium is [OPEN]), so the
+// 24-bit ts field is a fixed zero — the host stamps real time on the wire
+// when it relays the frame onto UDP.
+functio obsigna_fac(f: DeModFrame) -> DeModFrame {
+    redde obsigna(f);
+}
+
+// Pack four payload bytes into the onus field, big-endian.
+functio onus_ex(b0: u8, b1: u8, b2: u8, b3: u8) -> u32 {
+    mutabilis p1: u32 = ((b0 sicut u32) sursum 24) aut ((b1 sicut u32) sursum 16);
+    mutabilis p2: u32 = (b2 sicut u32) sursum 8;
+    redde p1 aut p2 aut (b3 sicut u32);
+}
+
+// Build one DATA frame with the given fields.  The frame is assembled first,
+// then sealed, so the call to obsigna carries one aggregate argument.
+functio fac_quantum(genus: u4, numerus: u16, fons: u16, meta: u16,
+                    onus: u32) -> DeModFrame {
+    mutabilis f = vacuum();
+    f.genus = genus;
+    f.numerus = numerus;
+    f.fons = fons;
+    f.meta = meta;
+    f.onus = onus;
+    redde obsigna(f);
+}
+
+// ── one inbound message ──────────────────────────────────────────────────────
+// Handles one DCF-Text message: descriptor frame + one data fragment, the
+// first byte of the descriptor already read as `first`.  Returns:
+//   0  handled (answered or ignored) — loop again with a fresh first byte
+//   2  a frame the codec refused
+//   3  a short read mid-frame
+//   4  a write failed
+functio tracta_missum(l: Lector, s: Scriptor, first: u8) -> u8 {
+    mutabilis desc: acies<u8, 17> = [0; 17];
+    mutabilis data: acies<u8, 17> = [0; 17];
+
+    firma r = lege_quantum_ex(l, desc, first);
+    si r ne 1 { redde 3; }                 // short read mid-frame
+    si lege(desc) ne 0 { redde 2; }        // codec refused the descriptor
+
+    // `desc` is mutabilis (lege_quantum_ex writes through a borrow), but a
+    // cast of a mutabilis value fails; copy to firma first (spec §5.2: a
+    // mutabilis binding is a copy, `f` is not written).
+    firma d = desc;
+    mutabilis dm = d sicut DeModFrame;
+    si dm.genus ne 0 { redde 2; }          // presence rides DATA (type 0)
+    // descriptor payload: [len_hi, len_lo, flags, reserved] in bytes 8..11,
+    // read through the onus field (big-endian u32).
+    // onus = b8<<24 | b9<<16 | b10<<8 | b11
+    // To extract byte N (0-indexed from the top), shift RIGHT (deorsum) by
+    // (3-N)*8 so the byte lands in the low 8 bits, then cast to u8.
+    firma onus_v: u32 = dm.onus;
+    mutabilis b8: u8 = (onus_v deorsum 24) sicut u8;    // byte 8  (len_hi)
+    mutabilis b9: u8 = (onus_v deorsum 16) sicut u8;    // byte 9  (len_lo)
+    mutabilis flags: u8 = (onus_v deorsum 8) sicut u8;  // byte 10 (flags)
+    mutabilis plen: u16 = ((b8 sicut u16) sursum 8) aut (b9 sicut u16);
+    si plen gt 64 { redde 2; }
+    si plen lt 1 { redde 2; }
+
+    // read the single data fragment (frag_idx 1)
+    mutabilis first2: u16 = lege_octetum(l);
+    si first2 eq 256 { redde 3; }
+    firma r2 = lege_quantum_ex(l, data, first2 sicut u8);
+    si r2 ne 1 { redde 3; }
+    si lege(data) ne 0 { redde 2; }
+    firma dc = data;
+    mutabilis d2 = dc sicut DeModFrame;
+    si d2.genus ne 0 { redde 2; }
+    mutabilis seq = d2.numerus;
+    mutabilis src_of_ping: u16 = d2.fons;
+    si frag_idx_of(seq) ne 1 { redde 2; }  // must be frag_idx 1
+
+    // a chat message is not answered; it just consumes its frames
+    si est_ping(flags) eq 0 { redde 0; }
+
+    // build the PONG line into a 64-byte buffer
+    mutabilis line: acies<u8, 64> = [0; 64];
+    firma llen = pinge_linia(line, genus_agentis(), GENUS_LEN,
+                             NODUS, nomen(), NOMEN_LEN);
+
+    // answer descriptor: same packet_id, frag_idx 0, flags = PONG,
+    // dst = the PING's src
+    mutabilis pid: u16 = packet_id_of(seq);
+    mutabilis out_desc = fac_quantum(0, seq_of(pid, 0), NODUS, src_of_ping,
+                                     onus_ex(((llen sicut u16) sursum 8) sicut u8,
+                                             llen sicut u8,
+                                             flags_pong(),
+                                             0));
+    firma wd = out_desc sicut acies<u8, 17>;
+    si scribe_quantum(s, wd) ne 1 { redde 4; }
+
+    // answer data: frag_idx 1, the first four line bytes, zero-padded
+    mutabilis b0: u8 = 0;
+    mutabilis b1: u8 = 0;
+    mutabilis b2: u8 = 0;
+    mutabilis b3: u8 = 0;
+    si llen gt 0 { b0 = line[0]; }
+    si llen gt 1 { b1 = line[1]; }
+    si llen gt 2 { b2 = line[2]; }
+    si llen gt 3 { b3 = line[3]; }
+    mutabilis out_data = fac_quantum(0, seq_of(pid, 1), NODUS, src_of_ping,
+                                     onus_ex(b0, b1, b2, b3));
+    firma wdd = out_data sicut acies<u8, 17>;
+    si scribe_quantum(s, wdd) ne 1 { redde 4; }
+
+    redde 0;
+}
+
+publica functio initium(m: Mundus) -> u8 {
+    firma a = m.ambitus();
+    sub ambitus = a;
+    firma l = Lector.ab_introitu(a);
+    firma s = Scriptor.ad_exitum(a);
+
+    // The main loop reads one byte at a time; 256 means end of input.
+    // Each 17-byte frame starts with the byte just read.
+    mutabilis c: u16 = lege_octetum(l);
+    dum c ne 256 {
+        firma r = tracta_missum(l, s, c sicut u8);
+        si r eq 2 { redde 2; }
+        si r eq 3 { redde 3; }
+        si r eq 4 { redde 4; }
+        c = lege_octetum(l);
+    }
+    redde 0;
+}

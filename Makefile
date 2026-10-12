@@ -3,7 +3,7 @@
 # point for setup, certification, tests, docs, and the client (see README.md).
 
 .DEFAULT_GOAL := help
-.PHONY: help setup certify io-matrix ci-local test docs client clean
+.PHONY: help setup certify test-a2a io-matrix ci-local test docs client clean
 
 help: ## List the available tasks
 	@echo "Punctim / DCF — make targets:"
@@ -72,7 +72,15 @@ certify: ## Regenerate golden vectors + run the wire, audio, SuperPack, mesh & M
 	@echo "== Exsecutor: in-tree DeModFrame codec vs the live certificate =="
 	@echo "   (skips without exsc/fasmg; see exsecutor/README.md)"
 	./exsecutor/certify.sh
+	@echo "== Exsecutor: presence agent (build + PING/PONG over a pipe) =="
+	@echo "   (skips without exsc/fasmg; see exsecutor/agent/)"
+	./exsecutor/agent/selftest.sh
 	@echo "ALL CERTS PASS"
+
+test-a2a: ## Run the presence / multi-kind agent ping tests (stdlib, loopback)
+	python3 matrix-bridge/dcf_presence.py
+	python3 matrix-bridge/tests/test_a2a_ping.py
+	python3 matrix-bridge/a2a_ping.py demo
 
 io-matrix: ## Build the punctim CLIs and run the cross-language medium I/O matrix
 	cmake -S C_SDK -B C_SDK/build -DDCF_BUILD_NODE=ON -DDCF_BUILD_EXAMPLES=OFF

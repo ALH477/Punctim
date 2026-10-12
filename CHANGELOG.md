@@ -8,6 +8,20 @@ reserved for when the full advertised language set is green in CI.
 ## [Unreleased]
 
 ### Added
+- **Multi-kind agent presence & ping** (`matrix-bridge/dcf_presence.py`,
+  `matrix-bridge/a2a_ping.py`, `exsecutor/agent/`) — a pinger that discovers and pings
+  several kinds of agents on one machine over the DCF mesh: Python `DcfTextNode` agents
+  (echo / coordinator / langgraph-llm / lua) over UDP, and an **Exsecutor runtime** agent
+  over a stdio pipe.  Presence rides ordinary DCF-Text DATA frames distinguished by two new
+  descriptor flag bits (`PING` 0x08, `PONG` 0x10 — opaque to L2, so the certified
+  `text_vectors.json` is untouched); the payload is a deterministic `DCP1 <kind> <node_id>
+  <name>` line, not JSON, so the Exsecutor agent can parse it byte-by-byte.  The Exsecutor
+  agent (`exsecutor/agent/*.exsc`) is pure codec + a stdio driver: `rete` is not derivable
+  yet, so it speaks the `stdio:` medium (read(0)/write(1)/exit_group only, the same audited
+  set as the entry-23 certificate).  Selftest: `exsecutor/agent/selftest.sh` (build + PING→PONG
+  byte-compared against a Python oracle + determinism + loud failure on a corrupt frame);
+  `make test-a2a` runs the loopback demo (`a2a_ping.py demo`) which pings a Python ponger
+  **and** the Exsecutor agent.  Nix apps: `#a2a-ping`, `#a2a-ping-demo`.
 - **DCF-SPA** (`spa/`) — single-packet port authorization: an authentication-only (EAR99) side
   channel that gates HydraMesh data ports. Rust `dcf-spa-authorizer` (HMAC-SHA256 / Ed25519
   token verification, nonce-replay + freshness lifecycle, nftables granter) + `python/dcf/spa/`

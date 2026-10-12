@@ -1,0 +1,258 @@
+// SPDX-License-Identifier: LGPL-3.0-only
+// Copyright (C) 2026 DeMoD LLC.
+//
+// The presence / ping adapter for the Exsecutor agent.  Pure: no `poscit`,
+// no `initium`, no capability reachable.  This is the Exsecutor half of
+// matrix-bridge/dcf_presence.py — the same DCP1 line, the same flag bits —
+// so a Python pinger and an Exsecutor agent interoperate byte-for-byte.
+//
+// The DCP1 line is   DCP1 <kind> <node_id_hex> <name>\n   — space-separated,
+// LF-terminated, kind and name constrained to [a-z0-9-], node_id 0x + four
+// lowercase hex digits.  Parsing is a byte scan: no allocation beyond the
+// caller's buffer, no textus methods (the lowering refuses them today), so
+// every byte is read and compared as a u8.
+//
+// DCF-Text L2 bookkeeping (seq split 6+10, descriptor-then-data) is the HOST's
+// job: the stdio medium (DCF_MEDIUM_SPEC.md, stream class) delivers whole
+// 17-byte DeModFrames on stdin and expects whole frames on stdout.  This
+// file only builds and parses the PRESENCE PAYLOAD that rides inside those
+// frames, and decides what a PING must answer.
+//
+// SHAPE NOTES (measured against the pinned compiler, 2026-10-11):
+//  * `atque` / `sive` / `residuum` parse in the CST but the checker rasserts on
+//    them (`AST_OP_BAND`/`AST_OP_BOR`/`AST_OP_REM` have no arm yet — see
+//    compiler/x86_64/ast/kinds.inc's header), so this file uses only `aut`,
+//    `sursum`, `deorsum`, `+`, `-`, `sicut`, and comparisons.  Bit tests are
+//    done with a mask built by shifting, not `atque`.
+//  * A module-level `firma` whose initializer is an acies literal traps in
+//    the lowering (spec §8.6, "a table is written as a function returning the
+//    literal until it is closed"), so the identity strings are functions.
+//  * A `&mutabilis u16` parameter does not accept a `mutabilis u16` argument
+//    (EXS-E0303), so out-params are `&mutabilis acies<u8, N>` only.
+
+// Descriptor flag bits (opaque to L2 — they never change the framing bytes).
+// Bits 0-2 are DCF-Text's AGENT / MORE / RELIABLE; 3 and 4 are presence.
+firma FLAG_AGENT: u8 = 0x01;
+firma FLAG_PING:  u8 = 0x08;
+firma FLAG_PONG:  u8 = 0x10;
+
+// The 4-byte payload of a DCF-Text descriptor frame is [len_hi, len_lo, flags,
+// reserved].  A presence message is short (<= 40 bytes), so it always fits in
+// a single data fragment after the descriptor.
+firma FDATA: u8 = 0;                 // frame type carrying fragmented text
+
+// DCF-Text seq split: seq = packet_id[15:10] (6 bits) | frag_idx[9:0] (10).
+firma FRAG_BITS: u16 = 10;
+
+// ── identity accessors (module-level acies literals do not lower; functions
+//    returning them do — spec §8.6's recorded gap) ─────────────────────────────
+functio genus_agentis() -> acies<u8, 16> {
+    redde [0x65, 0x78, 0x73, 0x65, 0x63, 0x75, 0x74, 0x6f, 0x72, 0, 0, 0, 0, 0, 0, 0];   // "exsecutor"
+}
+firma GENUS_LEN: mensura = 9;
+
+functio nomen() -> acies<u8, 16> {
+    redde [0x65, 0x78, 0x73, 0x2d, 0x61, 0x67, 0x65, 0x6e, 0x74, 0, 0, 0, 0, 0, 0, 0];    // "exs-agent"
+}
+firma NOMEN_LEN: mensura = 9;
+
+// The agent's node id (src field).  Different builds change this one literal.
+firma NODUS: u16 = 0x00c3;
+
+// ── DCP1 line pack ───────────────────────────────────────────────────────────
+// Writes  DCP1 <kind> <node_id_hex> <name>\n  into (*out)[0..] and returns the
+// byte count.  The identity strings come from the accessors above; their
+// lengths are the module constants GENUS_LEN / NOMEN_LEN.
+
+functio pinge_linia(out: &mutabilis acies<u8, 64>,
+                    kind: acies<u8, 16>, kind_len: mensura,
+                    node_id: u16,
+                    nom: acies<u8, 16>, nom_len: mensura) -> mensura {
+    mutabilis n: mensura = 0;
+    // "DCP1 "
+    (*out)[n] = 0x44; n = n + 1;          // D
+    (*out)[n] = 0x43; n = n + 1;          // C
+    (*out)[n] = 0x50; n = n + 1;          // P
+    (*out)[n] = 0x31; n = n + 1;          // 1
+    (*out)[n] = 0x20; n = n + 1;          // space
+    // kind
+    per i in 0..kind_len {
+        (*out)[n] = kind[i]; n = n + 1;
+    }
+    (*out)[n] = 0x20; n = n + 1;          // space
+    // node_id as 0x + four lowercase hex digits
+    (*out)[n] = 0x30; n = n + 1;          // 0
+    (*out)[n] = 0x78; n = n + 1;          // x
+    mutabilis v: u16 = node_id;
+    per k in 0..4 {
+        mutabilis shift: u16 = 12;
+        shift = shift - ((k sicut u16) * 4);
+        mutabilis digit: u8 = ((v sursum shift) sicut u8);   // low byte of shifted
+        // the low nibble: shift the byte right by 4, then shift back left,
+        // then subtract — avoids `atque` (no checker arm yet).  Simpler:
+        // mask = (digit deorsum 4) sursum 4, then digit - mask gives the nibble.
+        mutabilis hi: u8 = (digit deorsum 4) sursum 4;
+        digit = digit - hi;
+        si digit lt 10 {
+            (*out)[n] = digit + 0x30;     // 0..9
+        } aliter {
+            (*out)[n] = digit + 0x57;     // a..f
+        }
+        n = n + 1;
+    }
+    (*out)[n] = 0x20; n = n + 1;          // space
+    // name
+    per i in 0..nom_len {
+        (*out)[n] = nom[i]; n = n + 1;
+    }
+    (*out)[n] = 0x0a; n = n + 1;          // \n
+    redde n;
+}
+
+// ── DCP1 line parse ──────────────────────────────────────────────────────────
+// Scans buf[0..len) for a well-formed DCP1 line.  Returns 1 and fills
+// (*node_id) if it is one, else 0.  The line must be the whole buffer (the
+// stdio medium delivers exactly one presence payload per message).
+//
+// Characters are validated by range comparisons only (no `atque`):
+//   [a-z0-9-]  =  0x2d, or 0x30..0x39, or 0x61..0x7a
+
+functio lege_linia(buf: acies<u8, 64>, len: mensura,
+                   node_id: &mutabilis acies<u8, 2>) -> u1 {
+    // minimum: "DCP1 k 0xNNNN n\n" = 5 + 1 + 1 + 6 + 1 + 1 + 1 = 16
+    si len lt 16 { redde 0; }
+    si len gt 64 { redde 0; }
+    // magic "DCP1 "
+    si buf[0] ne 0x44 { redde 0; }
+    si buf[1] ne 0x43 { redde 0; }
+    si buf[2] ne 0x50 { redde 0; }
+    si buf[3] ne 0x31 { redde 0; }
+    si buf[4] ne 0x20 { redde 0; }
+    // trailing newline
+    si buf[len - 1] ne 0x0a { redde 0; }
+    // kind: [a-z0-9-]+ up to the next space — validated but not stored
+    // (the agent only needs to know the line is well-formed; its own
+    // identity is compiled in).
+    mutabilis i: mensura = 5;
+    mutabilis klen: mensura = 0;
+    dum buf[i] ne 0x20 {
+        mutabilis c: u8 = buf[i];
+        si c eq 0x0a { redde 0; }
+        // reject anything outside [a-z0-9-]
+        si c ne 0x2d {
+            si c lt 0x30 { redde 0; }
+            si c gt 0x39 {
+                si c lt 0x61 { redde 0; }
+                si c gt 0x7a { redde 0; }
+            }
+        }
+        klen = klen + 1;
+        i = i + 1;
+        si klen ge 16 { redde 0; }
+        si i ge len { redde 0; }
+    }
+    si klen eq 0 { redde 0; }
+    i = i + 1;                          // past the space
+    // node_id: "0x" + four hex digits
+    si i + 6 ge len { redde 0; }
+    si buf[i] ne 0x30 { redde 0; }
+    si buf[i + 1] ne 0x78 { redde 0; }
+    mutabilis v: u16 = 0;
+    per k in 0..4 {
+        mutabilis c: u8 = buf[i + 2 + k];
+        mutabilis d: u8 = 0;
+        mutabilis ok: u8 = 0;
+        si c ge 0x30 {
+            si c le 0x39 { d = c - 0x30; ok = 1; }
+        }
+        si ok eq 0 {
+            si c ge 0x61 {
+                si c le 0x66 { d = c - 0x57; ok = 1; }
+            }
+        }
+        si ok eq 0 { redde 0; }
+        v = (v sursum 4) aut (d sicut u16);
+    }
+    // store node_id big-endian into the 2-byte out buffer
+    (*node_id)[0] = (v sursum 8) sicut u8;
+    (*node_id)[1] = v sicut u8;
+    i = i + 6;
+    si buf[i] ne 0x20 { redde 0; }
+    i = i + 1;
+    // name: [a-z0-9-]+ up to the trailing \n — validated, not stored
+    mutabilis nlen: mensura = 0;
+    dum buf[i] ne 0x0a {
+        mutabilis c: u8 = buf[i];
+        si c ne 0x2d {
+            si c lt 0x30 { redde 0; }
+            si c gt 0x39 {
+                si c lt 0x61 { redde 0; }
+                si c gt 0x7a { redde 0; }
+            }
+        }
+        nlen = nlen + 1;
+        i = i + 1;
+        si nlen ge 16 { redde 0; }
+        si i ge len { redde 0; }
+    }
+    si nlen eq 0 { redde 0; }
+    si i ne len - 1 { redde 0; }        // the \n is the last byte
+    redde 1;
+}
+
+// ── the PING -> PONG decision ────────────────────────────────────────────────
+// The agent answers a PING with a PONG carrying its own compiled-in identity.
+// Whether an inbound DCF-Text descriptor asks for that is read off the flag
+// byte: bit 3 (FLAG_PING) set, bit 4 (FLAG_PONG) clear.  Without `atque`,
+// the test is done by subtracting the mask: (flags - FLAG_PING) leaves the
+// PING bit clear exactly when it was set, and adding FLAG_PONG back gives a
+// value that differs from flags unless the PONG bit was already clear.
+// The reliable form without masks: shift the byte so the bit of interest is
+// the low bit, then compare the low bit to 1 by range.
+
+functio bit_est(flags: u8, mask: u8) -> u1 {
+    // extract one bit: shift right until the mask's set bit is bit 0, then
+    // the low bit is (shifted - ((shifted deorsum 1) sursum 1)).
+    mutabilis m: u8 = mask;
+    mutabilis v: u8 = flags;
+    dum m gt 1 {
+        m = m deorsum 1;
+        v = v deorsum 1;
+    }
+    // now m == 1 (the mask was a power of two); v's low bit is the answer
+    mutabilis hi: u8 = (v deorsum 1) sursum 1;
+    si v - hi eq 1 { redde 1; }
+    redde 0;
+}
+
+functio est_ping(flags: u8) -> u1 {
+    si bit_est(flags, FLAG_PING) eq 1 {
+        si bit_est(flags, FLAG_PONG) eq 0 {
+            redde 1;
+        }
+    }
+    redde 0;
+}
+
+functio flags_pong() -> u8 {
+    redde FLAG_AGENT aut FLAG_PONG;
+}
+
+// ── seq split helpers (no residuum — it has no checker arm yet) ──────────────
+// packet_id = seq deorsum FRAG_BITS (the high 6 bits)
+functio packet_id_of(seq: u16) -> u16 {
+    redde seq deorsum FRAG_BITS;
+}
+
+// frag_idx = seq with the high bits cleared: (seq deorsum FRAG_BITS) sursum
+// FRAG_BITS gives the high bits back shifted; subtracting removes them.
+functio frag_idx_of(seq: u16) -> u16 {
+    mutabilis hi: u16 = seq deorsum FRAG_BITS;
+    mutabilis back: u16 = hi sursum FRAG_BITS;
+    redde seq - back;
+}
+
+// seq = (packet_id sursum FRAG_BITS) + frag_idx
+functio seq_of(packet_id: u16, frag_idx: u16) -> u16 {
+    redde (packet_id sursum FRAG_BITS) + frag_idx;
+}

@@ -881,6 +881,12 @@
             a2aConfig = mkA2A "dcf-a2a-config" "a2a.py config";
             a2aSend = mkA2A "dcf-a2a-send" "a2a.py send";
             a2aRecv = mkA2A "dcf-a2a-recv" "a2a.py recv";
+            # Multi-kind agent pinger: discover / ping / ping-exsc over the
+            # presence protocol (matrix-bridge/a2a_ping.py + dcf_presence.py).
+            # The Exsecutor path (ping-exsc) shells out to exsc/fasmg like
+            # exsecutor/certify.sh; without them it skips cleanly.
+            a2aPing = mkA2A "dcf-a2a-ping" "a2a_ping.py";
+            a2aPingDemo = mkA2A "dcf-a2a-ping-demo" "a2a_ping.py demo";
             meshHttp = pkgs.writeShellApplication {
               name = "dcf-mesh-http";
               runtimeInputs = [ meshPython ];
@@ -904,6 +910,8 @@
             a2a-config = mkApp a2aConfig "dcf-a2a-config";
             a2a-send = mkApp a2aSend "dcf-a2a-send";
             a2a-recv = mkApp a2aRecv "dcf-a2a-recv";
+            a2a-ping = mkApp a2aPing "dcf-a2a-ping";
+            a2a-ping-demo = mkApp a2aPingDemo "dcf-a2a-ping-demo";
             mesh-agent = mkApp meshAgent "dcf-mesh-agent";
             mesh-http = mkApp meshHttp "dcf-mesh-http";
             mesh-viz = mkApp viz "dcf-mesh-viz";

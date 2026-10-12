@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: LGPL-3.0-only
+// Copyright (C) 2026 DeMoD LLC.
+//
+// The DeModFrame declaration for the Exsecutor presence agent.  This is the
+// same @transitus declaration the certified codec (exsecutor/demodframe.exsc,
+// spec §5.2's worked example) is built on, restated here so the agent's
+// compile unit is self-contained: declaration, then codec, then presence,
+// then driver.  The layout is the one invariant — 17 bytes, byte order in
+// the type — and every field access below is the shift/mask/load the
+// declaration states.
+
+@transitus
+publica structura DeModFrame {
+    signum:  u8
+    versio:  u4
+    genus:   u4
+    numerus: u16:maior
+    fons:    u16:maior
+    meta:    u16:maior
+    onus:    u32:maior
+    tempus:  u24:maior
+    cursus:  u16:maior
+}

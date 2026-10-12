@@ -407,6 +407,84 @@ timing, and channel isolation (a node on a different channel must not receive).
 
 ---
 
+## Presence & ping — discover and ping multi-kind agents on one machine
+
+`a2a_ping.py` is a **pinger**: it discovers which agents are live on a channel and
+pings each one, reporting its **kind** (echo / coordinator / langgraph-llm / lua /
+exsecutor), node id, name, and round-trip time.  It can ping **several kinds of
+agents on one machine** — Python `DcfTextNode` agents over UDP and an **Exsecutor
+runtime** agent over a stdio pipe.
+
+The presence protocol is an **adapter** over DCF-Text (itself an adapter over the
+17-byte `DeModFrame`).  A PING is an ordinary DCF-Text DATA frame whose descriptor
+carries a new flag bit; the PONG is the same with the reply bit.  The payload is a
+deterministic line, **not JSON** (the Exsecutor agent has no JSON parser):
+
+```
+DCP1 <kind> <node_id_hex> <name>\n     e.g.  DCP1 exsecutor 0x00c3 exs-agent
+```
+
+Descriptor flag bits (`payload[2]`; bits 0–2 are DCF-Text's AGENT/MORE/RELIABLE,
+opaque to L2 so the certified `text_vectors.json` is **untouched**):
+
+| Bit | Name | Meaning |
+|-----|------|---------|
+| 3 | `PING` (0x08) | presence probe: "what agents are here, what kind?" |
+| 4 | `PONG` (0x10) | presence reply: "I am here, I am kind K" |
+
+### Why the Exsecutor agent is a stdio pipe, not a socket
+
+Exsecutor's `rete` (network) atom is declared but **not derivable** — the prelude's
+syscall table lists it as `[OPEN]` with no routines, and "no socket-family syscall
+appears here, and none ever will without a `rete` routine."  So an `.exsc` program
+cannot open a UDP socket.  The Exsecutor agent (`exsecutor/agent/`) instead speaks
+the **`stdio:` medium** (`DCF_MEDIUM_SPEC.md`, stream class): the host driver feeds
+it whole 17-byte `DeModFrame`s on stdin and reads whole frames from stdout.  Its
+audited syscall set is `read(0)` / `write(1)` / `exit_group(231)` — the same set the
+entry-23 certificate binary audits to.  The agent's identity (kind, node id, name)
+is **compiled in** as literals: Exsecutor has no argv and no getenv.
+
+### Commands
+
+```sh
+# discover: broadcast a PING, print the roster of who answered
+python3 matrix-bridge/a2a_ping.py discover --channel duet --timeout 2
+
+# ping: ping each agent listed in a registry file
+python3 matrix-bridge/a2a_ping.py ping --registry agents.registry.jsonc
+
+# ping-exsc: build (if needed) and ping the Exsecutor agent over a pipe
+python3 matrix-bridge/a2a_ping.py ping-exsc
+
+# demo: loopback — pings a Python ponger AND the Exsecutor agent
+python3 matrix-bridge/a2a_ping.py demo
+
+# via Nix
+nix run .#a2a-ping -- discover --channel duet
+nix run .#a2a-ping-demo
+```
+
+### Files
+
+| File | What it is |
+|------|-----------|
+| `dcf_presence.py` | the `DCP1` line codec, the flag bits, and `PresenceTable` (insertion-ordered roster) |
+| `a2a_ping.py` | the pinger CLI (`discover` / `ping` / `ping-exsc` / `demo`) |
+| `tests/test_a2a_ping.py` | codec + roster + two-node PING/PONG loopback + channel isolation |
+| `../exsecutor/agent/` | the Exsecutor agent: `demodframe.exsc` (declaration), `codex.exsc` (codec, pure), `presence.exsc` (DCP1 + PING→PONG, pure), `driver.exsc` (stdio `initium`) |
+| `../exsecutor/agent/selftest.sh` | builds the agent, pipes a PING in, compares the PONG bytes against a Python oracle, checks determinism and loud failure |
+
+### Tests
+
+```sh
+make test-a2a                          # presence selftest + loopback tests + demo
+python3 matrix-bridge/dcf_presence.py   # line codec + roster selftest
+python3 matrix-bridge/tests/test_a2a_ping.py
+./exsecutor/agent/selftest.sh          # Exsecutor agent (skips without exsc/fasmg)
+```
+
+---
+
 ## 9. Limits & when to reach for something else
 
 - **Unreliable UDP.** DCF is connectionless; a dropped fragment just means a
